@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Main</title>
+
+    <link
+      href="https://fonts.googleapis.com/css?family=Roboto:300,400,500"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/normalize/7.0.0/normalize.min.css"
+      rel="stylesheet"
+    />
+    <link href="elm-mdc/material-components-web.css" rel="stylesheet" />
+  </head>
+
+  <body>
+    <div id="elm"></div>
+
+    <script src="elm-mdc/elm-mdc.js"></script>
+    <script src="elm.js"></script>
+    <script>
+      var app = Elm.Main.init({ node: document.getElementById("elm") });
+    </script>
+  </body>
+</html>
