@@ -1,0 +1,20 @@
+{
+  "name": "doodle_497",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.html",
+  "scripts": {
+    "start-frontend": "elm-live src/Main.elm --open --start-page=index.html -- --output=elm.js",
+    "start-server": "cd server && stack build && stack exec -- yesod devel && cd .."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NothingWithheld/synced-calendar.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/NothingWithheld/synced-calendar/issues"
+  },
+  "homepage": "https://github.com/NothingWithheld/synced-calendar#readme"
+}
