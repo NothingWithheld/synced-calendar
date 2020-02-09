@@ -3,6 +3,8 @@ module Main exposing (main)
 import Browser
 import Dict exposing (Dict)
 import Html exposing (Html, div, text)
+import Http
+import Json.Decode exposing (Decoder, field, int)
 import Material
 import Material.Button as Button
 import Material.Card as Card
@@ -33,6 +35,7 @@ type alias Model =
 
 type alias SelectedTimeSlot =
     { name : String
+    , number : Int
     }
 
 
@@ -60,7 +63,9 @@ init _ =
 type Msg
     = PromptUserForTimeSlot String
     | TimeSlotNotSelected
-    | SelectTimeSlot String
+    | RequestNumber String
+    | GotNumber String (Result Http.Error Int)
+    | SelectTimeSlot String Int
     | Mdc (Material.Msg Msg)
 
 
@@ -76,13 +81,29 @@ update msg model =
         TimeSlotNotSelected ->
             ( { model | editCardDetails = IsClosed }, Cmd.none )
 
-        SelectTimeSlot timeSlotKey ->
+        SelectTimeSlot timeSlotKey number ->
             ( { model
                 | editCardDetails = IsClosed
-                , selectedTimeSlots = Dict.insert timeSlotKey { name = "hi" } model.selectedTimeSlots
+                , selectedTimeSlots = Dict.insert timeSlotKey { name = "hi", number = number } model.selectedTimeSlots
               }
             , Cmd.none
             )
+
+        RequestNumber timeSlotKey ->
+            ( model, getNumber timeSlotKey )
+
+        GotNumber timeSlotKey result ->
+            case result of
+                Ok number ->
+                    ( { model
+                        | editCardDetails = IsClosed
+                        , selectedTimeSlots = Dict.insert timeSlotKey { name = "hi", number = number } model.selectedTimeSlots
+                      }
+                    , Cmd.none
+                    )
+
+                Err _ ->
+                    ( { model | editCardDetails = IsClosed }, Cmd.none )
 
 
 getTimeSlotKey : Int -> Int -> String
@@ -120,13 +141,22 @@ viewTimeSlot model dayId timeSlotId =
 
         isSelected =
             Dict.member timeSlotKey model.selectedTimeSlots
+
+        number =
+            Maybe.map .number (Dict.get timeSlotKey model.selectedTimeSlots)
     in
     Lists.li
         [ when isSelected (css "background-color" "red")
         , css "border" "thin solid black"
         , Options.onClick (PromptUserForTimeSlot timeSlotKey)
         ]
-        []
+        (case number of
+            Just value ->
+                [ text (String.fromInt value) ]
+
+            Nothing ->
+                []
+        )
 
 
 viewEditCard : Model -> Html Msg
@@ -145,7 +175,7 @@ viewEditCard model =
                             model.mdc
                             [ Card.actionButton
                             , Button.ripple
-                            , Options.onClick (SelectTimeSlot timeSlotKey)
+                            , Options.onClick (RequestNumber timeSlotKey)
                             ]
                             [ text "Yes" ]
                         , Button.view Mdc
@@ -168,3 +198,17 @@ viewEditCard model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Material.subscriptions Mdc model
+
+
+
+-- HTTP
+
+
+getNumber : String -> Cmd Msg
+getNumber timeSlotKey =
+    Http.get { url = "http://localhost:3000/number", expect = Http.expectJson (GotNumber timeSlotKey) numberDecoder }
+
+
+numberDecoder : Decoder Int
+numberDecoder =
+    field "number" int
