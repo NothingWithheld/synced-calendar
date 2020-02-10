@@ -10,6 +10,7 @@ import Material.Button as Button
 import Material.Card as Card
 import Material.List as Lists
 import Material.Options as Options exposing (css, styled, when)
+import Material.Typography as Typography
 
 
 
@@ -29,6 +30,8 @@ type alias Model =
     , numDays : Int
     , numSlotsInDay : Int
     , editCardDetails : EditCard
+    , timeSlotSelection : TimeSlotSelection
+    , selectedTimeSlots2 : List SelectedTimeSlot2
     , mdc : Material.Model Msg
     }
 
@@ -37,6 +40,37 @@ type alias SelectedTimeSlot =
     { name : String
     , number : Int
     }
+
+
+type alias SelectedTimeSlot2 =
+    { dayNum : Int
+    , name : String
+    , startSlot : TimeSlotBoundaryPosition
+    , endSlot : TimeSlotBoundaryPosition
+    }
+
+
+type alias TimeSlotBoundaryPosition =
+    { dayNum : Int
+    , slotNum : Int
+    , x : Float
+    , y : Float
+    , width : Float
+    , height : Float
+    }
+
+
+type BoundaryTimeSlotElem
+    = BoundaryTimeSlotNoPosition { dayNum : Int, slotNum : Int }
+    | BoundaryTimeSlotWithPosition TimeSlotBoundaryPosition
+
+
+type TimeSlotSelection
+    = NotSelecting
+    | CurrentlySelecting
+        { startBound : BoundaryTimeSlotElem
+        , curEndBound : BoundaryTimeSlotElem
+        }
 
 
 type EditCard
@@ -50,6 +84,8 @@ init _ =
       , numDays = 5
       , numSlotsInDay = 12
       , editCardDetails = IsClosed
+      , timeSlotSelection = NotSelecting
+      , selectedTimeSlots2 = [ { dayNum = 2, name = "test", startSlot = { dayNum = 1, slotNum = 2, x = 0, y = 48, width = 0, height = 48 }, endSlot = { dayNum = 1, slotNum = 4, x = 0, y = 144, width = 0, height = 48 } } ]
       , mdc = Material.defaultModel
       }
     , Material.init Mdc
@@ -130,7 +166,21 @@ view model =
 
 viewSingleDayTimeSlots : Model -> Int -> Html Msg
 viewSingleDayTimeSlots model dayId =
-    Lists.ul Mdc ("list-" ++ String.fromInt dayId) model.mdc [] (List.map (viewTimeSlot model dayId) (List.range 1 model.numSlotsInDay))
+    let
+        selectedTimeSlotsForThisDay =
+            List.filter (\timeSlot -> timeSlot.dayNum == dayId) model.selectedTimeSlots2
+    in
+    styled div
+        [ css "flex-grow" "1", css "position" "relative" ]
+        (List.append
+            [ Lists.ul Mdc
+                ("list-" ++ String.fromInt dayId)
+                model.mdc
+                []
+                (List.map (viewTimeSlot model dayId) (List.range 1 model.numSlotsInDay))
+            ]
+            (List.map viewSelectedTimeSlot selectedTimeSlotsForThisDay)
+        )
 
 
 viewTimeSlot : Model -> Int -> Int -> Lists.ListItem Msg
@@ -189,6 +239,23 @@ viewEditCard model =
                         ]
                     ]
                 ]
+
+
+viewSelectedTimeSlot : SelectedTimeSlot2 -> Html Msg
+viewSelectedTimeSlot selectedTimeSlot =
+    let
+        selectedTimeSlotHeight =
+            selectedTimeSlot.endSlot.y + selectedTimeSlot.endSlot.height - selectedTimeSlot.startSlot.y
+    in
+    Card.view
+        [ css "background-color" "red"
+        , css "top" (String.fromFloat selectedTimeSlot.startSlot.y ++ "px")
+        , css "height" (String.fromFloat selectedTimeSlotHeight ++ "px")
+        , css "position" "absolute"
+        , css "width" "100%"
+        , css "z-index" "4"
+        ]
+        [ styled div [ Typography.subheading1 ] [ text selectedTimeSlot.name ] ]
 
 
 
