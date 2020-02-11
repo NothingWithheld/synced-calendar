@@ -154,7 +154,7 @@ update msg model =
 
                 NotSelecting ->
                     if intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots2 dayNum slotNum slotNum then
-                        ( model, Debug.log "failed" Cmd.none )
+                        ( model, Cmd.none )
 
                     else
                         let
@@ -175,17 +175,10 @@ update msg model =
                             , width = element.width
                             , height = element.height
                             }
-
-                        _ =
-                            Debug.log "element" element
                     in
                     ( { model | timeSlotSelection = CurrentlySelecting { startBound = timeSlotPosition, curEndBound = timeSlotPosition } }, Cmd.none )
 
-                Err errorString ->
-                    let
-                        test =
-                            Debug.log "error string" errorString
-                    in
+                Err _ ->
                     ( model, Cmd.none )
 
         AdjustTimeSlotSelection slotNum ->
@@ -405,7 +398,7 @@ getCardDimensions boundA boundB =
         totalHeight =
             lowerBound.y + lowerBound.height - higherBound.y
     in
-    { y = higherBound.y - higherBound.height, height = totalHeight }
+    { y = higherBound.y, height = totalHeight }
 
 
 type alias CardDimensions =
@@ -426,7 +419,7 @@ getTimeSlotIdFrontHalf dayNum =
 
 getTimeSlotIdBackHalf : Int -> String
 getTimeSlotIdBackHalf slotNum =
-    "--" ++ String.fromInt slotNum
+    "--" ++ String.fromInt (slotNum - 1)
 
 
 
