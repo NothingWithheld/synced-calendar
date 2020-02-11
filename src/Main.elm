@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Browser
+import Browser.Dom as Dom
 import Dict exposing (Dict)
 import Html exposing (Html, div, text)
 import Http
@@ -11,6 +12,7 @@ import Material.Card as Card
 import Material.List as Lists
 import Material.Options as Options exposing (css, styled, when)
 import Material.Typography as Typography
+import Task
 
 
 
@@ -68,8 +70,8 @@ type BoundaryTimeSlotElem
 type TimeSlotSelection
     = NotSelecting
     | CurrentlySelecting
-        { startBound : BoundaryTimeSlotElem
-        , curEndBound : BoundaryTimeSlotElem
+        { startBound : TimeSlotBoundaryPosition
+        , curEndBound : TimeSlotBoundaryPosition
         }
 
 
@@ -85,7 +87,7 @@ init _ =
       , numSlotsInDay = 12
       , editCardDetails = IsClosed
       , timeSlotSelection = NotSelecting
-      , selectedTimeSlots2 = [ { dayNum = 2, name = "test", startSlot = { dayNum = 1, slotNum = 2, x = 0, y = 48, width = 0, height = 48 }, endSlot = { dayNum = 1, slotNum = 4, x = 0, y = 144, width = 0, height = 48 } } ]
+      , selectedTimeSlots2 = [ { dayNum = 2, name = "test", startSlot = { dayNum = 2, slotNum = 2, x = 0, y = 48, width = 0, height = 48 }, endSlot = { dayNum = 2, slotNum = 4, x = 0, y = 144, width = 0, height = 48 } } ]
       , mdc = Material.defaultModel
       }
     , Material.init Mdc
@@ -101,6 +103,10 @@ type Msg
     | TimeSlotNotSelected
     | RequestNumber String
     | GotNumber String (Result Http.Error Int)
+    | StartSelectingTimeSlot Int Int
+    | SetInitialTimeSlotSelection Int Int (Result Dom.Error Dom.Element)
+    | AdjustTimeSlotSelection Int
+    | SetAdjustedTimeSlotSelection TimeSlotBoundaryPosition Int Int (Result Dom.Error Dom.Element)
     | SelectTimeSlot String Int
     | Mdc (Material.Msg Msg)
 
@@ -141,6 +147,103 @@ update msg model =
                 Err _ ->
                     ( { model | editCardDetails = IsClosed }, Cmd.none )
 
+        StartSelectingTimeSlot dayNum slotNum ->
+            case model.timeSlotSelection of
+                CurrentlySelecting _ ->
+                    ( model, Cmd.none )
+
+                NotSelecting ->
+                    if intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots2 dayNum slotNum slotNum then
+                        ( model, Debug.log "failed" Cmd.none )
+
+                    else
+                        let
+                            timeSlotId =
+                                getTimeSlotId dayNum slotNum
+                        in
+                        ( model, Task.attempt (SetInitialTimeSlotSelection dayNum slotNum) (Dom.getElement timeSlotId) )
+
+        SetInitialTimeSlotSelection dayNum slotNum result ->
+            case result of
+                Ok { element } ->
+                    let
+                        timeSlotPosition =
+                            { dayNum = dayNum
+                            , slotNum = slotNum
+                            , x = element.x
+                            , y = element.y
+                            , width = element.width
+                            , height = element.height
+                            }
+
+                        _ =
+                            Debug.log "element" element
+                    in
+                    ( { model | timeSlotSelection = CurrentlySelecting { startBound = timeSlotPosition, curEndBound = timeSlotPosition } }, Cmd.none )
+
+                Err errorString ->
+                    let
+                        test =
+                            Debug.log "error string" errorString
+                    in
+                    ( model, Cmd.none )
+
+        AdjustTimeSlotSelection slotNum ->
+            case model.timeSlotSelection of
+                NotSelecting ->
+                    ( model, Cmd.none )
+
+                CurrentlySelecting { startBound } ->
+                    if intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots2 startBound.dayNum startBound.slotNum slotNum then
+                        ( model, Cmd.none )
+
+                    else
+                        let
+                            dayNum =
+                                startBound.dayNum
+
+                            timeSlotId =
+                                getTimeSlotId dayNum slotNum
+                        in
+                        ( model, Task.attempt (SetAdjustedTimeSlotSelection startBound dayNum slotNum) (Dom.getElement timeSlotId) )
+
+        SetAdjustedTimeSlotSelection startBound dayNum slotNum result ->
+            case result of
+                Ok { element } ->
+                    let
+                        endTimeSlotPosition =
+                            { dayNum = dayNum
+                            , slotNum = slotNum
+                            , x = element.x
+                            , y = element.y
+                            , width = element.width
+                            , height = element.height
+                            }
+                    in
+                    ( { model | timeSlotSelection = CurrentlySelecting { startBound = startBound, curEndBound = endTimeSlotPosition } }, Cmd.none )
+
+                Err _ ->
+                    ( model, Cmd.none )
+
+
+intersectsCurrentlySelectedTimeSlots : List SelectedTimeSlot2 -> Int -> Int -> Int -> Bool
+intersectsCurrentlySelectedTimeSlots currentTimeSlots dayNum startSlotNum endSlotNum =
+    let
+        ( lowerSlotNum, higherSlotNum ) =
+            if startSlotNum < endSlotNum then
+                ( startSlotNum, endSlotNum )
+
+            else
+                ( endSlotNum, startSlotNum )
+
+        selectedTimeSlotsForThisDay =
+            List.filter (\timeSlot -> timeSlot.dayNum == dayNum) currentTimeSlots
+
+        isTimeSlotTaken timeSlot =
+            List.any (\selected -> timeSlot >= selected.startSlot.slotNum && timeSlot <= selected.endSlot.slotNum) selectedTimeSlotsForThisDay
+    in
+    List.any isTimeSlotTaken (List.range lowerSlotNum higherSlotNum)
+
 
 getTimeSlotKey : Int -> Int -> String
 getTimeSlotKey dayId timeSlotId =
@@ -165,29 +268,30 @@ view model =
 
 
 viewSingleDayTimeSlots : Model -> Int -> Html Msg
-viewSingleDayTimeSlots model dayId =
+viewSingleDayTimeSlots model dayNum =
     let
         selectedTimeSlotsForThisDay =
-            List.filter (\timeSlot -> timeSlot.dayNum == dayId) model.selectedTimeSlots2
+            List.filter (\timeSlot -> timeSlot.dayNum == dayNum) model.selectedTimeSlots2
     in
     styled div
         [ css "flex-grow" "1", css "position" "relative" ]
         (List.append
             [ Lists.ul Mdc
-                ("list-" ++ String.fromInt dayId)
+                (getTimeSlotIdFrontHalf dayNum)
                 model.mdc
                 []
-                (List.map (viewTimeSlot model dayId) (List.range 1 model.numSlotsInDay))
+                (List.map (viewTimeSlot model dayNum) (List.range 1 model.numSlotsInDay))
+            , viewCurrentlySelectingTimeSlot model dayNum
             ]
             (List.map viewSelectedTimeSlot selectedTimeSlotsForThisDay)
         )
 
 
 viewTimeSlot : Model -> Int -> Int -> Lists.ListItem Msg
-viewTimeSlot model dayId timeSlotId =
+viewTimeSlot model dayNum slotNum =
     let
         timeSlotKey =
-            getTimeSlotKey dayId timeSlotId
+            getTimeSlotKey dayNum slotNum
 
         isSelected =
             Dict.member timeSlotKey model.selectedTimeSlots
@@ -198,7 +302,8 @@ viewTimeSlot model dayId timeSlotId =
     Lists.li
         [ when isSelected (css "background-color" "red")
         , css "border" "thin solid black"
-        , Options.onClick (PromptUserForTimeSlot timeSlotKey)
+        , Options.onMouseDown (StartSelectingTimeSlot dayNum slotNum)
+        , Options.onMouseEnter (AdjustTimeSlotSelection slotNum)
         ]
         (case number of
             Just value ->
@@ -244,18 +349,84 @@ viewEditCard model =
 viewSelectedTimeSlot : SelectedTimeSlot2 -> Html Msg
 viewSelectedTimeSlot selectedTimeSlot =
     let
-        selectedTimeSlotHeight =
-            selectedTimeSlot.endSlot.y + selectedTimeSlot.endSlot.height - selectedTimeSlot.startSlot.y
+        cardDimensions =
+            getCardDimensions selectedTimeSlot.startSlot selectedTimeSlot.endSlot
     in
     Card.view
         [ css "background-color" "red"
-        , css "top" (String.fromFloat selectedTimeSlot.startSlot.y ++ "px")
-        , css "height" (String.fromFloat selectedTimeSlotHeight ++ "px")
+        , css "top" (String.fromFloat cardDimensions.y ++ "px")
+        , css "height" (String.fromFloat cardDimensions.height ++ "px")
         , css "position" "absolute"
         , css "width" "100%"
         , css "z-index" "4"
         ]
         [ styled div [ Typography.subheading1 ] [ text selectedTimeSlot.name ] ]
+
+
+viewCurrentlySelectingTimeSlot : Model -> Int -> Html Msg
+viewCurrentlySelectingTimeSlot model dayNum =
+    case model.timeSlotSelection of
+        NotSelecting ->
+            text ""
+
+        CurrentlySelecting { startBound, curEndBound } ->
+            let
+                cardDimensions =
+                    getCardDimensions startBound curEndBound
+
+                dayNumCurrentlySelected =
+                    startBound.dayNum
+            in
+            if dayNum == dayNumCurrentlySelected then
+                Card.view
+                    [ css "background-color" "green"
+                    , css "top" (String.fromFloat cardDimensions.y ++ "px")
+                    , css "height" (String.fromFloat cardDimensions.height ++ "px")
+                    , css "position" "absolute"
+                    , css "width" "100%"
+                    , css "z-index" "4"
+                    ]
+                    [ styled div [ Typography.subheading1 ] [ text "(group name)" ] ]
+
+            else
+                text ""
+
+
+getCardDimensions : TimeSlotBoundaryPosition -> TimeSlotBoundaryPosition -> CardDimensions
+getCardDimensions boundA boundB =
+    let
+        ( higherBound, lowerBound ) =
+            if boundA.y < boundB.y then
+                ( boundA, boundB )
+
+            else
+                ( boundB, boundA )
+
+        totalHeight =
+            lowerBound.y + lowerBound.height - higherBound.y
+    in
+    { y = higherBound.y - higherBound.height, height = totalHeight }
+
+
+type alias CardDimensions =
+    { y : Float
+    , height : Float
+    }
+
+
+getTimeSlotId : Int -> Int -> String
+getTimeSlotId dayNum slotNum =
+    getTimeSlotIdFrontHalf dayNum ++ getTimeSlotIdBackHalf slotNum
+
+
+getTimeSlotIdFrontHalf : Int -> String
+getTimeSlotIdFrontHalf dayNum =
+    "time-slot-" ++ String.fromInt dayNum
+
+
+getTimeSlotIdBackHalf : Int -> String
+getTimeSlotIdBackHalf slotNum =
+    "--" ++ String.fromInt slotNum
 
 
 
