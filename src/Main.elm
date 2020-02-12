@@ -28,10 +28,8 @@ main =
 
 
 type alias Model =
-    { selectedTimeSlots : Dict String SelectedTimeSlot
-    , numDays : Int
+    { numDays : Int
     , numSlotsInDay : Int
-    , editCardDetails : EditCard
     , timeSlotSelection : TimeSlotSelection
     , selectedTimeSlots2 : List SelectedTimeSlot2
     , mdc : Material.Model Msg
@@ -82,10 +80,8 @@ type EditCard
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { selectedTimeSlots = Dict.empty
-      , numDays = 5
+    ( { numDays = 5
       , numSlotsInDay = 12
-      , editCardDetails = IsClosed
       , timeSlotSelection = NotSelecting
       , selectedTimeSlots2 = [ { dayNum = 2, name = "test", startSlot = { dayNum = 2, slotNum = 2, x = 0, y = 48, width = 0, height = 48 }, endSlot = { dayNum = 2, slotNum = 4, x = 0, y = 144, width = 0, height = 48 } } ]
       , mdc = Material.defaultModel
@@ -99,15 +95,10 @@ init _ =
 
 
 type Msg
-    = PromptUserForTimeSlot String
-    | TimeSlotNotSelected
-    | RequestNumber String
-    | GotNumber String (Result Http.Error Int)
-    | StartSelectingTimeSlot Int Int
+    = StartSelectingTimeSlot Int Int
     | SetInitialTimeSlotSelection Int Int (Result Dom.Error Dom.Element)
     | AdjustTimeSlotSelection Int
     | SetAdjustedTimeSlotSelection TimeSlotBoundaryPosition Int Int (Result Dom.Error Dom.Element)
-    | SelectTimeSlot String Int
     | Mdc (Material.Msg Msg)
 
 
@@ -116,36 +107,6 @@ update msg model =
     case msg of
         Mdc msg_ ->
             Material.update Mdc msg_ model
-
-        PromptUserForTimeSlot timeSlotKey ->
-            ( { model | editCardDetails = IsOpen timeSlotKey }, Cmd.none )
-
-        TimeSlotNotSelected ->
-            ( { model | editCardDetails = IsClosed }, Cmd.none )
-
-        SelectTimeSlot timeSlotKey number ->
-            ( { model
-                | editCardDetails = IsClosed
-                , selectedTimeSlots = Dict.insert timeSlotKey { name = "hi", number = number } model.selectedTimeSlots
-              }
-            , Cmd.none
-            )
-
-        RequestNumber timeSlotKey ->
-            ( model, getNumber timeSlotKey )
-
-        GotNumber timeSlotKey result ->
-            case result of
-                Ok number ->
-                    ( { model
-                        | editCardDetails = IsClosed
-                        , selectedTimeSlots = Dict.insert timeSlotKey { name = "hi", number = number } model.selectedTimeSlots
-                      }
-                    , Cmd.none
-                    )
-
-                Err _ ->
-                    ( { model | editCardDetails = IsClosed }, Cmd.none )
 
         StartSelectingTimeSlot dayNum slotNum ->
             case model.timeSlotSelection of
@@ -256,7 +217,7 @@ view model =
                 (viewSingleDayTimeSlots model)
                 (List.range 1 model.numDays)
             )
-            [ viewEditCard model ]
+            []
         )
 
 
@@ -281,62 +242,13 @@ viewSingleDayTimeSlots model dayNum =
 
 
 viewTimeSlot : Model -> Int -> Int -> Lists.ListItem Msg
-viewTimeSlot model dayNum slotNum =
-    let
-        timeSlotKey =
-            getTimeSlotKey dayNum slotNum
-
-        isSelected =
-            Dict.member timeSlotKey model.selectedTimeSlots
-
-        number =
-            Maybe.map .number (Dict.get timeSlotKey model.selectedTimeSlots)
-    in
+viewTimeSlot _ dayNum slotNum =
     Lists.li
-        [ when isSelected (css "background-color" "red")
-        , css "border" "thin solid black"
+        [ css "border" "thin solid black"
         , Options.onMouseDown (StartSelectingTimeSlot dayNum slotNum)
         , Options.onMouseEnter (AdjustTimeSlotSelection slotNum)
         ]
-        (case number of
-            Just value ->
-                [ text (String.fromInt value) ]
-
-            Nothing ->
-                []
-        )
-
-
-viewEditCard : Model -> Html Msg
-viewEditCard model =
-    case model.editCardDetails of
-        IsClosed ->
-            text ""
-
-        IsOpen timeSlotKey ->
-            Card.view []
-                [ text "Select?"
-                , Card.actions []
-                    [ Card.actionButtons []
-                        [ Button.view Mdc
-                            "select-time-slot-button"
-                            model.mdc
-                            [ Card.actionButton
-                            , Button.ripple
-                            , Options.onClick (RequestNumber timeSlotKey)
-                            ]
-                            [ text "Yes" ]
-                        , Button.view Mdc
-                            "dont-select-time-slot-button"
-                            model.mdc
-                            [ Card.actionButton
-                            , Button.ripple
-                            , Options.onClick TimeSlotNotSelected
-                            ]
-                            [ text "No" ]
-                        ]
-                    ]
-                ]
+        []
 
 
 viewSelectedTimeSlot : SelectedTimeSlot2 -> Html Msg
@@ -429,17 +341,3 @@ getTimeSlotIdBackHalf slotNum =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Material.subscriptions Mdc model
-
-
-
--- HTTP
-
-
-getNumber : String -> Cmd Msg
-getNumber timeSlotKey =
-    Http.get { url = "http://localhost:3000/number", expect = Http.expectJson (GotNumber timeSlotKey) numberDecoder }
-
-
-numberDecoder : Decoder Int
-numberDecoder =
-    field "number" int
