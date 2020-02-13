@@ -2,12 +2,9 @@ module Main exposing (main)
 
 import Browser
 import Browser.Dom as Dom
-import Dict exposing (Dict)
 import Html exposing (Html, div, text)
-import Http
-import Json.Decode as Decode exposing (Decoder, field, float, int)
+import Json.Decode as Decode exposing (field, float)
 import Material
-import Material.Button as Button
 import Material.Card as Card
 import Material.List as Lists
 import Material.Options as Options exposing (css, styled, when)
@@ -19,8 +16,9 @@ import Task
 -- MAIN
 
 
+main : Program () Model Msg
 main =
-    Browser.element { init = init, update = update, view = view, subscriptions = subscriptions }
+    Browser.element { init = \_ -> init, update = update, view = view, subscriptions = subscriptions }
 
 
 
@@ -78,8 +76,8 @@ type alias PointerPosition =
     }
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
+init : ( Model, Cmd Msg )
+init =
     ( { numDays = 5
       , numSlotsInDay = defaultNumSlots
       , timeSlotPositions = []
@@ -108,9 +106,6 @@ defaultNumSlots =
 
 type Msg
     = StartSelectingTimeSlot Int Int
-    | SetInitialTimeSlotSelection Int Int (Result Dom.Error Dom.Element)
-    | AdjustTimeSlotSelection Int
-    | SetAdjustedTimeSlotSelection TimeSlotBoundaryPosition Int Int (Result Dom.Error Dom.Element)
     | SetTimeSlotPositions (Result Dom.Error (List Dom.Element))
     | HandleTimeSlotMouseMove PointerPosition
     | Mdc (Material.Msg Msg)
@@ -134,11 +129,7 @@ update msg model =
                     in
                     ( { model | timeSlotPositions = List.indexedMap setTimeSlotPosition elementList }, Cmd.none )
 
-                Err e ->
-                    let
-                        t =
-                            Debug.log "error" e
-                    in
+                Err _ ->
                     ( model, Cmd.none )
 
         HandleTimeSlotMouseMove { pageY } ->
@@ -183,7 +174,7 @@ update msg model =
                     else
                         let
                             timeSlotPosition =
-                                Debug.log "show" (getListItemAt slotNum (Debug.log "test" model.timeSlotPositions))
+                                getListItemAt slotNum model.timeSlotPositions
                         in
                         case timeSlotPosition of
                             Just positionVal ->
@@ -200,70 +191,6 @@ update msg model =
 
                             Nothing ->
                                 ( model, Cmd.none )
-
-        SetInitialTimeSlotSelection dayNum slotNum result ->
-            case result of
-                Ok { element } ->
-                    let
-                        timeSlotPosition =
-                            { slotNum = slotNum
-                            , y = element.y
-                            , height = element.height
-                            }
-                    in
-                    ( { model
-                        | timeSlotSelection =
-                            CurrentlySelecting
-                                { dayNum = dayNum
-                                , startBound = timeSlotPosition
-                                , curEndBound = timeSlotPosition
-                                }
-                      }
-                    , Cmd.none
-                    )
-
-                Err _ ->
-                    ( model, Cmd.none )
-
-        AdjustTimeSlotSelection slotNum ->
-            case model.timeSlotSelection of
-                NotSelecting ->
-                    ( model, Cmd.none )
-
-                CurrentlySelecting { dayNum, startBound } ->
-                    if intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots dayNum startBound.slotNum slotNum then
-                        ( model, Cmd.none )
-
-                    else
-                        let
-                            timeSlotId =
-                                getTimeSlotId dayNum slotNum
-                        in
-                        ( model, Task.attempt (SetAdjustedTimeSlotSelection startBound dayNum slotNum) (Dom.getElement timeSlotId) )
-
-        SetAdjustedTimeSlotSelection startBound dayNum slotNum result ->
-            case result of
-                Ok { element } ->
-                    let
-                        endTimeSlotPosition =
-                            { slotNum = slotNum
-                            , y = element.y
-                            , height = element.height
-                            }
-                    in
-                    ( { model
-                        | timeSlotSelection =
-                            CurrentlySelecting
-                                { dayNum = dayNum
-                                , startBound = startBound
-                                , curEndBound = endTimeSlotPosition
-                                }
-                      }
-                    , Cmd.none
-                    )
-
-                Err _ ->
-                    ( model, Cmd.none )
 
 
 getListItemAt : Int -> List a -> Maybe a
@@ -343,11 +270,6 @@ intersectsCurrentlySelectedTimeSlots currentTimeSlots dayNum startSlotNum endSlo
             List.any (\selected -> timeSlot >= selected.startSlot.slotNum && timeSlot <= selected.endSlot.slotNum) selectedTimeSlotsForThisDay
     in
     List.any isTimeSlotTaken (List.range lowerSlotNum higherSlotNum)
-
-
-getTimeSlotKey : Int -> Int -> String
-getTimeSlotKey dayId timeSlotId =
-    String.fromInt dayId ++ "-" ++ String.fromInt timeSlotId
 
 
 
