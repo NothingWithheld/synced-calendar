@@ -1,11 +1,12 @@
 module Main exposing (main)
 
+import Array exposing (Array)
 import Browser
 import Browser.Dom as Dom
 import Dict exposing (Dict)
 import Html exposing (Html, div, text)
 import Http
-import Json.Decode exposing (Decoder, field, int)
+import Json.Decode as Decode exposing (Decoder, field, float, int)
 import Material
 import Material.Button as Button
 import Material.Card as Card
@@ -37,13 +38,15 @@ type alias Model =
     }
 
 
-type TimeSlotPositions
-    = TSPositionsNotLoaded
-    | TSPositions (List TimeSlotPosition)
+type alias TimeSlotPositions =
+    Array TimeSlotPosition
 
 
 type alias TimeSlotPosition =
-    { slotNum : Int, y : Float, height : Float }
+    { slotNum : Int
+    , y : Float
+    , height : Float
+    }
 
 
 type alias SelectedTimeSlot =
@@ -70,11 +73,17 @@ type TimeSlotSelection
         }
 
 
+type alias PointerPosition =
+    { pageX : Float
+    , pageY : Float
+    }
+
+
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { numDays = 5
       , numSlotsInDay = defaultNumSlots
-      , timeSlotPositions = TSPositionsNotLoaded
+      , timeSlotPositions = Array.empty
       , timeSlotSelection = NotSelecting
       , selectedTimeSlots =
             [ { dayNum = 2
@@ -104,6 +113,7 @@ type Msg
     | AdjustTimeSlotSelection Int
     | SetAdjustedTimeSlotSelection TimeSlotBoundaryPosition Int Int (Result Dom.Error Dom.Element)
     | SetTimeSlotPositions (Result Dom.Error (List Dom.Element))
+    | HandleTimeSlotMouseMove PointerPosition
     | Mdc (Material.Msg Msg)
 
 
@@ -123,10 +133,21 @@ update msg model =
                             , height = element.height
                             }
                     in
-                    ( { model | timeSlotPositions = TSPositions (List.indexedMap setTimeSlotPosition elementList) }, Cmd.none )
+                    ( { model | timeSlotPositions = Array.fromList (List.indexedMap setTimeSlotPosition elementList) }, Cmd.none )
 
-                Err _ ->
+                Err e ->
+                    let
+                        t =
+                            Debug.log "error" e
+                    in
                     ( model, Cmd.none )
+
+        HandleTimeSlotMouseMove pointerPosition ->
+            let
+                _ =
+                    Debug.log "position" pointerPosition
+            in
+            ( model, Cmd.none )
 
         StartSelectingTimeSlot dayNum slotNum ->
             case model.timeSlotSelection of
@@ -139,10 +160,24 @@ update msg model =
 
                     else
                         let
-                            timeSlotId =
-                                getTimeSlotId dayNum slotNum
+                            timeSlotPosition =
+                                Debug.log "show" (Array.get slotNum (Debug.log "test" model.timeSlotPositions))
                         in
-                        ( model, Task.attempt (SetInitialTimeSlotSelection dayNum slotNum) (Dom.getElement timeSlotId) )
+                        case timeSlotPosition of
+                            Just positionVal ->
+                                ( { model
+                                    | timeSlotSelection =
+                                        CurrentlySelecting
+                                            { dayNum = dayNum
+                                            , startBound = positionVal
+                                            , curEndBound = positionVal
+                                            }
+                                  }
+                                , Cmd.none
+                                )
+
+                            Nothing ->
+                                ( model, Cmd.none )
 
         SetInitialTimeSlotSelection dayNum slotNum result ->
             case result of
@@ -209,11 +244,23 @@ update msg model =
                     ( model, Cmd.none )
 
 
+onTimeSlotMouseMove : Options.Property c Msg
+onTimeSlotMouseMove =
+    Options.on "mousemove"
+        (Decode.map HandleTimeSlotMouseMove
+            (Decode.map2
+                PointerPosition
+                (field "pageX" float)
+                (field "pageY" float)
+            )
+        )
+
+
 requestTimeSlotPositions : Int -> Cmd Msg
 requestTimeSlotPositions numSlots =
     let
         slotNumList =
-            List.range 1 numSlots
+            List.range 0 (numSlots - 1)
 
         getTimeSlotPosition slotNum =
             Dom.getElement (getTimeSlotId 1 slotNum)
@@ -252,11 +299,13 @@ getTimeSlotKey dayId timeSlotId =
 view : Model -> Html Msg
 view model =
     styled div
-        [ css "display" "flex" ]
+        [ css "display" "flex"
+        , onTimeSlotMouseMove
+        ]
         (List.append
             (List.map
                 (viewSingleDayTimeSlots model)
-                (List.range 1 model.numDays)
+                (List.range 0 (model.numDays - 1))
             )
             []
         )
@@ -275,7 +324,7 @@ viewSingleDayTimeSlots model dayNum =
                 (getTimeSlotIdFrontHalf dayNum)
                 model.mdc
                 []
-                (List.map (viewTimeSlot model dayNum) (List.range 1 model.numSlotsInDay))
+                (List.map (viewTimeSlot model dayNum) (List.range 0 (model.numSlotsInDay - 1)))
             , viewCurrentlySelectingTimeSlot model dayNum
             ]
             (List.map viewSelectedTimeSlot selectedTimeSlotsForThisDay)
@@ -372,7 +421,7 @@ getTimeSlotIdFrontHalf dayNum =
 
 getTimeSlotIdBackHalf : Int -> String
 getTimeSlotIdBackHalf slotNum =
-    "--" ++ String.fromInt (slotNum - 1)
+    "--" ++ String.fromInt slotNum
 
 
 
