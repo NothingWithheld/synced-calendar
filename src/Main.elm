@@ -1,6 +1,5 @@
 module Main exposing (main)
 
-import Array exposing (Array)
 import Browser
 import Browser.Dom as Dom
 import Dict exposing (Dict)
@@ -39,7 +38,7 @@ type alias Model =
 
 
 type alias TimeSlotPositions =
-    Array TimeSlotPosition
+    List TimeSlotPosition
 
 
 type alias TimeSlotPosition =
@@ -83,7 +82,7 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     ( { numDays = 5
       , numSlotsInDay = defaultNumSlots
-      , timeSlotPositions = Array.empty
+      , timeSlotPositions = []
       , timeSlotSelection = NotSelecting
       , selectedTimeSlots =
             [ { dayNum = 2
@@ -133,7 +132,7 @@ update msg model =
                             , height = element.height
                             }
                     in
-                    ( { model | timeSlotPositions = Array.fromList (List.indexedMap setTimeSlotPosition elementList) }, Cmd.none )
+                    ( { model | timeSlotPositions = List.indexedMap setTimeSlotPosition elementList }, Cmd.none )
 
                 Err e ->
                     let
@@ -142,12 +141,35 @@ update msg model =
                     in
                     ( model, Cmd.none )
 
-        HandleTimeSlotMouseMove pointerPosition ->
-            let
-                _ =
-                    Debug.log "position" pointerPosition
-            in
-            ( model, Cmd.none )
+        HandleTimeSlotMouseMove { pageY } ->
+            case model.timeSlotSelection of
+                NotSelecting ->
+                    ( model, Cmd.none )
+
+                CurrentlySelecting { dayNum, startBound } ->
+                    let
+                        maybePointerTSPosition =
+                            getTimeSlotPositionOfPointer model.timeSlotPositions pageY
+                    in
+                    case maybePointerTSPosition of
+                        Nothing ->
+                            ( model, Cmd.none )
+
+                        Just pointerTimeSlotPosition ->
+                            if intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots dayNum startBound.slotNum pointerTimeSlotPosition.slotNum then
+                                ( model, Cmd.none )
+
+                            else
+                                ( { model
+                                    | timeSlotSelection =
+                                        CurrentlySelecting
+                                            { dayNum = dayNum
+                                            , startBound = startBound
+                                            , curEndBound = pointerTimeSlotPosition
+                                            }
+                                  }
+                                , Cmd.none
+                                )
 
         StartSelectingTimeSlot dayNum slotNum ->
             case model.timeSlotSelection of
@@ -161,7 +183,7 @@ update msg model =
                     else
                         let
                             timeSlotPosition =
-                                Debug.log "show" (Array.get slotNum (Debug.log "test" model.timeSlotPositions))
+                                Debug.log "show" (getListItemAt slotNum (Debug.log "test" model.timeSlotPositions))
                         in
                         case timeSlotPosition of
                             Just positionVal ->
@@ -244,6 +266,42 @@ update msg model =
                     ( model, Cmd.none )
 
 
+getListItemAt : Int -> List a -> Maybe a
+getListItemAt index list =
+    let
+        getListItemAtHelper curList curIndex =
+            case curList of
+                [] ->
+                    Nothing
+
+                head :: rest ->
+                    if curIndex == index then
+                        Just head
+
+                    else
+                        getListItemAtHelper rest (curIndex + 1)
+    in
+    getListItemAtHelper list 0
+
+
+getTimeSlotPositionOfPointer : List TimeSlotPosition -> Float -> Maybe TimeSlotPosition
+getTimeSlotPositionOfPointer timeSlotPositions pageY =
+    let
+        getTSPOPHelper curTSPosList =
+            case curTSPosList of
+                [] ->
+                    Nothing
+
+                curTSPos :: rest ->
+                    if (curTSPos.y <= pageY) && (pageY <= curTSPos.y + curTSPos.height) then
+                        Just curTSPos
+
+                    else
+                        getTSPOPHelper rest
+    in
+    getTSPOPHelper timeSlotPositions
+
+
 onTimeSlotMouseMove : Options.Property c Msg
 onTimeSlotMouseMove =
     Options.on "mousemove"
@@ -298,9 +356,18 @@ getTimeSlotKey dayId timeSlotId =
 
 view : Model -> Html Msg
 view model =
+    let
+        isSelectingTimeSlots =
+            case model.timeSlotSelection of
+                NotSelecting ->
+                    False
+
+                CurrentlySelecting _ ->
+                    True
+    in
     styled div
         [ css "display" "flex"
-        , onTimeSlotMouseMove
+        , when isSelectingTimeSlots onTimeSlotMouseMove
         ]
         (List.append
             (List.map
@@ -336,7 +403,6 @@ viewTimeSlot _ dayNum slotNum =
     Lists.li
         [ css "border" "thin solid black"
         , Options.onMouseDown (StartSelectingTimeSlot dayNum slotNum)
-        , Options.onMouseEnter (AdjustTimeSlotSelection slotNum)
         ]
         []
 
