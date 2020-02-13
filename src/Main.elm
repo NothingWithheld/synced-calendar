@@ -30,19 +30,23 @@ main =
 type alias Model =
     { numDays : Int
     , numSlotsInDay : Int
+    , timeSlotPositions : TimeSlotPositions
     , timeSlotSelection : TimeSlotSelection
-    , selectedTimeSlots2 : List SelectedTimeSlot2
+    , selectedTimeSlots : List SelectedTimeSlot
     , mdc : Material.Model Msg
     }
 
 
+type TimeSlotPositions
+    = TSPositionsNotLoaded
+    | TSPositions (List TimeSlotPosition)
+
+
+type alias TimeSlotPosition =
+    { slotNum : Int, y : Float, height : Float }
+
+
 type alias SelectedTimeSlot =
-    { name : String
-    , number : Int
-    }
-
-
-type alias SelectedTimeSlot2 =
     { dayNum : Int
     , name : String
     , startSlot : TimeSlotBoundaryPosition
@@ -51,43 +55,43 @@ type alias SelectedTimeSlot2 =
 
 
 type alias TimeSlotBoundaryPosition =
-    { dayNum : Int
-    , slotNum : Int
-    , x : Float
+    { slotNum : Int
     , y : Float
-    , width : Float
     , height : Float
     }
-
-
-type BoundaryTimeSlotElem
-    = BoundaryTimeSlotNoPosition { dayNum : Int, slotNum : Int }
-    | BoundaryTimeSlotWithPosition TimeSlotBoundaryPosition
 
 
 type TimeSlotSelection
     = NotSelecting
     | CurrentlySelecting
-        { startBound : TimeSlotBoundaryPosition
+        { dayNum : Int
+        , startBound : TimeSlotBoundaryPosition
         , curEndBound : TimeSlotBoundaryPosition
         }
-
-
-type EditCard
-    = IsClosed
-    | IsOpen String
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { numDays = 5
-      , numSlotsInDay = 12
+      , numSlotsInDay = defaultNumSlots
+      , timeSlotPositions = TSPositionsNotLoaded
       , timeSlotSelection = NotSelecting
-      , selectedTimeSlots2 = [ { dayNum = 2, name = "test", startSlot = { dayNum = 2, slotNum = 2, x = 0, y = 48, width = 0, height = 48 }, endSlot = { dayNum = 2, slotNum = 4, x = 0, y = 144, width = 0, height = 48 } } ]
+      , selectedTimeSlots =
+            [ { dayNum = 2
+              , name = "test"
+              , startSlot = { slotNum = 2, y = 48, height = 48 }
+              , endSlot = { slotNum = 4, y = 144, height = 48 }
+              }
+            ]
       , mdc = Material.defaultModel
       }
-    , Material.init Mdc
+    , Cmd.batch [ Material.init Mdc, requestTimeSlotPositions defaultNumSlots ]
     )
+
+
+defaultNumSlots : Int
+defaultNumSlots =
+    15
 
 
 
@@ -99,6 +103,7 @@ type Msg
     | SetInitialTimeSlotSelection Int Int (Result Dom.Error Dom.Element)
     | AdjustTimeSlotSelection Int
     | SetAdjustedTimeSlotSelection TimeSlotBoundaryPosition Int Int (Result Dom.Error Dom.Element)
+    | SetTimeSlotPositions (Result Dom.Error (List Dom.Element))
     | Mdc (Material.Msg Msg)
 
 
@@ -108,13 +113,28 @@ update msg model =
         Mdc msg_ ->
             Material.update Mdc msg_ model
 
+        SetTimeSlotPositions result ->
+            case result of
+                Ok elementList ->
+                    let
+                        setTimeSlotPosition ind { element } =
+                            { slotNum = ind + 1
+                            , y = element.y
+                            , height = element.height
+                            }
+                    in
+                    ( { model | timeSlotPositions = TSPositions (List.indexedMap setTimeSlotPosition elementList) }, Cmd.none )
+
+                Err _ ->
+                    ( model, Cmd.none )
+
         StartSelectingTimeSlot dayNum slotNum ->
             case model.timeSlotSelection of
                 CurrentlySelecting _ ->
                     ( model, Cmd.none )
 
                 NotSelecting ->
-                    if intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots2 dayNum slotNum slotNum then
+                    if intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots dayNum slotNum slotNum then
                         ( model, Cmd.none )
 
                     else
@@ -129,15 +149,21 @@ update msg model =
                 Ok { element } ->
                     let
                         timeSlotPosition =
-                            { dayNum = dayNum
-                            , slotNum = slotNum
-                            , x = element.x
+                            { slotNum = slotNum
                             , y = element.y
-                            , width = element.width
                             , height = element.height
                             }
                     in
-                    ( { model | timeSlotSelection = CurrentlySelecting { startBound = timeSlotPosition, curEndBound = timeSlotPosition } }, Cmd.none )
+                    ( { model
+                        | timeSlotSelection =
+                            CurrentlySelecting
+                                { dayNum = dayNum
+                                , startBound = timeSlotPosition
+                                , curEndBound = timeSlotPosition
+                                }
+                      }
+                    , Cmd.none
+                    )
 
                 Err _ ->
                     ( model, Cmd.none )
@@ -147,15 +173,12 @@ update msg model =
                 NotSelecting ->
                     ( model, Cmd.none )
 
-                CurrentlySelecting { startBound } ->
-                    if intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots2 startBound.dayNum startBound.slotNum slotNum then
+                CurrentlySelecting { dayNum, startBound } ->
+                    if intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots dayNum startBound.slotNum slotNum then
                         ( model, Cmd.none )
 
                     else
                         let
-                            dayNum =
-                                startBound.dayNum
-
                             timeSlotId =
                                 getTimeSlotId dayNum slotNum
                         in
@@ -166,21 +189,39 @@ update msg model =
                 Ok { element } ->
                     let
                         endTimeSlotPosition =
-                            { dayNum = dayNum
-                            , slotNum = slotNum
-                            , x = element.x
+                            { slotNum = slotNum
                             , y = element.y
-                            , width = element.width
                             , height = element.height
                             }
                     in
-                    ( { model | timeSlotSelection = CurrentlySelecting { startBound = startBound, curEndBound = endTimeSlotPosition } }, Cmd.none )
+                    ( { model
+                        | timeSlotSelection =
+                            CurrentlySelecting
+                                { dayNum = dayNum
+                                , startBound = startBound
+                                , curEndBound = endTimeSlotPosition
+                                }
+                      }
+                    , Cmd.none
+                    )
 
                 Err _ ->
                     ( model, Cmd.none )
 
 
-intersectsCurrentlySelectedTimeSlots : List SelectedTimeSlot2 -> Int -> Int -> Int -> Bool
+requestTimeSlotPositions : Int -> Cmd Msg
+requestTimeSlotPositions numSlots =
+    let
+        slotNumList =
+            List.range 1 numSlots
+
+        getTimeSlotPosition slotNum =
+            Dom.getElement (getTimeSlotId 1 slotNum)
+    in
+    Task.attempt SetTimeSlotPositions (Task.sequence (List.map getTimeSlotPosition slotNumList))
+
+
+intersectsCurrentlySelectedTimeSlots : List SelectedTimeSlot -> Int -> Int -> Int -> Bool
 intersectsCurrentlySelectedTimeSlots currentTimeSlots dayNum startSlotNum endSlotNum =
     let
         ( lowerSlotNum, higherSlotNum ) =
@@ -225,7 +266,7 @@ viewSingleDayTimeSlots : Model -> Int -> Html Msg
 viewSingleDayTimeSlots model dayNum =
     let
         selectedTimeSlotsForThisDay =
-            List.filter (\timeSlot -> timeSlot.dayNum == dayNum) model.selectedTimeSlots2
+            List.filter (\timeSlot -> timeSlot.dayNum == dayNum) model.selectedTimeSlots
     in
     styled div
         [ css "flex-grow" "1", css "position" "relative" ]
@@ -251,7 +292,7 @@ viewTimeSlot _ dayNum slotNum =
         []
 
 
-viewSelectedTimeSlot : SelectedTimeSlot2 -> Html Msg
+viewSelectedTimeSlot : SelectedTimeSlot -> Html Msg
 viewSelectedTimeSlot selectedTimeSlot =
     let
         cardDimensions =
@@ -274,13 +315,13 @@ viewCurrentlySelectingTimeSlot model dayNum =
         NotSelecting ->
             text ""
 
-        CurrentlySelecting { startBound, curEndBound } ->
+        CurrentlySelecting ({ startBound, curEndBound } as selectionDetails) ->
             let
                 cardDimensions =
                     getCardDimensions startBound curEndBound
 
                 dayNumCurrentlySelected =
-                    startBound.dayNum
+                    selectionDetails.dayNum
             in
             if dayNum == dayNumCurrentlySelected then
                 Card.view
