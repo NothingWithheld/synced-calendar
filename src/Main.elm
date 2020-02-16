@@ -82,13 +82,7 @@ init =
       , numSlotsInDay = defaultNumSlots
       , timeSlotPositions = []
       , timeSlotSelection = NotSelecting
-      , selectedTimeSlots =
-            [ { dayNum = 2
-              , name = "test"
-              , startSlot = { slotNum = 2, y = 48, height = 48 }
-              , endSlot = { slotNum = 4, y = 144, height = 48 }
-              }
-            ]
+      , selectedTimeSlots = []
       , mdc = Material.defaultModel
       }
     , Cmd.batch [ Material.init Mdc, requestTimeSlotPositions defaultNumSlots ]
@@ -108,6 +102,7 @@ type Msg
     = StartSelectingTimeSlot Int Int
     | SetTimeSlotPositions (Result Dom.Error (List Dom.Element))
     | HandleTimeSlotMouseMove PointerPosition
+    | SetSelectedTimeSlot TimeSlotSelection
     | Mdc (Material.Msg Msg)
 
 
@@ -191,6 +186,27 @@ update msg model =
 
                             Nothing ->
                                 ( model, Cmd.none )
+
+        SetSelectedTimeSlot timeSlotSelection ->
+            case timeSlotSelection of
+                CurrentlySelecting { dayNum, startBound, curEndBound } ->
+                    let
+                        selectedTimeSlot =
+                            { dayNum = dayNum
+                            , name = "no name"
+                            , startSlot = startBound
+                            , endSlot = curEndBound
+                            }
+                    in
+                    ( { model
+                        | selectedTimeSlots = selectedTimeSlot :: model.selectedTimeSlots
+                        , timeSlotSelection = NotSelecting
+                      }
+                    , Cmd.none
+                    )
+
+                NotSelecting ->
+                    ( model, Cmd.none )
 
 
 getListItemAt : Int -> List a -> Maybe a
@@ -290,6 +306,7 @@ view model =
     styled div
         [ css "display" "flex"
         , when isSelectingTimeSlots onTimeSlotMouseMove
+        , Options.onMouseUp (SetSelectedTimeSlot model.timeSlotSelection)
         ]
         (List.append
             (List.map
