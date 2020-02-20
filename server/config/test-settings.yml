@@ -1,1 +1,4 @@
-{}
+database:
+  database: synced-calendar_test
+
+auth-dummy-login: true

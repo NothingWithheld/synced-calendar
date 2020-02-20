@@ -17,9 +17,11 @@ module Application
     , shutdownApp
     -- * for GHCI
     , handler
+    , db
     ) where
 
 import Control.Monad.Logger                 (liftLoc)
+import Database.Persist.MongoDB             (MongoContext)
 import Import
 import Language.Haskell.TH.Syntax           (qLocation)
 import Network.HTTP.Client.TLS              (getGlobalManager)
@@ -41,6 +43,7 @@ import System.Log.FastLogger                (defaultBufSize, newStdoutLoggerSet,
 import Handler.Common
 import Handler.Home
 import Handler.Comment
+import Handler.Profile
 import Handler.Number
 
 -- This line actually creates our YesodDispatch instance. It is the second half
@@ -61,6 +64,9 @@ makeFoundation appSettings = do
     appStatic <-
         (if appMutableStatic appSettings then staticDevel else static)
         (appStaticDir appSettings)
+
+    -- Create the database connection pool
+    appConnPool <- createPoolConfig $ appDatabaseConf appSettings
 
     -- Return the foundation
     return App {..}
@@ -162,3 +168,7 @@ shutdownApp _ = return ()
 -- | Run a handler
 handler :: Handler a -> IO a
 handler h = getAppSettings >>= makeFoundation >>= flip unsafeHandler h
+
+-- | Run DB queries
+db :: ReaderT MongoContext Handler a -> IO a
+db = handler . runDB
