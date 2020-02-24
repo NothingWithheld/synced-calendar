@@ -29,13 +29,13 @@ ip-from-header: "_env:YESOD_IP_FROM_HEADER:false"
 # See https://github.com/yesodweb/yesod/wiki/Configuration#parsing-numeric-values-as-strings
 
 database:
-  user:        "_env:YESOD_PGUSER:annieq2"
-  password:    "_env:YESOD_PGPASS:wimHloAFe2aOK20g"
-  host:        "_env:YESOD_PGHOST:localhost"
-  port:        "_env:YESOD_PGPORT:27017"
+  user:     "_env:YESOD_PGUSER:root"
+  password: "_env:YESOD_PGPASS:root"
+  host:     "_env:YESOD_PGHOST:localhost"
+  port:     "_env:YESOD_PGPORT:5433"
   # See config/test-settings.yml for an override during tests
-  database:    "_env:YESOD_PGDATABASE:synced-calendar"
-  connections: "_env:YESOD_PGPOOLSIZE:10"
+  database: "_env:YESOD_PGDATABASE:server"
+  poolsize: "_env:YESOD_PGPOOLSIZE:10"
 
 copyright: Insert copyright statement here
 #analytics: UA-YOURCODE
