@@ -191,11 +191,18 @@ update msg model =
             case timeSlotSelection of
                 CurrentlySelecting { dayNum, startBound, curEndBound } ->
                     let
+                        ( startSlot, endSlot ) =
+                            if startBound.slotNum <= curEndBound.slotNum then
+                                ( startBound, curEndBound )
+
+                            else
+                                ( curEndBound, startBound )
+
                         selectedTimeSlot =
                             { dayNum = dayNum
                             , name = "no name"
-                            , startSlot = startBound
-                            , endSlot = curEndBound
+                            , startSlot = startSlot
+                            , endSlot = endSlot
                             }
                     in
                     ( { model
