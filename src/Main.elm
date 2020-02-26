@@ -5,6 +5,7 @@ import Browser.Dom as Dom
 import Html exposing (Html, div, text)
 import Json.Decode as Decode exposing (field, float)
 import Material
+import Material.Button as Button
 import Material.Card as Card
 import Material.List as Lists
 import Material.Options as Options exposing (css, styled, when)
@@ -320,8 +321,8 @@ update msg model =
             ( { model | timeSlotSelection = NotSelecting, userEventCreation = NotCreating }, Cmd.none )
 
         SetSelectedTimeSlot ->
-            case model.timeSlotSelection of
-                CurrentlySelecting { dayNum, startBound, curEndBound } ->
+            case ( model.userEventCreation, model.timeSlotSelection ) of
+                ( CurrentlyCreatingEvent { title } _, CurrentlySelecting { dayNum, startBound, curEndBound } ) ->
                     let
                         ( startSlot, endSlot ) =
                             if startBound.slotNum <= curEndBound.slotNum then
@@ -332,7 +333,7 @@ update msg model =
 
                         selectedTimeSlot =
                             { dayNum = dayNum
-                            , name = "no name"
+                            , name = title
                             , startSlot = startSlot
                             , endSlot = endSlot
                             }
@@ -340,11 +341,12 @@ update msg model =
                     ( { model
                         | selectedTimeSlots = selectedTimeSlot :: model.selectedTimeSlots
                         , timeSlotSelection = NotSelecting
+                        , userEventCreation = NotCreating
                       }
                     , Cmd.none
                     )
 
-                NotSelecting ->
+                ( _, _ ) ->
                     ( model, Cmd.none )
 
 
@@ -555,7 +557,7 @@ viewUserRequestForm model eventCreationDetails eventCreationPosition =
         , css "width" (String.fromFloat eventDetailsPromptWidth ++ "px")
         , css "left" (String.fromFloat eventCreationPosition.x ++ "px")
         , css "top" (String.fromFloat eventCreationPosition.y ++ "px")
-        , css "padding" "12px 8px"
+        , css "padding" "12px 8px 0px"
         , Options.onWithOptions "click"
             (Decode.succeed
                 { message = NoOp
@@ -580,6 +582,19 @@ viewUserRequestForm model eventCreationDetails eventCreationPosition =
             , Options.onInput AdjustEventDescription
             ]
             []
+        , Card.actions [ css "display" "flex", css "flex-direction" "row-reverse" ]
+            [ Card.actionButtons []
+                [ Button.view Mdc
+                    "set-event-button"
+                    model.mdc
+                    [ Card.actionButton
+                    , Button.ripple
+                    , Button.unelevated
+                    , Options.onClick SetSelectedTimeSlot
+                    ]
+                    [ text "Submit" ]
+                ]
+            ]
         ]
 
 
