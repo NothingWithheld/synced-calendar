@@ -126,18 +126,25 @@ eventDetailsPromptWidth =
 
 
 type Msg
-    = StartSelectingTimeSlot Int Int
+    = NoOp
+    | StartSelectingTimeSlot Int Int
     | SetTimeSlotPositions (Result Dom.Error (List Dom.Element))
     | HandleTimeSlotMouseMove PointerPosition
-    | InitiateUserPromptForEventDetails TimeSlotSelection
+    | InitiateUserPromptForEventDetails
     | PromptUserForEventDetails (Result Dom.Error Dom.Element)
-    | SetSelectedTimeSlot TimeSlotSelection
+    | AdjustEventTitle String
+    | AdjustEventDescription String
+    | CloseUserPromptForEventDetails
+    | SetSelectedTimeSlot
     | Mdc (Material.Msg Msg)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
         Mdc msg_ ->
             Material.update Mdc msg_ model
 
@@ -229,8 +236,8 @@ update msg model =
                             Nothing ->
                                 ( model, Cmd.none )
 
-        InitiateUserPromptForEventDetails timeSlotSelection ->
-            case ( model.userEventCreation, timeSlotSelection ) of
+        InitiateUserPromptForEventDetails ->
+            case ( model.userEventCreation, model.timeSlotSelection ) of
                 ( NotCreating, CurrentlySelecting { dayNum, startBound, curEndBound } ) ->
                     let
                         minSlotNum =
@@ -275,8 +282,45 @@ update msg model =
                 Err _ ->
                     ( model, Cmd.none )
 
-        SetSelectedTimeSlot timeSlotSelection ->
-            case timeSlotSelection of
+        AdjustEventTitle title ->
+            case model.userEventCreation of
+                CurrentlyCreatingEvent eventDetails eventPosition ->
+                    ( { model
+                        | userEventCreation =
+                            CurrentlyCreatingEvent
+                                { eventDetails
+                                    | title = title
+                                }
+                                eventPosition
+                      }
+                    , Cmd.none
+                    )
+
+                NotCreating ->
+                    ( model, Cmd.none )
+
+        AdjustEventDescription description ->
+            case model.userEventCreation of
+                CurrentlyCreatingEvent eventDetails eventPosition ->
+                    ( { model
+                        | userEventCreation =
+                            CurrentlyCreatingEvent
+                                { eventDetails
+                                    | description = description
+                                }
+                                eventPosition
+                      }
+                    , Cmd.none
+                    )
+
+                NotCreating ->
+                    ( model, Cmd.none )
+
+        CloseUserPromptForEventDetails ->
+            ( { model | timeSlotSelection = NotSelecting, userEventCreation = NotCreating }, Cmd.none )
+
+        SetSelectedTimeSlot ->
+            case model.timeSlotSelection of
                 CurrentlySelecting { dayNum, startBound, curEndBound } ->
                     let
                         ( startSlot, endSlot ) =
@@ -401,7 +445,7 @@ view model =
     styled div
         [ css "display" "flex"
         , when isSelectingTimeSlots onTimeSlotMouseMove
-        , Options.onMouseUp (InitiateUserPromptForEventDetails model.timeSlotSelection)
+        , Options.onMouseUp InitiateUserPromptForEventDetails
         ]
         (List.append
             (List.map
@@ -494,7 +538,14 @@ viewUserRequest model =
             text ""
 
         CurrentlyCreatingEvent eventCreationDetails eventCreationPosition ->
-            viewUserRequestForm model eventCreationDetails eventCreationPosition
+            styled div
+                [ css "position" "absolute"
+                , css "width" "100%"
+                , css "height" "100%"
+                , css "z-index" "100"
+                , Options.onClick CloseUserPromptForEventDetails
+                ]
+                [ viewUserRequestForm model eventCreationDetails eventCreationPosition ]
 
 
 viewUserRequestForm : Model -> EventCreationDetails -> EventCreationPosition -> Html Msg
@@ -504,12 +555,21 @@ viewUserRequestForm model eventCreationDetails eventCreationPosition =
         , css "width" (String.fromFloat eventDetailsPromptWidth ++ "px")
         , css "left" (String.fromFloat eventCreationPosition.x ++ "px")
         , css "top" (String.fromFloat eventCreationPosition.y ++ "px")
+        , css "padding" "12px 8px"
+        , Options.onWithOptions "click"
+            (Decode.succeed
+                { message = NoOp
+                , preventDefault = False
+                , stopPropagation = True
+                }
+            )
         ]
         [ TextField.view Mdc
             "event-title"
             model.mdc
             [ TextField.label "Title"
             , TextField.value eventCreationDetails.title
+            , Options.onInput AdjustEventTitle
             ]
             []
         , TextField.view Mdc
@@ -517,6 +577,7 @@ viewUserRequestForm model eventCreationDetails eventCreationPosition =
             model.mdc
             [ TextField.label "Description"
             , TextField.value eventCreationDetails.description
+            , Options.onInput AdjustEventDescription
             ]
             []
         ]
