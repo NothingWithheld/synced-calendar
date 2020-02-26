@@ -8,6 +8,7 @@ import Material
 import Material.Card as Card
 import Material.List as Lists
 import Material.Options as Options exposing (css, styled, when)
+import Material.TextField as TextField
 import Material.Typography as Typography
 import Task
 
@@ -30,6 +31,7 @@ type alias Model =
     , numSlotsInDay : Int
     , timeSlotPositions : TimeSlotPositions
     , timeSlotSelection : TimeSlotSelection
+    , userEventCreation : UserEventCreation
     , selectedTimeSlots : List SelectedTimeSlot
     , mdc : Material.Model Msg
     }
@@ -41,7 +43,9 @@ type alias TimeSlotPositions =
 
 type alias TimeSlotPosition =
     { slotNum : Int
+    , x : Float
     , y : Float
+    , width : Float
     , height : Float
     }
 
@@ -70,6 +74,23 @@ type TimeSlotSelection
         }
 
 
+type UserEventCreation
+    = NotCreating
+    | CurrentlyCreatingEvent EventCreationDetails EventCreationPosition
+
+
+type alias EventCreationDetails =
+    { title : String
+    , description : String
+    }
+
+
+type alias EventCreationPosition =
+    { x : Float
+    , y : Float
+    }
+
+
 type alias PointerPosition =
     { pageX : Float
     , pageY : Float
@@ -82,6 +103,7 @@ init =
       , numSlotsInDay = defaultNumSlots
       , timeSlotPositions = []
       , timeSlotSelection = NotSelecting
+      , userEventCreation = NotCreating
       , selectedTimeSlots = []
       , mdc = Material.defaultModel
       }
@@ -94,6 +116,11 @@ defaultNumSlots =
     15
 
 
+eventDetailsPromptWidth : Float
+eventDetailsPromptWidth =
+    300
+
+
 
 -- UPDATE
 
@@ -102,6 +129,8 @@ type Msg
     = StartSelectingTimeSlot Int Int
     | SetTimeSlotPositions (Result Dom.Error (List Dom.Element))
     | HandleTimeSlotMouseMove PointerPosition
+    | InitiateUserPromptForEventDetails TimeSlotSelection
+    | PromptUserForEventDetails (Result Dom.Error Dom.Element)
     | SetSelectedTimeSlot TimeSlotSelection
     | Mdc (Material.Msg Msg)
 
@@ -118,7 +147,9 @@ update msg model =
                     let
                         setTimeSlotPosition ind { element } =
                             { slotNum = ind + 1
+                            , x = element.x
                             , y = element.y
+                            , width = element.width
                             , height = element.height
                             }
                     in
@@ -128,11 +159,8 @@ update msg model =
                     ( model, Cmd.none )
 
         HandleTimeSlotMouseMove { pageY } ->
-            case model.timeSlotSelection of
-                NotSelecting ->
-                    ( model, Cmd.none )
-
-                CurrentlySelecting { dayNum, startBound } ->
+            case ( model.userEventCreation, model.timeSlotSelection ) of
+                ( NotCreating, CurrentlySelecting { dayNum, startBound } ) ->
                     let
                         maybePointerTSPosition =
                             getTimeSlotPositionOfPointer model.timeSlotPositions pageY
@@ -151,11 +179,18 @@ update msg model =
                                         CurrentlySelecting
                                             { dayNum = dayNum
                                             , startBound = startBound
-                                            , curEndBound = pointerTimeSlotPosition
+                                            , curEndBound =
+                                                { slotNum = pointerTimeSlotPosition.slotNum
+                                                , y = pointerTimeSlotPosition.y
+                                                , height = pointerTimeSlotPosition.height
+                                                }
                                             }
                                   }
                                 , Cmd.none
                                 )
+
+                ( _, _ ) ->
+                    ( model, Cmd.none )
 
         StartSelectingTimeSlot dayNum slotNum ->
             case model.timeSlotSelection of
@@ -173,12 +208,19 @@ update msg model =
                         in
                         case timeSlotPosition of
                             Just positionVal ->
+                                let
+                                    bound =
+                                        { slotNum = positionVal.slotNum
+                                        , y = positionVal.y
+                                        , height = positionVal.height
+                                        }
+                                in
                                 ( { model
                                     | timeSlotSelection =
                                         CurrentlySelecting
                                             { dayNum = dayNum
-                                            , startBound = positionVal
-                                            , curEndBound = positionVal
+                                            , startBound = bound
+                                            , curEndBound = bound
                                             }
                                   }
                                 , Cmd.none
@@ -186,6 +228,52 @@ update msg model =
 
                             Nothing ->
                                 ( model, Cmd.none )
+
+        InitiateUserPromptForEventDetails timeSlotSelection ->
+            case ( model.userEventCreation, timeSlotSelection ) of
+                ( NotCreating, CurrentlySelecting { dayNum, startBound, curEndBound } ) ->
+                    let
+                        minSlotNum =
+                            min startBound.slotNum curEndBound.slotNum
+                    in
+                    ( model
+                    , Task.attempt
+                        PromptUserForEventDetails
+                        (Dom.getElement (getTimeSlotId dayNum minSlotNum))
+                    )
+
+                ( _, _ ) ->
+                    ( model, Cmd.none )
+
+        PromptUserForEventDetails result ->
+            case result of
+                Ok { viewport, element } ->
+                    let
+                        leftSpace =
+                            element.x - viewport.x
+
+                        promptMargin =
+                            12
+
+                        promptSpace =
+                            eventDetailsPromptWidth + 2 * promptMargin
+
+                        x =
+                            if leftSpace >= promptSpace then
+                                element.x - eventDetailsPromptWidth - promptMargin
+
+                            else
+                                element.x + element.width + promptMargin
+                    in
+                    ( { model
+                        | userEventCreation =
+                            CurrentlyCreatingEvent { title = "", description = "" } { x = x, y = element.y }
+                      }
+                    , Cmd.none
+                    )
+
+                Err _ ->
+                    ( model, Cmd.none )
 
         SetSelectedTimeSlot timeSlotSelection ->
             case timeSlotSelection of
@@ -268,7 +356,7 @@ requestTimeSlotPositions : Int -> Cmd Msg
 requestTimeSlotPositions numSlots =
     let
         slotNumList =
-            List.range 0 (numSlots - 1)
+            List.range 1 numSlots
 
         getTimeSlotPosition slotNum =
             Dom.getElement (getTimeSlotId 1 slotNum)
@@ -313,14 +401,14 @@ view model =
     styled div
         [ css "display" "flex"
         , when isSelectingTimeSlots onTimeSlotMouseMove
-        , Options.onMouseUp (SetSelectedTimeSlot model.timeSlotSelection)
+        , Options.onMouseUp (InitiateUserPromptForEventDetails model.timeSlotSelection)
         ]
         (List.append
             (List.map
                 (viewSingleDayTimeSlots model)
                 (List.range 0 (model.numDays - 1))
             )
-            []
+            [ viewUserRequest model ]
         )
 
 
@@ -399,6 +487,41 @@ viewCurrentlySelectingTimeSlot model dayNum =
                 text ""
 
 
+viewUserRequest : Model -> Html Msg
+viewUserRequest model =
+    case model.userEventCreation of
+        NotCreating ->
+            text ""
+
+        CurrentlyCreatingEvent eventCreationDetails eventCreationPosition ->
+            viewUserRequestForm model eventCreationDetails eventCreationPosition
+
+
+viewUserRequestForm : Model -> EventCreationDetails -> EventCreationPosition -> Html Msg
+viewUserRequestForm model eventCreationDetails eventCreationPosition =
+    Card.view
+        [ css "position" "absolute"
+        , css "width" (String.fromFloat eventDetailsPromptWidth ++ "px")
+        , css "left" (String.fromFloat eventCreationPosition.x ++ "px")
+        , css "top" (String.fromFloat eventCreationPosition.y ++ "px")
+        ]
+        [ TextField.view Mdc
+            "event-title"
+            model.mdc
+            [ TextField.label "Title"
+            , TextField.value eventCreationDetails.title
+            ]
+            []
+        , TextField.view Mdc
+            "event-description"
+            model.mdc
+            [ TextField.label "Description"
+            , TextField.value eventCreationDetails.description
+            ]
+            []
+        ]
+
+
 getCardDimensions : TimeSlotBoundaryPosition -> TimeSlotBoundaryPosition -> CardDimensions
 getCardDimensions boundA boundB =
     let
@@ -433,7 +556,7 @@ getTimeSlotIdFrontHalf dayNum =
 
 getTimeSlotIdBackHalf : Int -> String
 getTimeSlotIdBackHalf slotNum =
-    "--" ++ String.fromInt slotNum
+    "--" ++ String.fromInt (slotNum - 1)
 
 
 
