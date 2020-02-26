@@ -585,6 +585,15 @@ viewUserRequestForm model eventCreationDetails eventCreationPosition =
         , Card.actions [ css "display" "flex", css "flex-direction" "row-reverse" ]
             [ Card.actionButtons []
                 [ Button.view Mdc
+                    "close-event-button"
+                    model.mdc
+                    [ Card.actionButton
+                    , Button.ripple
+                    , Options.onClick CloseUserPromptForEventDetails
+                    , css "margin-right" "8px"
+                    ]
+                    [ text "Cancel" ]
+                , Button.view Mdc
                     "set-event-button"
                     model.mdc
                     [ Card.actionButton
