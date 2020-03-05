@@ -7,7 +7,6 @@ import Json.Decode as Decode exposing (field, float)
 import Material
 import Material.Button as Button
 import Material.Card as Card
-import Material.List as Lists
 import Material.Options as Options exposing (css, styled, when)
 import Material.TextField as TextField
 import Material.Typography as Typography
@@ -154,7 +153,7 @@ update msg model =
                 Ok elementList ->
                     let
                         setTimeSlotPosition ind { element } =
-                            { slotNum = ind + 1
+                            { slotNum = ind
                             , x = element.x
                             , y = element.y
                             , width = element.width
@@ -402,7 +401,7 @@ requestTimeSlotPositions : Int -> Cmd Msg
 requestTimeSlotPositions numSlots =
     let
         slotNumList =
-            List.range 1 numSlots
+            List.range 0 (numSlots - 1)
 
         getTimeSlotPosition slotNum =
             Dom.getElement (getTimeSlotId 1 slotNum)
@@ -467,9 +466,7 @@ viewSingleDayTimeSlots model dayNum =
     styled div
         [ css "flex-grow" "1", css "position" "relative" ]
         (List.append
-            [ Lists.ul Mdc
-                (getTimeSlotIdFrontHalf dayNum)
-                model.mdc
+            [ div
                 []
                 (List.map (viewTimeSlot model dayNum) (List.range 0 (model.numSlotsInDay - 1)))
             , viewCurrentlySelectingTimeSlot model dayNum
@@ -478,11 +475,13 @@ viewSingleDayTimeSlots model dayNum =
         )
 
 
-viewTimeSlot : Model -> Int -> Int -> Lists.ListItem Msg
+viewTimeSlot : Model -> Int -> Int -> Html Msg
 viewTimeSlot _ dayNum slotNum =
-    Lists.li
+    styled div
         [ css "border" "thin solid #829AB1"
+        , css "height" "15px"
         , Options.onMouseDown (StartSelectingTimeSlot dayNum slotNum)
+        , Options.id (getTimeSlotId dayNum slotNum)
         ]
         []
 
@@ -634,17 +633,7 @@ type alias CardDimensions =
 
 getTimeSlotId : Int -> Int -> String
 getTimeSlotId dayNum slotNum =
-    getTimeSlotIdFrontHalf dayNum ++ getTimeSlotIdBackHalf slotNum
-
-
-getTimeSlotIdFrontHalf : Int -> String
-getTimeSlotIdFrontHalf dayNum =
-    "time-slot-" ++ String.fromInt dayNum
-
-
-getTimeSlotIdBackHalf : Int -> String
-getTimeSlotIdBackHalf slotNum =
-    "--" ++ String.fromInt (slotNum - 1)
+    "time-slot-" ++ String.fromInt dayNum ++ "--" ++ String.fromInt slotNum
 
 
 
