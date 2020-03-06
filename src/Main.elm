@@ -113,7 +113,7 @@ init =
 
 defaultNumSlots : Int
 defaultNumSlots =
-    15
+    24 * 4
 
 
 eventDetailsPromptWidth : Float
@@ -444,17 +444,23 @@ view model =
                     True
     in
     styled div
-        [ css "display" "flex"
-        , when isSelectingTimeSlots onTimeSlotMouseMove
-        , Options.onMouseUp InitiateUserPromptForEventDetails
+        [ css "height" "80vh"
+        , css "overflow-y" "scroll"
         ]
-        (List.append
-            (List.map
-                (viewSingleDayTimeSlots model)
-                (List.range 0 (model.numDays - 1))
+        [ styled div
+            [ css "display" "flex"
+            , css "overflow" "hidden"
+            , when isSelectingTimeSlots onTimeSlotMouseMove
+            , when isSelectingTimeSlots (Options.onMouseUp InitiateUserPromptForEventDetails)
+            ]
+            (List.append
+                (List.map
+                    (viewSingleDayTimeSlots model)
+                    (List.range 0 (model.numDays - 1))
+                )
+                [ viewUserRequest model ]
             )
-            [ viewUserRequest model ]
-        )
+        ]
 
 
 viewSingleDayTimeSlots : Model -> Int -> Html Msg
@@ -478,8 +484,9 @@ viewSingleDayTimeSlots model dayNum =
 viewTimeSlot : Model -> Int -> Int -> Html Msg
 viewTimeSlot _ dayNum slotNum =
     styled div
-        [ css "border" "thin solid #829AB1"
-        , css "height" "15px"
+        [ css "border-right" "thin solid #829AB1"
+        , when (modBy 4 slotNum == 3) (css "border-bottom" "thin solid #829AB1")
+        , css "height" "16px"
         , Options.onMouseDown (StartSelectingTimeSlot dayNum slotNum)
         , Options.id (getTimeSlotId dayNum slotNum)
         ]
