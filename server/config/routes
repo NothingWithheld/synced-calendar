@@ -13,3 +13,5 @@
 
 /profile ProfileR GET
 /number NumberR GET
+
+/time-entry TimeEntryR POST
