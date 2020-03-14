@@ -45,6 +45,7 @@ type alias TimeSlotPosition =
     { slotNum : Int
     , x : Float
     , y : Float
+    , yOffset : Float
     , width : Float
     , height : Float
     }
@@ -94,6 +95,7 @@ type alias EventCreationPosition =
 type alias PointerPosition =
     { pageX : Float
     , pageY : Float
+    , offsetY : Float
     }
 
 
@@ -130,6 +132,7 @@ type Msg
     | StartSelectingTimeSlot Int Int
     | SetTimeSlotPositions (Result Dom.Error (List Dom.Element))
     | HandleTimeSlotMouseMove PointerPosition
+    | AdjustTimeSlotSelection PointerPosition (Result Dom.Error Dom.Viewport)
     | InitiateUserPromptForEventDetails
     | PromptUserForEventDetails (Result Dom.Error Dom.Element)
     | AdjustEventTitle String
@@ -159,44 +162,115 @@ update msg model =
                             , width = element.width
                             , height = element.height
                             }
+
+                        test ind curYOffset elements =
+                            case elements of
+                                [] ->
+                                    []
+
+                                { element } :: xs ->
+                                    { slotNum = ind
+                                    , x = element.x
+                                    , y = element.y
+                                    , yOffset = curYOffset
+                                    , width = element.width
+                                    , height = element.height
+                                    }
+                                        :: test (ind + 1) (curYOffset + element.height) xs
+
+                        _ =
+                            Debug.log "elementList" (List.map .element elementList)
+
+                        _ =
+                            Debug.log "test" (test 0 0 elementList)
                     in
-                    ( { model | timeSlotPositions = List.indexedMap setTimeSlotPosition elementList }, Cmd.none )
+                    ( { model | timeSlotPositions = test 0 0 elementList }, Cmd.none )
 
                 Err _ ->
                     ( model, Cmd.none )
 
-        HandleTimeSlotMouseMove { pageY } ->
-            case ( model.userEventCreation, model.timeSlotSelection ) of
-                ( NotCreating, CurrentlySelecting { dayNum, startBound } ) ->
-                    let
-                        maybePointerTSPosition =
-                            getTimeSlotPositionOfPointer model.timeSlotPositions pageY
-                    in
-                    case maybePointerTSPosition of
-                        Nothing ->
+        HandleTimeSlotMouseMove pointerPosition ->
+            ( model, Task.attempt (AdjustTimeSlotSelection pointerPosition) (Dom.getViewportOf scrollableTimeSlotsId) )
+
+        -- case ( model.userEventCreation, model.timeSlotSelection ) of
+        --     ( NotCreating, CurrentlySelecting { dayNum, startBound } ) ->
+        --         let
+        --             maybePointerTSPosition =
+        --                 getTimeSlotPositionOfPointer model.timeSlotPositions pageY
+        --             _ =
+        --                 Debug.log "pageY" pageY
+        --             _ =
+        --                 Debug.log "offsetY" offsetY
+        --         in
+        --         case maybePointerTSPosition of
+        --             Nothing ->
+        --                 ( model, Cmd.none )
+        --             Just pointerTimeSlotPosition ->
+        --                 if intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots dayNum startBound.slotNum pointerTimeSlotPosition.slotNum then
+        --                     ( model, Cmd.none )
+        --                 else
+        --                     ( { model
+        --                         | timeSlotSelection =
+        --                             CurrentlySelecting
+        --                                 { dayNum = dayNum
+        --                                 , startBound = startBound
+        --                                 , curEndBound =
+        --                                     { slotNum = pointerTimeSlotPosition.slotNum
+        --                                     , y = pointerTimeSlotPosition.y
+        --                                     , height = pointerTimeSlotPosition.height
+        --                                     }
+        --                                 }
+        --                       }
+        --                     , Cmd.none
+        --                     )
+        --     ( _, _ ) ->
+        --         ( model, Cmd.none )
+        AdjustTimeSlotSelection { pageY, offsetY } result ->
+            case result of
+                Ok { viewport } ->
+                    case ( model.userEventCreation, model.timeSlotSelection ) of
+                        ( NotCreating, CurrentlySelecting { dayNum, startBound } ) ->
+                            let
+                                maybePointerTSPosition =
+                                    getTimeSlotPositionOfPointer model.timeSlotPositions pageY
+
+                                _ =
+                                    Debug.log "pageY" pageY
+
+                                _ =
+                                    Debug.log "offsetY" offsetY
+
+                                _ =
+                                    Debug.log "viewport" viewport
+                            in
+                            case maybePointerTSPosition of
+                                Nothing ->
+                                    ( model, Cmd.none )
+
+                                Just pointerTimeSlotPosition ->
+                                    if intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots dayNum startBound.slotNum pointerTimeSlotPosition.slotNum then
+                                        ( model, Cmd.none )
+
+                                    else
+                                        ( { model
+                                            | timeSlotSelection =
+                                                CurrentlySelecting
+                                                    { dayNum = dayNum
+                                                    , startBound = startBound
+                                                    , curEndBound =
+                                                        { slotNum = pointerTimeSlotPosition.slotNum
+                                                        , y = pointerTimeSlotPosition.y
+                                                        , height = pointerTimeSlotPosition.height
+                                                        }
+                                                    }
+                                          }
+                                        , Cmd.none
+                                        )
+
+                        ( _, _ ) ->
                             ( model, Cmd.none )
 
-                        Just pointerTimeSlotPosition ->
-                            if intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots dayNum startBound.slotNum pointerTimeSlotPosition.slotNum then
-                                ( model, Cmd.none )
-
-                            else
-                                ( { model
-                                    | timeSlotSelection =
-                                        CurrentlySelecting
-                                            { dayNum = dayNum
-                                            , startBound = startBound
-                                            , curEndBound =
-                                                { slotNum = pointerTimeSlotPosition.slotNum
-                                                , y = pointerTimeSlotPosition.y
-                                                , height = pointerTimeSlotPosition.height
-                                                }
-                                            }
-                                  }
-                                , Cmd.none
-                                )
-
-                ( _, _ ) ->
+                Err _ ->
                     ( model, Cmd.none )
 
         StartSelectingTimeSlot dayNum slotNum ->
@@ -389,10 +463,11 @@ onTimeSlotMouseMove : Options.Property c Msg
 onTimeSlotMouseMove =
     Options.on "mousemove"
         (Decode.map HandleTimeSlotMouseMove
-            (Decode.map2
+            (Decode.map3
                 PointerPosition
                 (field "pageX" float)
                 (field "pageY" float)
+                (field "offsetY" float)
             )
         )
 
@@ -446,11 +521,11 @@ view model =
     styled div
         [ css "height" "80vh"
         , css "overflow-y" "scroll"
+        , Options.id scrollableTimeSlotsId
         ]
         [ styled div
             [ css "display" "flex"
             , css "overflow" "hidden"
-            , when isSelectingTimeSlots onTimeSlotMouseMove
             , when isSelectingTimeSlots (Options.onMouseUp InitiateUserPromptForEventDetails)
             ]
             (List.append
@@ -463,14 +538,27 @@ view model =
         ]
 
 
+scrollableTimeSlotsId : String
+scrollableTimeSlotsId =
+    "scrollable-time-slots"
+
+
 viewSingleDayTimeSlots : Model -> Int -> Html Msg
 viewSingleDayTimeSlots model dayNum =
     let
         selectedTimeSlotsForThisDay =
             List.filter (\timeSlot -> timeSlot.dayNum == dayNum) model.selectedTimeSlots
+
+        isSelectingTimeSlots =
+            case model.timeSlotSelection of
+                NotSelecting ->
+                    False
+
+                CurrentlySelecting _ ->
+                    True
     in
     styled div
-        [ css "flex-grow" "1", css "position" "relative" ]
+        [ css "flex-grow" "1", css "position" "relative", when isSelectingTimeSlots onTimeSlotMouseMove ]
         (List.append
             [ div
                 []
