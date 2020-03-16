@@ -19,6 +19,10 @@ createdb server_test
 If you have trouble, refer to the [Yesod Quickstart guide](https://www.yesodweb.com/page/quickstart) for additional detail.
 
 ## Development
+Start the database with:
+```
+sudo service postgresql start 
+```
 
 Start a development server with:
 
@@ -27,6 +31,36 @@ stack exec -- yesod devel
 ```
 
 As your code changes, your site will be automatically recompiled and redeployed to localhost.
+
+## API
+- GET `/api/{user_id}/free-times`
+	
+	Retrieves free time entries for a given user. Response sends in a JSON
+	array of data objects with `id`, `userId`, `day`, `from_time`, and `to_time` variables (see below requests for possible values of these variables)
+	
+	user_id (Int) -> Unique number that identifies a user
+
+- POST `/api/{user_id}/free-times`
+
+	Creates a time entry for a given user. Response sends in a JSON object of the 
+	newly created `FreeTimeEntry`.
+
+	user_id (Int) -> Unique number that identifies a user
+
+	**Parameters**
+	
+	- day (String) -> "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", or "Sunday"
+	- from_time (String) -> Written in the format of `HH:MM` using military time
+	- to_time (String) -> Written in the format of `HH:MM` using military time
+- PUT: `/api/{id}/free-times`
+
+	Updates a time entry w
+
+	**Parameters**
+	
+	- from_time (String) -> Written in the format of `HH:MM` using military time
+	- to_time (String) -> Written in the format of `HH:MM` using military time
+- DELETE: `/api/{id}/free-times`
 
 ## Tests
 
