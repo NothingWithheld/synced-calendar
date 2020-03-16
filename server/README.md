@@ -33,14 +33,14 @@ stack exec -- yesod devel
 As your code changes, your site will be automatically recompiled and redeployed to localhost.
 
 ## API
-- GET `/api/{user_id}/free-times`
+- **GET** `/api/{user_id}/free-times`
 	
 	Retrieves free time entries for a given user. Response sends in a JSON
 	array of data objects with `id`, `userId`, `day`, `from_time`, and `to_time` variables (see below requests for possible values of these variables)
 	
 	user_id (Int) -> Unique number that identifies a user
 
-- POST `/api/{user_id}/free-times`
+- **POST** `/api/{user_id}/free-times`
 
 	Creates a time entry for a given user. Response sends in a JSON object of the 
 	newly created `FreeTimeEntry`.
@@ -52,15 +52,21 @@ As your code changes, your site will be automatically recompiled and redeployed 
 	- day (String) -> "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", or "Sunday"
 	- from_time (String) -> Written in the format of `HH:MM` using military time
 	- to_time (String) -> Written in the format of `HH:MM` using military time
-- PUT: `/api/{id}/free-times`
+- **PUT** `/api/{id}/free-times`
 
-	Updates a time entry w
+	Updates a time entry given its `id`, which is provided in a GET request. 
+
+	id (Int) -> Unique number that identifies a `FreeTimeEntry`
 
 	**Parameters**
 	
 	- from_time (String) -> Written in the format of `HH:MM` using military time
 	- to_time (String) -> Written in the format of `HH:MM` using military time
-- DELETE: `/api/{id}/free-times`
+- **DELETE** `/api/{id}/free-times`
+	
+	Deletes a time entry given its `id`, which is provided in a GET request. 
+
+	id (Int) -> Unique number that identifies a `FreeTimeEntry`
 
 ## Tests
 
