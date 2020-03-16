@@ -7,6 +7,11 @@ import Data.Time.LocalTime
 import Data.Text.Read
 import qualified Data.Text as T
 
+getFreeTimeEntryR :: Text -> Handler Value 
+getFreeTimeEntryR userId = do 
+    allTimeEntries <- runDB $ selectList [FreeTimeEntryUserId <-. [userId]] []
+    returnJson allTimeEntries
+
 postFreeTimeEntryR :: Text -> Handler Value 
 postFreeTimeEntryR userId = do 
     maybeDay <- lookupPostParam "day"
@@ -16,7 +21,7 @@ postFreeTimeEntryR userId = do
     let maybeToTime = convertTextToTime maybeToTimeText
     case (maybeDay, maybeFromTime, maybeToTime) of
         (Just day, Just fromTime, Just toTime) -> do
-            let timeEntry' = FreeTimeEntry userId day fromTime toTime
+            let timeEntry' = FreeTimeEntry userId (toLower day) fromTime toTime
             insertedFreeTimeEntry <- runDB $ insertEntity timeEntry'
             returnJson insertedFreeTimeEntry
         (_, _, _) -> invalidArgs ["Failed to parse day and from_time and to_time params"]

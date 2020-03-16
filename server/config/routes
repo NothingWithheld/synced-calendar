@@ -14,4 +14,4 @@
 /profile ProfileR GET
 /number NumberR GET
 
-/api/#Text/free-times FreeTimeEntryR POST
+/api/#Text/free-times FreeTimeEntryR GET POST
