@@ -9,8 +9,6 @@ import Data.Time.LocalTime
 import Data.Text.Read
 import qualified Data.Text as T
 
-newtype Key entity = Key { unKey :: PersistValue }
-
 getFreeTimeEntryR :: Text -> Handler Value 
 getFreeTimeEntryR userId = do 
     allTimeEntries <- runDB $ selectList [FreeTimeEntryUserId <-. [userId]] []
@@ -30,10 +28,25 @@ postFreeTimeEntryR userId = do
             returnJson insertedFreeTimeEntry
         (_, _, _) -> invalidArgs ["Failed to parse day and from_time and to_time params"]
 
+putFreeTimeEntryR :: Text -> Handler Value 
+putFreeTimeEntryR entryIdText = do 
+    maybeFromTimeText <- lookupPostParam "from_time"
+    maybeToTimeText <- lookupPostParam "to_time"
+    let maybeFromTime = convertTextToTime maybeFromTimeText
+    let maybeToTime = convertTextToTime maybeToTimeText
+    let eitherEntryId = decimal entryIdText
+    case (maybeFromTime, maybeToTime, eitherEntryId) of
+        (Just fromTime, Just toTime, Right (entryIdInt, "")) -> do
+            allTimeEntries <- runDB $ selectList [FreeTimeEntryId ==. toSqlKey (fromIntegral (entryIdInt::Integer))] []
+            case allTimeEntries of 
+                [Entity entryId FreeTimeEntry {..}] -> do 
+                    runDB $ update entryId [FreeTimeEntryFromTime =. fromTime, FreeTimeEntryToTime =. toTime]
+                    return Null
+                _ -> notFound
+        (_, _, _) -> invalidArgs ["Failed to parse day and from_time and to_time params"]
+
 deleteFreeTimeEntryR :: Text -> Handler Value 
 deleteFreeTimeEntryR entryIdText = do
-    -- runDB $ delete (Key entryIdText)
-    -- return Null
     let eitherEntryId = decimal entryIdText 
     case eitherEntryId of 
         Right (entryIdInt, "") -> do
