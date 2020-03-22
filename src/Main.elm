@@ -46,7 +46,6 @@ type alias TimeSlotPosition =
     { slotNum : Int
     , x : Float
     , y : Float
-    , yOffset : Float
     , width : Float
     , height : Float
     }
@@ -104,7 +103,6 @@ type alias EventCreationPosition =
 type alias PointerPosition =
     { pageX : Float
     , pageY : Float
-    , offsetY : Float
     }
 
 
@@ -173,29 +171,8 @@ update msg model =
                             , width = element.width
                             , height = element.height
                             }
-
-                        test ind curYOffset elements =
-                            case elements of
-                                [] ->
-                                    []
-
-                                { element } :: xs ->
-                                    { slotNum = ind
-                                    , x = element.x
-                                    , y = element.y
-                                    , yOffset = curYOffset
-                                    , width = element.width
-                                    , height = element.height
-                                    }
-                                        :: test (ind + 1) (curYOffset + element.height) xs
-
-                        _ =
-                            Debug.log "elementList" (List.map .element elementList)
-
-                        _ =
-                            Debug.log "test" (test 0 0 elementList)
                     in
-                    ( { model | timeSlotPositions = test 0 0 elementList }, Cmd.none )
+                    ( { model | timeSlotPositions = List.indexedMap setTimeSlotPosition elementList }, Cmd.none )
 
                 Err _ ->
                     ( model, Cmd.none )
@@ -211,40 +188,7 @@ update msg model =
         HandleTimeSlotMouseMove pointerPosition ->
             ( model, Task.attempt (AdjustTimeSlotSelection pointerPosition) (Dom.getViewportOf scrollableTimeSlotsId) )
 
-        -- case ( model.userEventCreation, model.timeSlotSelection ) of
-        --     ( NotCreating, CurrentlySelecting { dayNum, startBound } ) ->
-        --         let
-        --             maybePointerTSPosition =
-        --                 getTimeSlotPositionOfPointer model.timeSlotPositions pageY
-        --             _ =
-        --                 Debug.log "pageY" pageY
-        --             _ =
-        --                 Debug.log "offsetY" offsetY
-        --         in
-        --         case maybePointerTSPosition of
-        --             Nothing ->
-        --                 ( model, Cmd.none )
-        --             Just pointerTimeSlotPosition ->
-        --                 if intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots dayNum startBound.slotNum pointerTimeSlotPosition.slotNum then
-        --                     ( model, Cmd.none )
-        --                 else
-        --                     ( { model
-        --                         | timeSlotSelection =
-        --                             CurrentlySelecting
-        --                                 { dayNum = dayNum
-        --                                 , startBound = startBound
-        --                                 , curEndBound =
-        --                                     { slotNum = pointerTimeSlotPosition.slotNum
-        --                                     , y = pointerTimeSlotPosition.y
-        --                                     , height = pointerTimeSlotPosition.height
-        --                                     }
-        --                                 }
-        --                       }
-        --                     , Cmd.none
-        --                     )
-        --     ( _, _ ) ->
-        --         ( model, Cmd.none )
-        AdjustTimeSlotSelection { pageY, offsetY } result ->
+        AdjustTimeSlotSelection { pageY } result ->
             case result of
                 Ok { viewport } ->
                     case ( model.userEventCreation, model.timeSlotSelection, model.timeSlotsElement ) of
@@ -255,15 +199,6 @@ update msg model =
 
                                 maybePointerTSPosition =
                                     getTimeSlotPositionOfPointer model.timeSlotPositions yPositionInTimeSlots
-
-                                _ =
-                                    Debug.log "pageY" pageY
-
-                                _ =
-                                    Debug.log "offsetY" offsetY
-
-                                _ =
-                                    Debug.log "viewport" viewport
                             in
                             case maybePointerTSPosition of
                                 Just pointerTimeSlotPosition ->
@@ -485,11 +420,10 @@ onTimeSlotMouseMove : Options.Property c Msg
 onTimeSlotMouseMove =
     Options.on "mousemove"
         (Decode.map HandleTimeSlotMouseMove
-            (Decode.map3
+            (Decode.map2
                 PointerPosition
                 (field "pageX" float)
                 (field "pageY" float)
-                (field "offsetY" float)
             )
         )
 
