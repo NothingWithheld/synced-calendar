@@ -30,6 +30,7 @@ type alias Model =
     { numDays : Int
     , numSlotsInDay : Int
     , timeSlotPositions : TimeSlotPositions
+    , timeSlotsElement : Maybe Element
     , timeSlotSelection : TimeSlotSelection
     , userEventCreation : UserEventCreation
     , selectedTimeSlots : List SelectedTimeSlot
@@ -46,6 +47,14 @@ type alias TimeSlotPosition =
     , x : Float
     , y : Float
     , yOffset : Float
+    , width : Float
+    , height : Float
+    }
+
+
+type alias Element =
+    { x : Float
+    , y : Float
     , width : Float
     , height : Float
     }
@@ -104,12 +113,13 @@ init =
     ( { numDays = 5
       , numSlotsInDay = defaultNumSlots
       , timeSlotPositions = []
+      , timeSlotsElement = Nothing
       , timeSlotSelection = NotSelecting
       , userEventCreation = NotCreating
       , selectedTimeSlots = []
       , mdc = Material.defaultModel
       }
-    , Cmd.batch [ Material.init Mdc, requestTimeSlotPositions defaultNumSlots ]
+    , Cmd.batch [ Material.init Mdc, requestTimeSlotPositions defaultNumSlots, requestTimeSlotsElement ]
     )
 
 
@@ -131,6 +141,7 @@ type Msg
     = NoOp
     | StartSelectingTimeSlot Int Int
     | SetTimeSlotPositions (Result Dom.Error (List Dom.Element))
+    | SetTimeSlotsElement (Result Dom.Error Dom.Element)
     | HandleTimeSlotMouseMove PointerPosition
     | AdjustTimeSlotSelection PointerPosition (Result Dom.Error Dom.Viewport)
     | InitiateUserPromptForEventDetails
@@ -189,6 +200,14 @@ update msg model =
                 Err _ ->
                     ( model, Cmd.none )
 
+        SetTimeSlotsElement result ->
+            case result of
+                Ok { element } ->
+                    ( { model | timeSlotsElement = Just element }, Cmd.none )
+
+                Err _ ->
+                    ( model, Cmd.none )
+
         HandleTimeSlotMouseMove pointerPosition ->
             ( model, Task.attempt (AdjustTimeSlotSelection pointerPosition) (Dom.getViewportOf scrollableTimeSlotsId) )
 
@@ -228,11 +247,14 @@ update msg model =
         AdjustTimeSlotSelection { pageY, offsetY } result ->
             case result of
                 Ok { viewport } ->
-                    case ( model.userEventCreation, model.timeSlotSelection ) of
-                        ( NotCreating, CurrentlySelecting { dayNum, startBound } ) ->
+                    case ( model.userEventCreation, model.timeSlotSelection, model.timeSlotsElement ) of
+                        ( NotCreating, CurrentlySelecting { dayNum, startBound }, Just { y } ) ->
                             let
+                                yPositionInTimeSlots =
+                                    pageY - y + viewport.y
+
                                 maybePointerTSPosition =
-                                    getTimeSlotPositionOfPointer model.timeSlotPositions pageY
+                                    getTimeSlotPositionOfPointer model.timeSlotPositions yPositionInTimeSlots
 
                                 _ =
                                     Debug.log "pageY" pageY
@@ -244,9 +266,6 @@ update msg model =
                                     Debug.log "viewport" viewport
                             in
                             case maybePointerTSPosition of
-                                Nothing ->
-                                    ( model, Cmd.none )
-
                                 Just pointerTimeSlotPosition ->
                                     if intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots dayNum startBound.slotNum pointerTimeSlotPosition.slotNum then
                                         ( model, Cmd.none )
@@ -267,7 +286,10 @@ update msg model =
                                         , Cmd.none
                                         )
 
-                        ( _, _ ) ->
+                                Nothing ->
+                                    ( model, Cmd.none )
+
+                        ( _, _, _ ) ->
                             ( model, Cmd.none )
 
                 Err _ ->
@@ -482,6 +504,11 @@ requestTimeSlotPositions numSlots =
             Dom.getElement (getTimeSlotId 1 slotNum)
     in
     Task.attempt SetTimeSlotPositions (Task.sequence (List.map getTimeSlotPosition slotNumList))
+
+
+requestTimeSlotsElement : Cmd Msg
+requestTimeSlotsElement =
+    Task.attempt SetTimeSlotsElement (Dom.getElement scrollableTimeSlotsId)
 
 
 intersectsCurrentlySelectedTimeSlots : List SelectedTimeSlot -> Int -> Int -> Int -> Bool
