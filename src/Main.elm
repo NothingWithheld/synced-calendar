@@ -108,7 +108,7 @@ type alias PointerPosition =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { numDays = 5
+    ( { numDays = 7
       , numSlotsInDay = defaultNumSlots
       , timeSlotPositions = []
       , timeSlotsElement = Nothing
@@ -470,6 +470,56 @@ intersectsCurrentlySelectedTimeSlots currentTimeSlots dayNum startSlotNum endSlo
 
 view : Model -> Html Msg
 view model =
+    styled div
+        []
+        [ viewDayHeadings
+        , viewScrollableTimeSlots model
+        ]
+
+
+viewDayHeadings : Html Msg
+viewDayHeadings =
+    let
+        dayAbbreviations =
+            [ "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" ]
+    in
+    styled div
+        [ css "display" "flex"
+        , css "height" "10vh"
+        , css "margin-right" "16px"
+        , css "border-bottom" "thin solid #829AB1"
+        ]
+        (List.map
+            viewDayHeading
+            dayAbbreviations
+        )
+
+
+viewDayHeading : String -> Html Msg
+viewDayHeading dayAbbreviation =
+    styled div
+        [ css "flex-grow" "1"
+        , css "flex-basis" "100%"
+        , css "display" "flex"
+        , css "justify-content" "flex-end"
+        , css "position" "relative"
+        ]
+        [ styled Html.h2
+            [ Typography.headline6, css "margin" "auto" ]
+            [ text dayAbbreviation ]
+        , styled div
+            [ css "height" "30%"
+            , css "width" "0"
+            , css "border-right" "thin solid #829AB1"
+            , css "position" "absolute"
+            , css "bottom" "0"
+            ]
+            []
+        ]
+
+
+viewScrollableTimeSlots : Model -> Html Msg
+viewScrollableTimeSlots model =
     let
         isSelectingTimeSlots =
             case model.timeSlotSelection of
@@ -551,10 +601,11 @@ viewSelectedTimeSlot selectedTimeSlot =
     Card.view
         [ css "background-color" "red"
         , css "top" (String.fromFloat cardDimensions.y ++ "px")
-        , css "height" (String.fromFloat cardDimensions.height ++ "px")
+        , css "height" (String.fromFloat (cardDimensions.height - 4) ++ "px")
         , css "position" "absolute"
-        , css "width" "100%"
+        , css "width" "95%"
         , css "z-index" "4"
+        , css "border-radius" "8px"
         ]
         [ styled div [ Typography.subheading1 ] [ text selectedTimeSlot.name ] ]
 
@@ -577,7 +628,7 @@ viewCurrentlySelectingTimeSlot model dayNum =
                 Card.view
                     [ css "background-color" "green"
                     , css "top" (String.fromFloat cardDimensions.y ++ "px")
-                    , css "height" (String.fromFloat cardDimensions.height ++ "px")
+                    , css "height" (String.fromFloat (cardDimensions.height - 4) ++ "px")
                     , css "position" "absolute"
                     , css "width" "95%"
                     , css "z-index" "4"
