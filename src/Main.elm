@@ -477,9 +477,16 @@ intersectsCurrentlySelectedTimeSlots currentTimeSlots dayNum startSlotNum endSlo
 view : Model -> Html Msg
 view model =
     styled div
-        [ css "position" "relative" ]
-        [ viewDayHeadings
-        , viewScrollableTimeSlots model
+        [ css "position" "relative"
+        , css "display" "flex"
+        , css "flex-direction" "column-reverse"
+        , css "height" "100vh"
+        ]
+        [ styled div
+            []
+            [ viewDayHeadings
+            , viewScrollableTimeSlots model
+            ]
         , viewUserRequest model
         ]
 
@@ -493,12 +500,22 @@ viewDayHeadings =
     styled div
         [ css "display" "flex"
         , css "height" "10vh"
+        , css "margin-left" "70px"
         , css "margin-right" "16px"
-        , css "border-bottom" "thin solid #829AB1"
+        , css "border-bottom" "1px solid #829AB1"
+        , css "position" "relative"
         ]
-        (List.map
-            viewDayHeading
-            dayAbbreviations
+        (styled div
+            [ css "height" "30%"
+            , css "width" "0"
+            , css "border-right" "1px solid #829AB1"
+            , css "position" "absolute"
+            , css "bottom" "0"
+            ]
+            []
+            :: List.map
+                viewDayHeading
+                dayAbbreviations
         )
 
 
@@ -517,7 +534,7 @@ viewDayHeading dayAbbreviation =
         , styled div
             [ css "height" "30%"
             , css "width" "0"
-            , css "border-right" "thin solid #829AB1"
+            , css "border-right" "1px solid #829AB1"
             , css "position" "absolute"
             , css "bottom" "0"
             ]
@@ -546,9 +563,10 @@ viewScrollableTimeSlots model =
             , css "overflow" "hidden"
             , when isSelectingTimeSlots (Options.onMouseUp InitiateUserPromptForEventDetails)
             ]
-            (List.map
-                (viewSingleDayTimeSlots model)
-                (List.range 0 (model.numDays - 1))
+            (viewTimeSlotTimes
+                :: List.map
+                    (viewSingleDayTimeSlots model)
+                    (List.range 0 (model.numDays - 1))
             )
         ]
 
@@ -556,6 +574,53 @@ viewScrollableTimeSlots model =
 scrollableTimeSlotsId : String
 scrollableTimeSlotsId =
     "scrollable-time-slots"
+
+
+viewTimeSlotTimes : Html Msg
+viewTimeSlotTimes =
+    styled div
+        [ css "width" "70px"
+        , css "border-right" "1px solid #829AB1"
+        ]
+        (styled div [ css "height" "32px" ] []
+            :: List.map viewTimeSlotTime (List.range 1 (defaultNumSlots // 4 - 1))
+        )
+
+
+viewTimeSlotTime : Int -> Html Msg
+viewTimeSlotTime hour =
+    let
+        dayPeriod =
+            if hour < 12 then
+                "AM"
+
+            else
+                "PM"
+
+        adjustedHour =
+            if hour > 12 then
+                hour - 12
+
+            else
+                hour
+    in
+    styled
+        div
+        [ css "height" "65px"
+        , css "display" "flex"
+        , css "flex-direction" "row-reverse"
+        , css "align-items" "center"
+        , Typography.caption
+        ]
+        [ styled div
+            [ css "width" "8px"
+            , css "border-bottom" "1px solid #829AB1"
+            , css "margin-left" "6px"
+            ]
+            []
+        , text
+            (String.fromInt adjustedHour ++ " " ++ dayPeriod)
+        ]
 
 
 viewSingleDayTimeSlots : Model -> Int -> Html Msg
@@ -587,8 +652,8 @@ viewSingleDayTimeSlots model dayNum =
 viewTimeSlot : Model -> Int -> Int -> Html Msg
 viewTimeSlot _ dayNum slotNum =
     styled div
-        [ css "border-right" "thin solid #829AB1"
-        , when (modBy 4 slotNum == 3) (css "border-bottom" "thin solid #829AB1")
+        [ css "border-right" "1px solid #829AB1"
+        , when (modBy 4 slotNum == 3) (css "border-bottom" "1px solid #829AB1")
         , css "height" "16px"
         , Options.onMouseDown (StartSelectingTimeSlot dayNum slotNum)
         , Options.id (getTimeSlotId dayNum slotNum)
@@ -667,7 +732,7 @@ viewUserRequestForm : Model -> EventCreationDetails -> EventCreationPosition -> 
 viewUserRequestForm model eventCreationDetails eventCreationPosition =
     let
         positionFromTop =
-            Basics.max eventCreationPosition.y 30
+            Basics.max eventCreationPosition.y 50
     in
     Card.view
         [ css "position" "absolute"
