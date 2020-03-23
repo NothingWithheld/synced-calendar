@@ -164,15 +164,21 @@ update msg model =
             case result of
                 Ok elementList ->
                     let
-                        setTimeSlotPosition ind { element } =
-                            { slotNum = ind
-                            , x = element.x
-                            , y = element.y
-                            , width = element.width
-                            , height = element.height
-                            }
+                        setTimeSlotPosition ind curYOffset elements =
+                            case elements of
+                                [] ->
+                                    []
+
+                                { element } :: xs ->
+                                    { slotNum = ind
+                                    , x = element.x
+                                    , y = curYOffset
+                                    , width = element.width
+                                    , height = element.height
+                                    }
+                                        :: setTimeSlotPosition (ind + 1) (curYOffset + element.height) xs
                     in
-                    ( { model | timeSlotPositions = List.indexedMap setTimeSlotPosition elementList }, Cmd.none )
+                    ( { model | timeSlotPositions = setTimeSlotPosition 0 0 elementList }, Cmd.none )
 
                 Err _ ->
                     ( model, Cmd.none )
