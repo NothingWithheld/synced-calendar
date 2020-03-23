@@ -22,3 +22,17 @@ FreeTimeEntry json
     fromTime TimeOfDay
     toTime TimeOfDay
     deriving Show Eq
+Event json 
+    creatorId Text
+    recipientId Text 
+    name Text Maybe 
+    description Text Maybe
+    from_date Day 
+    to_date Day
+    confirmed Bool
+AvailableTimeEntry json 
+    userId Text 
+    eventId Text
+    date Day
+    from_time TimeOfDay
+    to_time TimeOfDay

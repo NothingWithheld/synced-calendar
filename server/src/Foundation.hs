@@ -168,6 +168,7 @@ instance Yesod App where
     isAuthorized (StaticR _) _ = return Authorized
     isAuthorized NumberR _ = return Authorized
     isAuthorized (FreeTimeEntryR _) _ = return Authorized
+    isAuthorized (EventR _) _ = return Authorized
 
     -- the profile route requires that the user is authenticated, so we
     -- delegate to that function
