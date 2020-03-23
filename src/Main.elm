@@ -477,9 +477,10 @@ intersectsCurrentlySelectedTimeSlots currentTimeSlots dayNum startSlotNum endSlo
 view : Model -> Html Msg
 view model =
     styled div
-        []
+        [ css "position" "relative" ]
         [ viewDayHeadings
         , viewScrollableTimeSlots model
+        , viewUserRequest model
         ]
 
 
@@ -545,12 +546,9 @@ viewScrollableTimeSlots model =
             , css "overflow" "hidden"
             , when isSelectingTimeSlots (Options.onMouseUp InitiateUserPromptForEventDetails)
             ]
-            (List.append
-                (List.map
-                    (viewSingleDayTimeSlots model)
-                    (List.range 0 (model.numDays - 1))
-                )
-                [ viewUserRequest model ]
+            (List.map
+                (viewSingleDayTimeSlots model)
+                (List.range 0 (model.numDays - 1))
             )
         ]
 
@@ -656,6 +654,7 @@ viewUserRequest model =
         CurrentlyCreatingEvent eventCreationDetails eventCreationPosition ->
             styled div
                 [ css "position" "absolute"
+                , css "top" "0"
                 , css "width" "100%"
                 , css "height" "100%"
                 , css "z-index" "100"
