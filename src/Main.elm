@@ -665,11 +665,15 @@ viewUserRequest model =
 
 viewUserRequestForm : Model -> EventCreationDetails -> EventCreationPosition -> Html Msg
 viewUserRequestForm model eventCreationDetails eventCreationPosition =
+    let
+        positionFromTop =
+            Basics.max eventCreationPosition.y 30
+    in
     Card.view
         [ css "position" "absolute"
         , css "width" (String.fromFloat eventDetailsPromptWidth ++ "px")
         , css "left" (String.fromFloat eventCreationPosition.x ++ "px")
-        , css "top" (String.fromFloat eventCreationPosition.y ++ "px")
+        , css "top" (String.fromFloat positionFromTop ++ "px")
         , css "padding" "12px 8px 0px"
         , css "box-shadow" "0 24px 38px 3px rgba(0,0,0,0.14), 0 9px 46px 8px rgba(0,0,0,0.12), 0 11px 15px -7px rgba(0,0,0,0.2)"
         , Options.onWithOptions "click"
