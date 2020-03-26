@@ -15,4 +15,5 @@
 /number NumberR GET
 
 /api/#Text/free-times FreeTimeEntryR GET POST PUT DELETE
+/api/#Text/available-times AvailableTimeEntryR GET POST PUT DELETE
 /api/#Text/proposed-event ProposedEventR POST

@@ -18,7 +18,8 @@ Comment json -- Adding "json" causes ToJSON and FromJSON instances to be derived
     deriving Show
 AvailableTimeEntry json
     userId Text
-    day Text
+    eventId Text
+    date Day
     fromTime TimeOfDay
     toTime TimeOfDay
     deriving Show Eq
