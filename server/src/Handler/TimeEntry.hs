@@ -27,7 +27,7 @@ postFreeTimeEntryR userId = do
             let timeEntry' = FreeTimeEntry userId (toLower day) fromTime toTime
             insertedFreeTimeEntry <- runDB $ insertEntity timeEntry'
             returnJson insertedFreeTimeEntry
-        (_, _, _) -> invalidArgs ["Failed to parse day and from_time and to_time params"]
+        (_, _, _) -> invalidArgs ["Failed to parse day, from_time and/or to_time params"]
 
 putFreeTimeEntryR :: Text -> Handler Value 
 putFreeTimeEntryR entryIdText = do 
@@ -44,7 +44,7 @@ putFreeTimeEntryR entryIdText = do
                     runDB $ update entryId [FreeTimeEntryFromTime =. fromTime, FreeTimeEntryToTime =. toTime]
                     return Null
                 _ -> notFound
-        (_, _, _) -> invalidArgs ["Failed to parse day and from_time and to_time params"]
+        (_, _, _) -> invalidArgs ["Failed to parse day, from_time and/or to_time params"]
 
 deleteFreeTimeEntryR :: Text -> Handler Value 
 deleteFreeTimeEntryR entryIdText = do
@@ -78,7 +78,7 @@ postAvailableTimeEntryR userId = do
             let timeEntry' = AvailableTimeEntry userId eventId date fromTime toTime
             insertedAvailableTimeEntry <- runDB $ insertEntity timeEntry'
             returnJson insertedAvailableTimeEntry
-        (_, _, _, _) -> invalidArgs ["Failed to parse date, from_time, and/or to_time params"]
+        (_, _, _, _) -> invalidArgs ["Failed to parse date, from_time and/or to_time params"]
 
 putAvailableTimeEntryR :: Text -> Handler Value 
 putAvailableTimeEntryR entryIdText = do 
