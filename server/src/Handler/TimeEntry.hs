@@ -5,10 +5,8 @@ module Handler.TimeEntry where
 
 import Import 
 import Database.Persist.Sql (toSqlKey)
-import Data.Time.LocalTime
-import Data.Dates
 import Data.Text.Read
-import qualified Data.Text as T
+import qualified Database
 
 getFreeTimeEntryR :: Text -> Handler Value 
 getFreeTimeEntryR userId = do 
@@ -20,8 +18,8 @@ postFreeTimeEntryR userId = do
     maybeDay <- lookupPostParam "day"
     maybeFromTimeText <- lookupPostParam "from_time"
     maybeToTimeText <- lookupPostParam "to_time"
-    let maybeFromTime = convertTextToTime maybeFromTimeText
-    let maybeToTime = convertTextToTime maybeToTimeText
+    let maybeFromTime = Database.convertTextToTime maybeFromTimeText
+    let maybeToTime = Database.convertTextToTime maybeToTimeText
     case (maybeDay, maybeFromTime, maybeToTime) of
         (Just day, Just fromTime, Just toTime) -> do
             let timeEntry' = FreeTimeEntry userId (toLower day) fromTime toTime
@@ -33,8 +31,8 @@ putFreeTimeEntryR :: Text -> Handler Value
 putFreeTimeEntryR entryIdText = do 
     maybeFromTimeText <- lookupPostParam "from_time"
     maybeToTimeText <- lookupPostParam "to_time"
-    let maybeFromTime = convertTextToTime maybeFromTimeText
-    let maybeToTime = convertTextToTime maybeToTimeText
+    let maybeFromTime = Database.convertTextToTime maybeFromTimeText
+    let maybeToTime = Database.convertTextToTime maybeToTimeText
     let eitherEntryId = decimal entryIdText
     case (maybeFromTime, maybeToTime, eitherEntryId) of
         (Just fromTime, Just toTime, Right (entryIdInt, "")) -> do
@@ -70,9 +68,9 @@ postAvailableTimeEntryR userId = do
     maybeDateText <- lookupPostParam "date"
     maybeFromTimeText <- lookupPostParam "from_time"
     maybeToTimeText <- lookupPostParam "to_time"
-    let maybeDate = convertTextToDate maybeDateText
-    let maybeFromTime = convertTextToTime maybeFromTimeText
-    let maybeToTime = convertTextToTime maybeToTimeText
+    let maybeDate = Database.convertTextToDate maybeDateText
+    let maybeFromTime = Database.convertTextToTime maybeFromTimeText
+    let maybeToTime = Database.convertTextToTime maybeToTimeText
     case (maybeDate, maybeEventId, maybeFromTime, maybeToTime) of
         (Just date, Just eventId, Just fromTime, Just toTime) -> do
             let timeEntry' = AvailableTimeEntry userId eventId date fromTime toTime
@@ -85,9 +83,9 @@ putAvailableTimeEntryR entryIdText = do
     maybeDateText <- lookupPostParam "date"
     maybeFromTimeText <- lookupPostParam "from_time"
     maybeToTimeText <- lookupPostParam "to_time"
-    let maybeDate = convertTextToDate maybeDateText
-    let maybeFromTime = convertTextToTime maybeFromTimeText
-    let maybeToTime = convertTextToTime maybeToTimeText
+    let maybeDate = Database.convertTextToDate maybeDateText
+    let maybeFromTime = Database.convertTextToTime maybeFromTimeText
+    let maybeToTime = Database.convertTextToTime maybeToTimeText
     let eitherEntryId = decimal entryIdText
     case (maybeDate, maybeFromTime, maybeToTime, eitherEntryId) of
         (Just date, Just fromTime, Just toTime, Right (entryIdInt, "")) -> do
@@ -112,36 +110,3 @@ deleteAvailableTimeEntryR entryIdText = do
             runDB $ deleteWhere [AvailableTimeEntryId ==. toSqlKey (fromIntegral (entryIdInt::Integer))]
             return Null
         _ -> badMethod
-
-convertTextToTime :: Maybe Text -> Maybe TimeOfDay 
-convertTextToTime Nothing = Nothing
-convertTextToTime (Just s) = do 
-    let sSplit = T.splitOn ":" s 
-    case sSplit of 
-        [hourText, minText] -> do 
-            let eitherHourInt = decimal hourText
-            let eitherMinInt = decimal minText
-            case (eitherHourInt, eitherMinInt) of 
-                (Right (hourInt, ""), Right (minInt, "")) -> 
-                    if hourInt < 24 && hourInt >= 0 && minInt < 60 && minInt >= 0
-                        then Just $ TimeOfDay hourInt minInt 0
-                        else Nothing
-                (_, _) -> Nothing
-        _ -> Nothing
-
-convertTextToDate :: Maybe Text -> Maybe Day 
-convertTextToDate Nothing = Nothing
-convertTextToDate (Just s) = do 
-    let sSplit = T.splitOn "-" s 
-    case sSplit of 
-        [monthText, dayText, yearText] -> do 
-            let eitherMonthInt = decimal monthText
-            let eitherDayInt = decimal dayText
-            let eitherYearInt = decimal yearText
-            case (eitherMonthInt, eitherDayInt, eitherYearInt) of 
-                (Right (monthInt, ""), Right (dayInt, ""), Right (yearInt, "")) -> 
-                    if monthInt <= 12 && monthInt > 0 && dayInt <= 31 && dayInt > 0
-                        then Just $ dateTimeToDay $ DateTime yearInt monthInt dayInt 0 0 0
-                        else Nothing
-                (_, _, _) -> Nothing
-        _ -> Nothing
