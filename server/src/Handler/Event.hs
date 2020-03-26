@@ -8,8 +8,13 @@ import Data.Dates
 import Data.Text.Read
 import qualified Data.Text as T
 
-postEventR :: Text -> Handler Value 
-postEventR userId = do 
+getProposedEventR :: Text -> Handler Value 
+getProposedEventR recipientId = do 
+    allProposedEvents <- runDB $ selectList [ProposedEventRecipientId <-. [recipientId]] []
+    returnJson allProposedEvents
+
+postProposedEventR :: Text -> Handler Value 
+postProposedEventR userId = do 
     maybeRecipient <- lookupPostParam "recipient_id"
     maybeName <- lookupPostParam "name"
     maybeDescription <- lookupPostParam "description"
@@ -20,7 +25,7 @@ postEventR userId = do
     let maybeToDate = convertTextToDate maybeToDateText
     case (maybeRecipient, maybeFromDate, maybeToDate) of
         (Just recipient, Just fromDate, Just toDate) -> do
-            let event' = Event userId recipient maybeName maybeDescription fromDate toDate confirmed
+            let event' = ProposedEvent userId recipient maybeName maybeDescription fromDate toDate confirmed
             insertedEvent <- runDB $ insertEntity event'
             returnJson insertedEvent
         (_, _, _) -> invalidArgs ["Failed to parse arguments. Check API documentation for valid formatting"]

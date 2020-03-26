@@ -16,23 +16,33 @@ Comment json -- Adding "json" causes ToJSON and FromJSON instances to be derived
     userId UserId Maybe
     deriving Eq
     deriving Show
+AvailableTimeEntry json
+    userId Text
+    day Text
+    fromTime TimeOfDay
+    toTime TimeOfDay
+    deriving Show Eq
 FreeTimeEntry json
     userId Text
     day Text
     fromTime TimeOfDay
     toTime TimeOfDay
     deriving Show Eq
-Event json 
+ProposedEvent json 
     creatorId Text
     recipientId Text 
     name Text Maybe 
     description Text Maybe
-    from_date Day 
-    to_date Day
+    fromDate Day 
+    toDate Day
     confirmed Bool
-AvailableTimeEntry json 
-    userId Text 
-    eventId Text
-    date Day
-    from_time TimeOfDay
-    to_time TimeOfDay
+    deriving Show Eq
+ConfirmedEvent json 
+    creatorId Text 
+    recipientId Text 
+    name Text Maybe
+    description Text Maybe 
+    date Day 
+    fromTime TimeOfDay 
+    toTime TimeOfDay 
+    deriving Show Eq
