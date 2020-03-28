@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Browser
 import Browser.Dom as Dom
+import Flip
 import Html exposing (Html, div, text)
 import Json.Decode as Decode exposing (field, float)
 import Material
@@ -11,6 +12,7 @@ import Material.Options as Options exposing (css, styled, when)
 import Material.TextField as TextField
 import Material.Typography as Typography
 import Task
+import TimeSlots as TS
 
 
 
@@ -29,25 +31,12 @@ main =
 type alias Model =
     { numDays : Int
     , numSlotsInDay : Int
-    , timeSlotPositions : TimeSlotPositions
+    , timeSlotPositions : List TS.TimeSlotBoundaryPosition
     , timeSlotsElement : Maybe Element
-    , timeSlotSelection : TimeSlotSelection
+    , timeSlotSelection : TS.TimeSlotSelection
     , userEventCreation : UserEventCreation
-    , selectedTimeSlots : List SelectedTimeSlot
+    , selectedTimeSlots : List EventSelectedTimeSlot
     , mdc : Material.Model Msg
-    }
-
-
-type alias TimeSlotPositions =
-    List TimeSlotPosition
-
-
-type alias TimeSlotPosition =
-    { slotNum : Int
-    , x : Float
-    , y : Float
-    , width : Float
-    , height : Float
     }
 
 
@@ -59,28 +48,12 @@ type alias Element =
     }
 
 
-type alias SelectedTimeSlot =
-    { dayNum : Int
-    , name : String
-    , startSlot : TimeSlotBoundaryPosition
-    , endSlot : TimeSlotBoundaryPosition
-    }
+type alias WithName a =
+    { a | name : String }
 
 
-type alias TimeSlotBoundaryPosition =
-    { slotNum : Int
-    , y : Float
-    , height : Float
-    }
-
-
-type TimeSlotSelection
-    = NotSelecting
-    | CurrentlySelecting
-        { dayNum : Int
-        , startBound : TimeSlotBoundaryPosition
-        , curEndBound : TimeSlotBoundaryPosition
-        }
+type alias EventSelectedTimeSlot =
+    WithName TS.SelectedTimeSlot
 
 
 type UserEventCreation
@@ -112,7 +85,7 @@ init =
       , numSlotsInDay = defaultNumSlots
       , timeSlotPositions = []
       , timeSlotsElement = Nothing
-      , timeSlotSelection = NotSelecting
+      , timeSlotSelection = TS.NotSelecting
       , userEventCreation = NotCreating
       , selectedTimeSlots = []
       , mdc = Material.defaultModel
@@ -151,8 +124,45 @@ type Msg
     | Mdc (Material.Msg Msg)
 
 
+defaultWithoutData : ( a, b ) -> Maybe c -> (c -> ( a, b )) -> ( a, b )
+defaultWithoutData default maybeData mapFunc =
+    case maybeData of
+        Just data ->
+            mapFunc data
+
+        Nothing ->
+            default
+
+
+defaultOnError : ( a, b ) -> Result e c -> (c -> ( a, b )) -> ( a, b )
+defaultOnError default result mapFunc =
+    case result of
+        Ok data ->
+            mapFunc data
+
+        Err _ ->
+            default
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        noUpdateWithoutData =
+            defaultWithoutData ( model, Cmd.none )
+
+        noUpdateOnError =
+            defaultOnError ( model, Cmd.none )
+
+        useWithoutCmdMsg fn =
+            Flip.flip Tuple.pair Cmd.none << fn
+
+        noUpdateIfIntersectsSelectedTS dayNum startBound endBound updatedModel =
+            if intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots dayNum startBound endBound then
+                model
+
+            else
+                updatedModel
+    in
     case msg of
         NoOp ->
             ( model, Cmd.none )
@@ -161,8 +171,8 @@ update msg model =
             Material.update Mdc msg_ model
 
         SetTimeSlotPositions result ->
-            case result of
-                Ok elementList ->
+            let
+                setTimeSlotPositions elementList =
                     let
                         setTimeSlotPosition ind curYOffset elements =
                             case elements of
@@ -171,17 +181,14 @@ update msg model =
 
                                 { element } :: xs ->
                                     { slotNum = ind
-                                    , x = element.x
                                     , y = curYOffset
-                                    , width = element.width
                                     , height = element.height
                                     }
                                         :: setTimeSlotPosition (ind + 1) (curYOffset + element.height) xs
                     in
-                    ( { model | timeSlotPositions = setTimeSlotPosition 0 0 elementList }, Cmd.none )
-
-                Err _ ->
-                    ( model, Cmd.none )
+                    ( { model | timeSlotPositions = setTimeSlotPosition TS.startingSlotNum 0 elementList }, Cmd.none )
+            in
+            noUpdateOnError result setTimeSlotPositions
 
         SetTimeSlotsElement result ->
             case result of
@@ -198,37 +205,31 @@ update msg model =
             case result of
                 Ok { viewport } ->
                     case ( model.userEventCreation, model.timeSlotSelection, model.timeSlotsElement ) of
-                        ( NotCreating, CurrentlySelecting { dayNum, startBound }, Just { y } ) ->
+                        ( NotCreating, TS.CurrentlySelecting { dayNum, startBound }, Just { y } ) ->
                             let
                                 yPositionInTimeSlots =
                                     pageY - y + viewport.y
 
                                 maybePointerTSPosition =
                                     getTimeSlotPositionOfPointer model.timeSlotPositions yPositionInTimeSlots
+
+                                updateSelectionWithPointerPosition pointerTSPosition =
+                                    noUpdateIfIntersectsSelectedTS
+                                        dayNum
+                                        startBound.slotNum
+                                        pointerTSPosition.slotNum
+                                    <|
+                                        TS.useTSPositionForEndSelectionBound
+                                            model
+                                            dayNum
+                                            startBound
+                                            pointerTSPosition
                             in
-                            case maybePointerTSPosition of
-                                Just pointerTimeSlotPosition ->
-                                    if intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots dayNum startBound.slotNum pointerTimeSlotPosition.slotNum then
-                                        ( model, Cmd.none )
-
-                                    else
-                                        ( { model
-                                            | timeSlotSelection =
-                                                CurrentlySelecting
-                                                    { dayNum = dayNum
-                                                    , startBound = startBound
-                                                    , curEndBound =
-                                                        { slotNum = pointerTimeSlotPosition.slotNum
-                                                        , y = pointerTimeSlotPosition.y
-                                                        , height = pointerTimeSlotPosition.height
-                                                        }
-                                                    }
-                                          }
-                                        , Cmd.none
-                                        )
-
-                                Nothing ->
-                                    ( model, Cmd.none )
+                            noUpdateWithoutData
+                                maybePointerTSPosition
+                            <|
+                                useWithoutCmdMsg <|
+                                    updateSelectionWithPointerPosition
 
                         ( _, _, _ ) ->
                             ( model, Cmd.none )
@@ -238,47 +239,27 @@ update msg model =
 
         StartSelectingTimeSlot dayNum slotNum ->
             case model.timeSlotSelection of
-                CurrentlySelecting _ ->
+                TS.NotSelecting ->
+                    let
+                        timeSlotPosition =
+                            getListItemAt slotNum model.timeSlotPositions
+                    in
+                    noUpdateWithoutData
+                        timeSlotPosition
+                    <|
+                        useWithoutCmdMsg <|
+                            noUpdateIfIntersectsSelectedTS dayNum slotNum slotNum
+                                << TS.useTSPositionForBothSelectionBounds model dayNum
+
+                TS.CurrentlySelecting _ ->
                     ( model, Cmd.none )
-
-                NotSelecting ->
-                    if intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots dayNum slotNum slotNum then
-                        ( model, Cmd.none )
-
-                    else
-                        let
-                            timeSlotPosition =
-                                getListItemAt slotNum model.timeSlotPositions
-                        in
-                        case timeSlotPosition of
-                            Just positionVal ->
-                                let
-                                    bound =
-                                        { slotNum = positionVal.slotNum
-                                        , y = positionVal.y
-                                        , height = positionVal.height
-                                        }
-                                in
-                                ( { model
-                                    | timeSlotSelection =
-                                        CurrentlySelecting
-                                            { dayNum = dayNum
-                                            , startBound = bound
-                                            , curEndBound = bound
-                                            }
-                                  }
-                                , Cmd.none
-                                )
-
-                            Nothing ->
-                                ( model, Cmd.none )
 
         InitiateUserPromptForEventDetails ->
             case ( model.userEventCreation, model.timeSlotSelection ) of
-                ( NotCreating, CurrentlySelecting { dayNum, startBound, curEndBound } ) ->
+                ( NotCreating, TS.CurrentlySelecting { dayNum, startBound, endBound } ) ->
                     let
                         minSlotNum =
-                            min startBound.slotNum curEndBound.slotNum
+                            min startBound.slotNum endBound.slotNum
                     in
                     ( model
                     , Task.attempt
@@ -354,29 +335,29 @@ update msg model =
                     ( model, Cmd.none )
 
         CloseUserPromptForEventDetails ->
-            ( { model | timeSlotSelection = NotSelecting, userEventCreation = NotCreating }, Cmd.none )
+            ( { model | timeSlotSelection = TS.NotSelecting, userEventCreation = NotCreating }, Cmd.none )
 
         SetSelectedTimeSlot ->
             case ( model.userEventCreation, model.timeSlotSelection ) of
-                ( CurrentlyCreatingEvent { title } _, CurrentlySelecting { dayNum, startBound, curEndBound } ) ->
+                ( CurrentlyCreatingEvent { title } _, TS.CurrentlySelecting { dayNum, startBound, endBound } ) ->
                     let
                         ( startSlot, endSlot ) =
-                            if startBound.slotNum <= curEndBound.slotNum then
-                                ( startBound, curEndBound )
+                            if startBound.slotNum <= endBound.slotNum then
+                                ( startBound, endBound )
 
                             else
-                                ( curEndBound, startBound )
+                                ( endBound, startBound )
 
                         selectedTimeSlot =
                             { dayNum = dayNum
                             , name = title
-                            , startSlot = startSlot
-                            , endSlot = endSlot
+                            , startBound = startSlot
+                            , endBound = endSlot
                             }
                     in
                     ( { model
                         | selectedTimeSlots = selectedTimeSlot :: model.selectedTimeSlots
-                        , timeSlotSelection = NotSelecting
+                        , timeSlotSelection = TS.NotSelecting
                         , userEventCreation = NotCreating
                       }
                     , Cmd.none
@@ -404,7 +385,7 @@ getListItemAt index list =
     getListItemAtHelper list 0
 
 
-getTimeSlotPositionOfPointer : List TimeSlotPosition -> Float -> Maybe TimeSlotPosition
+getTimeSlotPositionOfPointer : List TS.TimeSlotBoundaryPosition -> Float -> Maybe TS.TimeSlotBoundaryPosition
 getTimeSlotPositionOfPointer timeSlotPositions pageY =
     let
         getTSPOPHelper curTSPosList =
@@ -451,7 +432,7 @@ requestTimeSlotsElement =
     Task.attempt SetTimeSlotsElement (Dom.getElement scrollableTimeSlotsId)
 
 
-intersectsCurrentlySelectedTimeSlots : List SelectedTimeSlot -> Int -> Int -> Int -> Bool
+intersectsCurrentlySelectedTimeSlots : List (TS.WithSelectedTimeSlot a) -> TS.DayNum -> Int -> Int -> Bool
 intersectsCurrentlySelectedTimeSlots currentTimeSlots dayNum startSlotNum endSlotNum =
     let
         ( lowerSlotNum, higherSlotNum ) =
@@ -465,7 +446,11 @@ intersectsCurrentlySelectedTimeSlots currentTimeSlots dayNum startSlotNum endSlo
             List.filter (\timeSlot -> timeSlot.dayNum == dayNum) currentTimeSlots
 
         isTimeSlotTaken timeSlot =
-            List.any (\selected -> timeSlot >= selected.startSlot.slotNum && timeSlot <= selected.endSlot.slotNum) selectedTimeSlotsForThisDay
+            List.any
+                (\selected ->
+                    timeSlot >= selected.startBound.slotNum && timeSlot <= selected.endBound.slotNum
+                )
+                selectedTimeSlotsForThisDay
     in
     List.any isTimeSlotTaken (List.range lowerSlotNum higherSlotNum)
 
@@ -547,10 +532,10 @@ viewScrollableTimeSlots model =
     let
         isSelectingTimeSlots =
             case model.timeSlotSelection of
-                NotSelecting ->
+                TS.NotSelecting ->
                     False
 
-                CurrentlySelecting _ ->
+                TS.CurrentlySelecting _ ->
                     True
     in
     styled div
@@ -631,10 +616,10 @@ viewSingleDayTimeSlots model dayNum =
 
         isSelectingTimeSlots =
             case model.timeSlotSelection of
-                NotSelecting ->
+                TS.NotSelecting ->
                     False
 
-                CurrentlySelecting _ ->
+                TS.CurrentlySelecting _ ->
                     True
     in
     styled div
@@ -661,11 +646,11 @@ viewTimeSlot _ dayNum slotNum =
         []
 
 
-viewSelectedTimeSlot : SelectedTimeSlot -> Html Msg
+viewSelectedTimeSlot : EventSelectedTimeSlot -> Html Msg
 viewSelectedTimeSlot selectedTimeSlot =
     let
         cardDimensions =
-            getCardDimensions selectedTimeSlot.startSlot selectedTimeSlot.endSlot
+            getCardDimensions selectedTimeSlot.startBound selectedTimeSlot.endBound
     in
     Card.view
         [ css "background-color" "red"
@@ -682,13 +667,13 @@ viewSelectedTimeSlot selectedTimeSlot =
 viewCurrentlySelectingTimeSlot : Model -> Int -> Html Msg
 viewCurrentlySelectingTimeSlot model dayNum =
     case model.timeSlotSelection of
-        NotSelecting ->
+        TS.NotSelecting ->
             text ""
 
-        CurrentlySelecting ({ startBound, curEndBound } as selectionDetails) ->
+        TS.CurrentlySelecting ({ startBound, endBound } as selectionDetails) ->
             let
                 cardDimensions =
-                    getCardDimensions startBound curEndBound
+                    getCardDimensions startBound endBound
 
                 dayNumCurrentlySelected =
                     selectionDetails.dayNum
@@ -790,7 +775,7 @@ viewUserRequestForm model eventCreationDetails eventCreationPosition =
         ]
 
 
-getCardDimensions : TimeSlotBoundaryPosition -> TimeSlotBoundaryPosition -> CardDimensions
+getCardDimensions : TS.TimeSlotBoundaryPosition -> TS.TimeSlotBoundaryPosition -> CardDimensions
 getCardDimensions boundA boundB =
     let
         ( higherBound, lowerBound ) =
