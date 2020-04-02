@@ -1,0 +1,262 @@
+module ViewTimeSlots exposing (viewDayHeadings, viewScrollableTimeSlots)
+
+import Html exposing (Html, div, text)
+import Json.Decode as Decode exposing (field, float)
+import MainMsg exposing (Msg(..))
+import Material.Card as Card
+import Material.Options as Options exposing (css, styled, when)
+import Material.Typography as Typography
+import TimeSlots as TS
+
+
+onTimeSlotMouseMove : Options.Property c Msg
+onTimeSlotMouseMove =
+    Options.on "mousemove"
+        (Decode.map (TimeSlotMsg << TS.HandleTimeSlotMouseMove)
+            (Decode.map2
+                TS.PointerPosition
+                (field "pageX" float)
+                (field "pageY" float)
+            )
+        )
+
+
+viewDayHeadings : Html Msg
+viewDayHeadings =
+    let
+        dayAbbreviations =
+            [ "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" ]
+    in
+    styled div
+        [ css "display" "flex"
+        , css "height" "10vh"
+        , css "margin-left" "70px"
+        , css "margin-right" "16px"
+        , css "border-bottom" "1px solid #829AB1"
+        , css "position" "relative"
+        ]
+        (styled div
+            [ css "height" "30%"
+            , css "width" "0"
+            , css "border-right" "1px solid #829AB1"
+            , css "position" "absolute"
+            , css "bottom" "0"
+            ]
+            []
+            :: List.map
+                viewDayHeading
+                dayAbbreviations
+        )
+
+
+viewDayHeading : String -> Html Msg
+viewDayHeading dayAbbreviation =
+    styled div
+        [ css "flex-grow" "1"
+        , css "flex-basis" "100%"
+        , css "display" "flex"
+        , css "justify-content" "flex-end"
+        , css "position" "relative"
+        ]
+        [ styled Html.h2
+            [ Typography.headline6, css "margin" "auto" ]
+            [ text dayAbbreviation ]
+        , styled div
+            [ css "height" "30%"
+            , css "width" "0"
+            , css "border-right" "1px solid #829AB1"
+            , css "position" "absolute"
+            , css "bottom" "0"
+            ]
+            []
+        ]
+
+
+viewTimeSlotTimes : Html Msg
+viewTimeSlotTimes =
+    styled div
+        [ css "width" "70px"
+        , css "border-right" "1px solid #829AB1"
+        ]
+        (styled div [ css "height" "32px" ] []
+            :: List.map viewTimeSlotTime (List.range 1 (TS.defaultNumSlots // 4 - 1))
+        )
+
+
+viewTimeSlotTime : Int -> Html Msg
+viewTimeSlotTime hour =
+    let
+        dayPeriod =
+            if hour < 12 then
+                "AM"
+
+            else
+                "PM"
+
+        adjustedHour =
+            if hour > 12 then
+                hour - 12
+
+            else
+                hour
+    in
+    styled
+        div
+        [ css "height" "65px"
+        , css "display" "flex"
+        , css "flex-direction" "row-reverse"
+        , css "align-items" "center"
+        , Typography.caption
+        ]
+        [ styled div
+            [ css "width" "8px"
+            , css "border-bottom" "1px solid #829AB1"
+            , css "margin-left" "6px"
+            ]
+            []
+        , text
+            (String.fromInt adjustedHour ++ " " ++ dayPeriod)
+        ]
+
+
+viewScrollableTimeSlots : TS.WithTimeSlotsEverything a b -> Html Msg
+viewScrollableTimeSlots model =
+    let
+        isSelectingTimeSlots =
+            case model.timeSlotSelection of
+                TS.NotSelecting ->
+                    False
+
+                TS.CurrentlySelecting _ ->
+                    True
+    in
+    styled div
+        [ css "height" "80vh"
+        , css "overflow-y" "scroll"
+        , Options.id TS.scrollableTimeSlotsId
+        ]
+        [ styled div
+            [ css "display" "flex"
+            , css "overflow" "hidden"
+            , when isSelectingTimeSlots (Options.onMouseUp InitiateUserPromptForEventDetails)
+            ]
+            (viewTimeSlotTimes
+                :: List.map
+                    (viewSingleDayTimeSlots model)
+                    (List.range TS.startingDayNum (TS.startingDayNum + TS.defaultNumDays - 1))
+            )
+        ]
+
+
+viewSingleDayTimeSlots : TS.WithTimeSlotsEverything a b -> Int -> Html Msg
+viewSingleDayTimeSlots model dayNum =
+    let
+        selectedTimeSlotsForThisDay =
+            List.filter (\timeSlot -> timeSlot.dayNum == dayNum) model.selectedTimeSlots
+
+        isSelectingTimeSlots =
+            case model.timeSlotSelection of
+                TS.NotSelecting ->
+                    False
+
+                TS.CurrentlySelecting _ ->
+                    True
+    in
+    styled div
+        [ css "flex-grow" "1", css "position" "relative", when isSelectingTimeSlots onTimeSlotMouseMove ]
+        (List.append
+            [ div
+                []
+                (List.map (viewTimeSlot model dayNum) (List.range TS.startingSlotNum (TS.startingSlotNum + TS.defaultNumSlots - 1)))
+            , viewCurrentlySelectingTimeSlot model dayNum
+            ]
+            (List.map viewSelectedTimeSlot selectedTimeSlotsForThisDay)
+        )
+
+
+viewTimeSlot : TS.WithTimeSlotsEverything a b -> Int -> Int -> Html Msg
+viewTimeSlot _ dayNum slotNum =
+    styled div
+        [ css "border-right" "1px solid #829AB1"
+        , when (modBy 4 slotNum == 3) (css "border-bottom" "1px solid #829AB1")
+        , css "height" "16px"
+        , Options.onMouseDown (TimeSlotMsg <| TS.StartSelectingTimeSlot dayNum slotNum)
+        , Options.id (getTimeSlotId dayNum slotNum)
+        ]
+        []
+
+
+viewSelectedTimeSlot : TS.WithSelectedTimeSlot a -> Html Msg
+viewSelectedTimeSlot selectedTimeSlot =
+    let
+        cardDimensions =
+            getCardDimensions selectedTimeSlot.startBound selectedTimeSlot.endBound
+    in
+    Card.view
+        [ css "background-color" "red"
+        , css "top" (String.fromFloat cardDimensions.y ++ "px")
+        , css "height" (String.fromFloat (cardDimensions.height - 4) ++ "px")
+        , css "position" "absolute"
+        , css "width" "95%"
+        , css "z-index" "4"
+        , css "border-radius" "8px"
+        ]
+        []
+
+
+viewCurrentlySelectingTimeSlot : TS.WithTimeSlotsEverything a b -> Int -> Html Msg
+viewCurrentlySelectingTimeSlot model dayNum =
+    case model.timeSlotSelection of
+        TS.NotSelecting ->
+            text ""
+
+        TS.CurrentlySelecting ({ startBound, endBound } as selectionDetails) ->
+            let
+                cardDimensions =
+                    getCardDimensions startBound endBound
+
+                dayNumCurrentlySelected =
+                    selectionDetails.dayNum
+            in
+            if dayNum == dayNumCurrentlySelected then
+                Card.view
+                    [ css "background-color" "green"
+                    , css "top" (String.fromFloat cardDimensions.y ++ "px")
+                    , css "height" (String.fromFloat (cardDimensions.height - 4) ++ "px")
+                    , css "position" "absolute"
+                    , css "width" "95%"
+                    , css "z-index" "4"
+                    , css "box-shadow" "0 6px 10px 0 rgba(0,0,0,0.14), 0 1px 18px 0 rgba(0,0,0,0.12), 0 3px 5px -1px rgba(0,0,0,0.2)"
+                    , css "border-radius" "8px"
+                    ]
+                    [ styled div [ Typography.subheading1 ] [ text "(group name)" ] ]
+
+            else
+                text ""
+
+
+getCardDimensions : TS.TimeSlotBoundaryPosition -> TS.TimeSlotBoundaryPosition -> CardDimensions
+getCardDimensions boundA boundB =
+    let
+        ( higherBound, lowerBound ) =
+            if boundA.y < boundB.y then
+                ( boundA, boundB )
+
+            else
+                ( boundB, boundA )
+
+        totalHeight =
+            lowerBound.y + lowerBound.height - higherBound.y
+    in
+    { y = higherBound.y, height = totalHeight }
+
+
+type alias CardDimensions =
+    { y : Float
+    , height : Float
+    }
+
+
+getTimeSlotId : Int -> Int -> String
+getTimeSlotId dayNum slotNum =
+    "time-slot-" ++ String.fromInt dayNum ++ "--" ++ String.fromInt slotNum

@@ -1,6 +1,7 @@
 module TimeSlots exposing (..)
 
 import Browser.Dom as Dom
+import EventCreation
 import Flip
 import Task
 import Utils exposing (defaultOnError, defaultWithoutData, getListItemAt)
@@ -9,6 +10,16 @@ import Utils exposing (defaultOnError, defaultWithoutData, getListItemAt)
 scrollableTimeSlotsId : String
 scrollableTimeSlotsId =
     "scrollable-time-slots"
+
+
+defaultNumSlots : Int
+defaultNumSlots =
+    24 * 4
+
+
+defaultNumDays : Int
+defaultNumDays =
+    7
 
 
 type alias DayNum =
@@ -179,6 +190,8 @@ type Msg
     | StartSelectingTimeSlot Int Int
     | HandleTimeSlotMouseMove PointerPosition
     | AdjustTimeSlotSelection PointerPosition (Result Dom.Error Dom.Viewport)
+    | InitiateUserPromptForEventDetails
+    | PromptUserForEventDetails (Result Dom.Error Dom.Element)
     | SetSelectedTimeSlot
 
 
