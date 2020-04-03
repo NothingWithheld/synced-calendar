@@ -2,6 +2,7 @@ module TimeSlots.View exposing (viewDayHeadings, viewScrollableTimeSlots)
 
 import EventCreation.EventCreation as EC
 import Html exposing (Html, div, text)
+import Html.Entity as Entity
 import Json.Decode as Decode exposing (field, float)
 import MainMsg exposing (Msg(..))
 import Material.Card as Card
@@ -204,7 +205,74 @@ viewSelectedTimeSlot selectedTimeSlot =
         , css "z-index" "4"
         , css "border-radius" "8px"
         ]
-        []
+        [ viewTimeSlotDuration selectedTimeSlot ]
+
+
+viewTimeSlotDuration : TS.WithSelectedTimeSlot a -> Html Msg
+viewTimeSlotDuration { startBound, endBound } =
+    let
+        ( startTime, startAmOrPm ) =
+            getTimeForSlotNum startBound.slotNum
+
+        ( endTime, endAmOrPm ) =
+            getTimeForSlotNum endBound.slotNum
+
+        startsAndEndsSameHalfOfDay =
+            startAmOrPm == endAmOrPm
+    in
+    styled Html.p
+        [ Typography.caption
+        , css "color" "white"
+        , css "margin" "2px 8px"
+        ]
+        [ text <|
+            startTime
+                ++ (if startsAndEndsSameHalfOfDay then
+                        ""
+
+                    else
+                        startAmOrPm
+                   )
+                ++ " "
+                ++ Entity.mdash
+                ++ " "
+                ++ endTime
+                ++ endAmOrPm
+        ]
+
+
+getTimeForSlotNum : TS.SlotNum -> ( String, String )
+getTimeForSlotNum slotNum =
+    let
+        hour =
+            modBy 12 <| slotNum // 4
+
+        adjustedHour =
+            if hour == 0 then
+                12
+
+            else
+                hour
+
+        quarterInc =
+            modBy 4 <| slotNum + 1
+
+        amOrPm =
+            if slotNum < 12 * 4 then
+                "am"
+
+            else
+                "pm"
+    in
+    ( String.fromInt adjustedHour
+        ++ (if quarterInc == 0 then
+                ""
+
+            else
+                ":" ++ String.fromInt (15 * quarterInc)
+           )
+    , amOrPm
+    )
 
 
 viewCurrentlySelectingTimeSlot : TSUpdate.WithTimeSlotsEverything a -> Int -> Html Msg
@@ -232,7 +300,9 @@ viewCurrentlySelectingTimeSlot model dayNum =
                     , css "box-shadow" "0 6px 10px 0 rgba(0,0,0,0.14), 0 1px 18px 0 rgba(0,0,0,0.12), 0 3px 5px -1px rgba(0,0,0,0.2)"
                     , css "border-radius" "8px"
                     ]
-                    [ styled div [ Typography.subheading1 ] [ text "(group name)" ] ]
+                    [ styled div [ Typography.subheading1 ] [ text "(group name)" ]
+                    , viewTimeSlotDuration selectionDetails
+                    ]
 
             else
                 text ""
