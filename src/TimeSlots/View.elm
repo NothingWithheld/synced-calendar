@@ -1,12 +1,14 @@
-module ViewTimeSlots exposing (viewDayHeadings, viewScrollableTimeSlots)
+module TimeSlots.View exposing (viewDayHeadings, viewScrollableTimeSlots)
 
+import EventCreation.EventCreation as EC
 import Html exposing (Html, div, text)
 import Json.Decode as Decode exposing (field, float)
 import MainMsg exposing (Msg(..))
 import Material.Card as Card
 import Material.Options as Options exposing (css, styled, when)
 import Material.Typography as Typography
-import TimeSlots as TS
+import TimeSlots.TimeSlots as TS
+import TimeSlots.Update as TSUpdate
 
 
 onTimeSlotMouseMove : Options.Property c Msg
@@ -119,7 +121,7 @@ viewTimeSlotTime hour =
         ]
 
 
-viewScrollableTimeSlots : TS.WithTimeSlotsEverything a b -> Html Msg
+viewScrollableTimeSlots : TSUpdate.WithTimeSlotsEverything a -> Html Msg
 viewScrollableTimeSlots model =
     let
         isSelectingTimeSlots =
@@ -138,7 +140,7 @@ viewScrollableTimeSlots model =
         [ styled div
             [ css "display" "flex"
             , css "overflow" "hidden"
-            , when isSelectingTimeSlots (Options.onMouseUp InitiateUserPromptForEventDetails)
+            , when isSelectingTimeSlots (Options.onMouseUp <| EventCreationMsg EC.InitiateUserPromptForEventDetails)
             ]
             (viewTimeSlotTimes
                 :: List.map
@@ -148,11 +150,12 @@ viewScrollableTimeSlots model =
         ]
 
 
-viewSingleDayTimeSlots : TS.WithTimeSlotsEverything a b -> Int -> Html Msg
+viewSingleDayTimeSlots : TSUpdate.WithTimeSlotsEverything a -> Int -> Html Msg
 viewSingleDayTimeSlots model dayNum =
     let
         selectedTimeSlotsForThisDay =
-            List.filter (\timeSlot -> timeSlot.dayNum == dayNum) model.selectedTimeSlots
+            List.map TS.getTimeSlotFromDetails model.selectedTimeSlots
+                |> List.filter (\timeSlot -> timeSlot.dayNum == dayNum)
 
         isSelectingTimeSlots =
             case model.timeSlotSelection of
@@ -174,14 +177,14 @@ viewSingleDayTimeSlots model dayNum =
         )
 
 
-viewTimeSlot : TS.WithTimeSlotsEverything a b -> Int -> Int -> Html Msg
+viewTimeSlot : TSUpdate.WithTimeSlotsEverything a -> Int -> Int -> Html Msg
 viewTimeSlot _ dayNum slotNum =
     styled div
         [ css "border-right" "1px solid #829AB1"
         , when (modBy 4 slotNum == 3) (css "border-bottom" "1px solid #829AB1")
         , css "height" "16px"
         , Options.onMouseDown (TimeSlotMsg <| TS.StartSelectingTimeSlot dayNum slotNum)
-        , Options.id (getTimeSlotId dayNum slotNum)
+        , Options.id (TS.getTimeSlotId dayNum slotNum)
         ]
         []
 
@@ -204,7 +207,7 @@ viewSelectedTimeSlot selectedTimeSlot =
         []
 
 
-viewCurrentlySelectingTimeSlot : TS.WithTimeSlotsEverything a b -> Int -> Html Msg
+viewCurrentlySelectingTimeSlot : TSUpdate.WithTimeSlotsEverything a -> Int -> Html Msg
 viewCurrentlySelectingTimeSlot model dayNum =
     case model.timeSlotSelection of
         TS.NotSelecting ->
@@ -255,8 +258,3 @@ type alias CardDimensions =
     { y : Float
     , height : Float
     }
-
-
-getTimeSlotId : Int -> Int -> String
-getTimeSlotId dayNum slotNum =
-    "time-slot-" ++ String.fromInt dayNum ++ "--" ++ String.fromInt slotNum

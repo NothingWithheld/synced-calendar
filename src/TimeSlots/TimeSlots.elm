@@ -1,10 +1,7 @@
-module TimeSlots exposing (..)
+module TimeSlots.TimeSlots exposing (..)
 
 import Browser.Dom as Dom
-import EventCreation
-import Flip
-import Task
-import Utils exposing (defaultOnError, defaultWithoutData, getListItemAt)
+import EventCreation.EventCreation as EC
 
 
 scrollableTimeSlotsId : String
@@ -60,6 +57,10 @@ type alias SelectedTimeSlot =
     }
 
 
+type SelectedTimeSlotDetails
+    = SelectedTimeSlotDetails SelectedTimeSlot EC.EventCreationDetails
+
+
 type alias WithSelectedTimeSlot a =
     { a
         | dayNum : DayNum
@@ -77,8 +78,8 @@ type alias WithTimeSlotSelection a =
     { a | timeSlotSelection : TimeSlotSelection }
 
 
-type alias WithSelectedTimeSlots a b =
-    { b | selectedTimeSlots : List (WithSelectedTimeSlot a) }
+type alias WithSelectedTimeSlots a =
+    { a | selectedTimeSlots : List SelectedTimeSlotDetails }
 
 
 startingDayNum : DayNum
@@ -137,9 +138,12 @@ setTimeSlotPositions ind curYOffset elements =
                 :: setTimeSlotPositions (ind + 1) (curYOffset + element.height) xs
 
 
-intersectsCurrentlySelectedTimeSlots : List (WithSelectedTimeSlot a) -> DayNum -> Int -> Int -> Bool
-intersectsCurrentlySelectedTimeSlots currentTimeSlots dayNum startSlotNum endSlotNum =
+intersectsCurrentlySelectedTimeSlots : List SelectedTimeSlotDetails -> DayNum -> Int -> Int -> Bool
+intersectsCurrentlySelectedTimeSlots currentTimeSlotsDetails dayNum startSlotNum endSlotNum =
     let
+        currentTimeSlots =
+            List.map getTimeSlotFromDetails currentTimeSlotsDetails
+
         ( lowerSlotNum, higherSlotNum ) =
             if startSlotNum < endSlotNum then
                 ( startSlotNum, endSlotNum )
@@ -160,6 +164,11 @@ intersectsCurrentlySelectedTimeSlots currentTimeSlots dayNum startSlotNum endSlo
     List.any isTimeSlotTaken (List.range lowerSlotNum higherSlotNum)
 
 
+getTimeSlotFromDetails : SelectedTimeSlotDetails -> WithSelectedTimeSlot {}
+getTimeSlotFromDetails (SelectedTimeSlotDetails timeSlot _) =
+    timeSlot
+
+
 getTimeSlotPositionOfPointer : List TimeSlotBoundaryPosition -> Float -> Maybe TimeSlotBoundaryPosition
 getTimeSlotPositionOfPointer timeSlotPositions pageY =
     let
@@ -178,6 +187,27 @@ getTimeSlotPositionOfPointer timeSlotPositions pageY =
     getTSPOPHelper timeSlotPositions
 
 
+getOrderedTimeSlot : WithSelectedTimeSlot a -> WithSelectedTimeSlot a
+getOrderedTimeSlot timeSlot =
+    let
+        { startBound, endBound } =
+            timeSlot
+
+        ( topSlot, bottomSlot ) =
+            if startBound.slotNum <= endBound.slotNum then
+                ( startBound, endBound )
+
+            else
+                ( endBound, startBound )
+    in
+    { timeSlot | startBound = topSlot, endBound = bottomSlot }
+
+
+getTimeSlotId : DayNum -> SlotNum -> String
+getTimeSlotId dayNum slotNum =
+    "time-slot-" ++ String.fromInt dayNum ++ "--" ++ String.fromInt slotNum
+
+
 type alias PointerPosition =
     { pageX : Float
     , pageY : Float
@@ -190,98 +220,4 @@ type Msg
     | StartSelectingTimeSlot Int Int
     | HandleTimeSlotMouseMove PointerPosition
     | AdjustTimeSlotSelection PointerPosition (Result Dom.Error Dom.Viewport)
-    | InitiateUserPromptForEventDetails
-    | PromptUserForEventDetails (Result Dom.Error Dom.Element)
     | SetSelectedTimeSlot
-
-
-type alias WithTimeSlotsEverything a b =
-    WithTimeSlotPositions (WithTimeSlotsElement (WithTimeSlotSelection (WithSelectedTimeSlots a b)))
-
-
-update : Msg -> WithTimeSlotsEverything a b -> ( WithTimeSlotsEverything a b, Cmd Msg )
-update msg model =
-    let
-        noUpdateWithoutData =
-            defaultWithoutData ( model, Cmd.none )
-
-        noUpdateOnError =
-            defaultOnError ( model, Cmd.none )
-
-        useWithoutCmdMsg fn =
-            Flip.flip Tuple.pair Cmd.none << fn
-
-        noUpdateIfIntersectsSelectedTS dayNum startBound endBound updatedModel =
-            if intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots dayNum startBound endBound then
-                model
-
-            else
-                updatedModel
-    in
-    case msg of
-        SetTimeSlotPositions result ->
-            let
-                updateModelWithTSPositions elementList =
-                    ( { model
-                        | timeSlotPositions = setTimeSlotPositions startingSlotNum 0 elementList
-                      }
-                    , Cmd.none
-                    )
-            in
-            noUpdateOnError result updateModelWithTSPositions
-
-        SetTimeSlotsElement result ->
-            case result of
-                Ok { element } ->
-                    ( { model | timeSlotsElement = Just element }, Cmd.none )
-
-                Err _ ->
-                    ( model, Cmd.none )
-
-        StartSelectingTimeSlot dayNum slotNum ->
-            let
-                timeSlotPosition =
-                    getListItemAt slotNum model.timeSlotPositions
-            in
-            noUpdateWithoutData
-                timeSlotPosition
-            <|
-                useWithoutCmdMsg <|
-                    noUpdateIfIntersectsSelectedTS dayNum slotNum slotNum
-                        << useTSPositionForBothSelectionBounds model dayNum
-
-        HandleTimeSlotMouseMove pointerPosition ->
-            ( model, Task.attempt (AdjustTimeSlotSelection pointerPosition) (Dom.getViewportOf scrollableTimeSlotsId) )
-
-        AdjustTimeSlotSelection { pageY } result ->
-            case ( result, model.timeSlotSelection, model.timeSlotsElement ) of
-                ( Ok { viewport }, CurrentlySelecting { dayNum, startBound }, Just { y } ) ->
-                    let
-                        yPositionInTimeSlots =
-                            pageY - y + viewport.y
-
-                        maybePointerTSPosition =
-                            getTimeSlotPositionOfPointer model.timeSlotPositions yPositionInTimeSlots
-
-                        updateSelectionWithPointerPosition pointerTSPosition =
-                            noUpdateIfIntersectsSelectedTS
-                                dayNum
-                                startBound.slotNum
-                                pointerTSPosition.slotNum
-                            <|
-                                useTSPositionForEndSelectionBound
-                                    model
-                                    dayNum
-                                    startBound
-                                    pointerTSPosition
-                    in
-                    noUpdateWithoutData
-                        maybePointerTSPosition
-                    <|
-                        useWithoutCmdMsg updateSelectionWithPointerPosition
-
-                ( _, _, _ ) ->
-                    ( model, Cmd.none )
-
-        _ ->
-            ( model, Cmd.none )

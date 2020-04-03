@@ -1,17 +1,16 @@
-module MainMsg exposing (Msg(..))
+module MainMsg exposing (Msg(..), WithMdc)
 
-import Browser.Dom as Dom
+import EventCreation.EventCreation as EC
 import Material
-import TimeSlots as TS
+import TimeSlots.TimeSlots as TS
 
 
 type Msg
     = NoOp
     | TimeSlotMsg TS.Msg
-    | InitiateUserPromptForEventDetails
-    | PromptUserForEventDetails (Result Dom.Error Dom.Element)
-    | AdjustEventTitle String
-    | AdjustEventDescription String
-    | CloseUserPromptForEventDetails
-    | SetSelectedTimeSlot
+    | EventCreationMsg EC.Msg
     | Mdc (Material.Msg Msg)
+
+
+type alias WithMdc a =
+    { a | mdc : Material.Model Msg }
