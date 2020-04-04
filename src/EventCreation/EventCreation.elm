@@ -37,7 +37,8 @@ eventDetailsPromptWidth =
 
 
 type Msg
-    = InitiateUserPromptForEventDetails
+    = SetOneHourSelection Int Int
+    | InitiateUserPromptForEventDetails
     | PromptUserForEventDetails (Result Dom.Error Dom.Element)
     | AdjustEventTitle String
     | AdjustEventDescription String

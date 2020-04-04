@@ -204,6 +204,7 @@ viewSelectedTimeSlot selectedTimeSlot =
         , css "width" "95%"
         , css "z-index" "4"
         , css "border-radius" "8px"
+        , css "user-select" "none"
         ]
         [ viewTimeSlotDuration selectedTimeSlot ]
 
@@ -212,10 +213,10 @@ viewTimeSlotDuration : TS.WithSelectedTimeSlot a -> Html Msg
 viewTimeSlotDuration { startBound, endBound } =
     let
         ( startTime, startAmOrPm ) =
-            getTimeForSlotNum startBound.slotNum
+            getTimeForSlotNum startBound.slotNum False
 
         ( endTime, endAmOrPm ) =
-            getTimeForSlotNum endBound.slotNum
+            getTimeForSlotNum endBound.slotNum True
 
         startsAndEndsSameHalfOfDay =
             startAmOrPm == endAmOrPm
@@ -241,11 +242,20 @@ viewTimeSlotDuration { startBound, endBound } =
         ]
 
 
-getTimeForSlotNum : TS.SlotNum -> ( String, String )
-getTimeForSlotNum slotNum =
+getTimeForSlotNum : TS.SlotNum -> Bool -> ( String, String )
+getTimeForSlotNum slotNum isEndSlot =
     let
+        adjustedSlotNum =
+            slotNum
+                + (if isEndSlot then
+                    1
+
+                   else
+                    0
+                  )
+
         hour =
-            modBy 12 <| slotNum // 4
+            modBy 12 <| adjustedSlotNum // 4
 
         adjustedHour =
             if hour == 0 then
@@ -255,10 +265,10 @@ getTimeForSlotNum slotNum =
                 hour
 
         quarterInc =
-            modBy 4 <| slotNum + 1
+            modBy 4 <| adjustedSlotNum
 
         amOrPm =
-            if slotNum < 12 * 4 then
+            if adjustedSlotNum < 12 * 4 then
                 "am"
 
             else
@@ -299,9 +309,9 @@ viewCurrentlySelectingTimeSlot model dayNum =
                     , css "z-index" "4"
                     , css "box-shadow" "0 6px 10px 0 rgba(0,0,0,0.14), 0 1px 18px 0 rgba(0,0,0,0.12), 0 3px 5px -1px rgba(0,0,0,0.2)"
                     , css "border-radius" "8px"
+                    , css "user-select" "none"
                     ]
-                    [ styled div [ Typography.subheading1 ] [ text "(group name)" ]
-                    , viewTimeSlotDuration selectionDetails
+                    [ viewTimeSlotDuration selectionDetails
                     ]
 
             else
