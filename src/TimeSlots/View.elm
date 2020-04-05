@@ -1,6 +1,5 @@
 module TimeSlots.View exposing (viewDayHeadings, viewScrollableTimeSlots)
 
-import EventCreation.EventCreation as EC
 import Html exposing (Html, div, text)
 import Html.Entity as Entity
 import Json.Decode as Decode exposing (field, float)
@@ -9,7 +8,6 @@ import Material.Card as Card
 import Material.Options as Options exposing (css, styled, when)
 import Material.Typography as Typography
 import TimeSlots.TimeSlots as TS
-import TimeSlots.Update as TSUpdate
 
 
 onTimeSlotMouseMove : Options.Property c Msg
@@ -122,7 +120,7 @@ viewTimeSlotTime hour =
         ]
 
 
-viewScrollableTimeSlots : TSUpdate.WithTimeSlotsEverything a -> Html Msg
+viewScrollableTimeSlots : TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a) -> Html Msg
 viewScrollableTimeSlots model =
     let
         isSelectingTimeSlots =
@@ -141,7 +139,7 @@ viewScrollableTimeSlots model =
         [ styled div
             [ css "display" "flex"
             , css "overflow" "hidden"
-            , when isSelectingTimeSlots (Options.onMouseUp <| EventCreationMsg EC.InitiateUserPromptForEventDetails)
+            , when isSelectingTimeSlots (Options.onMouseUp InitiateUserPromptForEventDetails)
             ]
             (viewTimeSlotTimes
                 :: List.map
@@ -151,7 +149,7 @@ viewScrollableTimeSlots model =
         ]
 
 
-viewSingleDayTimeSlots : TSUpdate.WithTimeSlotsEverything a -> Int -> Html Msg
+viewSingleDayTimeSlots : TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a) -> Int -> Html Msg
 viewSingleDayTimeSlots model dayNum =
     let
         selectedTimeSlotsForThisDay =
@@ -171,15 +169,15 @@ viewSingleDayTimeSlots model dayNum =
         (List.append
             [ div
                 []
-                (List.map (viewTimeSlot model dayNum) (List.range TS.startingSlotNum (TS.startingSlotNum + TS.defaultNumSlots - 1)))
+                (List.map (viewTimeSlot dayNum) (List.range TS.startingSlotNum (TS.startingSlotNum + TS.defaultNumSlots - 1)))
             , viewCurrentlySelectingTimeSlot model dayNum
             ]
             (List.map viewSelectedTimeSlot selectedTimeSlotsForThisDay)
         )
 
 
-viewTimeSlot : TSUpdate.WithTimeSlotsEverything a -> Int -> Int -> Html Msg
-viewTimeSlot _ dayNum slotNum =
+viewTimeSlot : Int -> Int -> Html Msg
+viewTimeSlot dayNum slotNum =
     styled div
         [ css "border-right" "1px solid #829AB1"
         , when (modBy 4 slotNum == 3) (css "border-bottom" "1px solid #829AB1")
@@ -285,7 +283,7 @@ getTimeForSlotNum slotNum isEndSlot =
     )
 
 
-viewCurrentlySelectingTimeSlot : TSUpdate.WithTimeSlotsEverything a -> Int -> Html Msg
+viewCurrentlySelectingTimeSlot : TS.WithTimeSlotSelection a -> Int -> Html Msg
 viewCurrentlySelectingTimeSlot model dayNum =
     case model.timeSlotSelection of
         TS.NotSelecting ->

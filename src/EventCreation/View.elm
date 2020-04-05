@@ -8,7 +8,6 @@ import Material.Button as Button
 import Material.Card as Card
 import Material.Options as Options exposing (css, styled)
 import Material.TextField as TextField
-import TimeSlots.TimeSlots as TS
 
 
 viewUserRequest : WithMdc (EC.WithEventCreation a) -> Html Msg
@@ -24,7 +23,7 @@ viewUserRequest model =
                 , css "width" "100%"
                 , css "height" "100%"
                 , css "z-index" "100"
-                , Options.onClick <| EventCreationMsg EC.CloseUserPromptForEventDetails
+                , Options.onClick CloseUserPromptForEventDetails
                 ]
                 [ viewUserRequestForm model eventCreationDetails eventCreationPosition ]
 
@@ -55,7 +54,7 @@ viewUserRequestForm model eventCreationDetails eventCreationPosition =
             model.mdc
             [ TextField.label "Title"
             , TextField.value eventCreationDetails.title
-            , Options.onInput <| EventCreationMsg << EC.AdjustEventTitle
+            , Options.onInput AdjustEventTitle
             ]
             []
         , TextField.view Mdc
@@ -63,7 +62,7 @@ viewUserRequestForm model eventCreationDetails eventCreationPosition =
             model.mdc
             [ TextField.label "Description"
             , TextField.value eventCreationDetails.description
-            , Options.onInput <| EventCreationMsg << EC.AdjustEventDescription
+            , Options.onInput AdjustEventDescription
             ]
             []
         , Card.actions [ css "display" "flex", css "flex-direction" "row-reverse" ]
@@ -73,7 +72,7 @@ viewUserRequestForm model eventCreationDetails eventCreationPosition =
                     model.mdc
                     [ Card.actionButton
                     , Button.ripple
-                    , Options.onClick <| EventCreationMsg EC.CloseUserPromptForEventDetails
+                    , Options.onClick CloseUserPromptForEventDetails
                     , css "margin-right" "8px"
                     ]
                     [ text "Cancel" ]

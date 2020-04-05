@@ -2,12 +2,9 @@ module EventCreation.EventCreation exposing
     ( EventCreation(..)
     , EventCreationDetails
     , EventCreationPosition
-    , Msg(..)
     , WithEventCreation
     , eventDetailsPromptWidth
     )
-
-import Browser.Dom as Dom
 
 
 type EventCreation
@@ -34,12 +31,3 @@ type alias EventCreationPosition =
 eventDetailsPromptWidth : Float
 eventDetailsPromptWidth =
     300
-
-
-type Msg
-    = SetOneHourSelection Int Int
-    | InitiateUserPromptForEventDetails
-    | PromptUserForEventDetails (Result Dom.Error Dom.Element)
-    | AdjustEventTitle String
-    | AdjustEventDescription String
-    | CloseUserPromptForEventDetails

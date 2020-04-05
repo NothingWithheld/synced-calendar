@@ -1,7 +1,6 @@
 module MainMsg exposing (Msg(..), WithMdc)
 
 import Browser.Dom as Dom
-import EventCreation.EventCreation as EC
 import Material
 import TimeSlots.TimeSlots as TS
 
@@ -14,7 +13,12 @@ type Msg
     | HandleTimeSlotMouseMove TS.PointerPosition
     | AdjustTimeSlotSelection TS.PointerPosition (Result Dom.Error Dom.Viewport)
     | SetSelectedTimeSlot
-    | EventCreationMsg EC.Msg
+    | SetOneHourSelection TS.DayNum TS.SlotNum
+    | InitiateUserPromptForEventDetails
+    | PromptUserForEventDetails (Result Dom.Error Dom.Element)
+    | AdjustEventTitle String
+    | AdjustEventDescription String
+    | CloseUserPromptForEventDetails
     | Mdc (Material.Msg Msg)
 
 

@@ -1,7 +1,7 @@
 module TimeSlots.Update exposing
-    ( WithTimeSlotsEverything
-    , adjustTimeSlotSelection
+    ( adjustTimeSlotSelection
     , handleTimeSlotMouseMove
+    , setOneHourSelection
     , setSelectedTimeSlot
     , setTimeSlotPositions
     , setTimeSlotsElement
@@ -10,14 +10,11 @@ module TimeSlots.Update exposing
 
 import Browser.Dom as Dom
 import EventCreation.EventCreation as EC
+import EventCreation.Update as ECUpdate
 import MainMsg exposing (Msg(..))
 import Task
 import TimeSlots.TimeSlots as TS
 import Utils exposing (defaultOnError, defaultWithoutData, getListItemAt, useWithoutCmdMsg)
-
-
-type alias WithTimeSlotsEverything a =
-    EC.WithEventCreation (TS.WithTimeSlotPositions (TS.WithTimeSlotsElement (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a))))
 
 
 setTimeSlotPositions : TS.WithTimeSlotPositions a -> Result Dom.Error (List Dom.Element) -> ( TS.WithTimeSlotPositions a, Cmd Msg )
@@ -133,6 +130,41 @@ setSelectedTimeSlot model =
               }
             , Cmd.none
             )
+
+        ( _, _ ) ->
+            ( model, Cmd.none )
+
+
+setOneHourSelection :
+    EC.WithEventCreation (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a))
+    -> TS.DayNum
+    -> TS.SlotNum
+    -> ( EC.WithEventCreation (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a)), Cmd Msg )
+setOneHourSelection model dayNum slotNum =
+    let
+        halfHourAdjustedSlotNum =
+            2 * (slotNum // 2)
+
+        endSlotNum =
+            min (halfHourAdjustedSlotNum + 4) (TS.defaultNumSlots - 1)
+
+        startBound =
+            getListItemAt halfHourAdjustedSlotNum model.timeSlotPositions
+
+        endBound =
+            getListItemAt endSlotNum model.timeSlotPositions
+    in
+    case ( startBound, endBound ) of
+        ( Just startBoundData, Just endBoundData ) ->
+            ECUpdate.initiateUserPromptForEventDetails
+                { model
+                    | timeSlotSelection =
+                        TS.CurrentlySelecting
+                            { dayNum = dayNum
+                            , startBound = startBoundData
+                            , endBound = endBoundData
+                            }
+                }
 
         ( _, _ ) ->
             ( model, Cmd.none )

@@ -91,6 +91,7 @@ update msg model =
         Mdc msg_ ->
             Material.update Mdc msg_ model
 
+        -- TimeSlots
         SetTimeSlotPositions result ->
             TSUpdate.setTimeSlotPositions model result
 
@@ -109,12 +110,24 @@ update msg model =
         SetSelectedTimeSlot ->
             TSUpdate.setSelectedTimeSlot model
 
-        EventCreationMsg eventCreationMsg ->
-            let
-                ( newModel, newMsg ) =
-                    ECUpdate.update eventCreationMsg model
-            in
-            ( newModel, Cmd.map EventCreationMsg newMsg )
+        SetOneHourSelection dayNum slotNum ->
+            TSUpdate.setOneHourSelection model dayNum slotNum
+
+        -- EventCreation
+        InitiateUserPromptForEventDetails ->
+            ECUpdate.initiateUserPromptForEventDetails model
+
+        PromptUserForEventDetails result ->
+            ECUpdate.promptUserForEventDetails model result
+
+        AdjustEventTitle title ->
+            ECUpdate.adjustEventTitle model title
+
+        AdjustEventDescription description ->
+            ECUpdate.adjustEventDescription model description
+
+        CloseUserPromptForEventDetails ->
+            ECUpdate.closeUserPromptForEventDetails model
 
 
 requestTimeSlotPositions : Int -> Cmd Msg
