@@ -83,7 +83,7 @@ viewUserRequestForm model eventCreationDetails eventCreationPosition =
                     [ Card.actionButton
                     , Button.ripple
                     , Button.unelevated
-                    , Options.onClick <| TimeSlotMsg TS.SetSelectedTimeSlot
+                    , Options.onClick SetSelectedTimeSlot
                     ]
                     [ text "Submit" ]
                 ]

@@ -212,12 +212,3 @@ type alias PointerPosition =
     { pageX : Float
     , pageY : Float
     }
-
-
-type Msg
-    = SetTimeSlotPositions (Result Dom.Error (List Dom.Element))
-    | SetTimeSlotsElement (Result Dom.Error Dom.Element)
-    | StartSelectingTimeSlot Int Int
-    | HandleTimeSlotMouseMove PointerPosition
-    | AdjustTimeSlotSelection PointerPosition (Result Dom.Error Dom.Viewport)
-    | SetSelectedTimeSlot

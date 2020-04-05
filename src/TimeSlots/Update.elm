@@ -1,29 +1,83 @@
-module TimeSlots.Update exposing (WithTimeSlotsEverything, update)
+module TimeSlots.Update exposing
+    ( WithTimeSlotsEverything
+    , adjustTimeSlotSelection
+    , handleTimeSlotMouseMove
+    , setSelectedTimeSlot
+    , setTimeSlotPositions
+    , setTimeSlotsElement
+    , startSelectingTimeSlot
+    )
 
 import Browser.Dom as Dom
 import EventCreation.EventCreation as EC
-import Flip
+import MainMsg exposing (Msg(..))
 import Task
 import TimeSlots.TimeSlots as TS
-import Utils exposing (defaultOnError, defaultWithoutData, getListItemAt)
+import Utils exposing (defaultOnError, defaultWithoutData, getListItemAt, useWithoutCmdMsg)
 
 
 type alias WithTimeSlotsEverything a =
     EC.WithEventCreation (TS.WithTimeSlotPositions (TS.WithTimeSlotsElement (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a))))
 
 
-update : TS.Msg -> WithTimeSlotsEverything a -> ( WithTimeSlotsEverything a, Cmd TS.Msg )
-update msg model =
+setTimeSlotPositions : TS.WithTimeSlotPositions a -> Result Dom.Error (List Dom.Element) -> ( TS.WithTimeSlotPositions a, Cmd Msg )
+setTimeSlotPositions model result =
     let
-        noUpdateWithoutData =
-            defaultWithoutData ( model, Cmd.none )
+        updateModelWithTSPositions elementList =
+            ( { model
+                | timeSlotPositions = TS.setTimeSlotPositions TS.startingSlotNum 0 elementList
+              }
+            , Cmd.none
+            )
+    in
+    defaultOnError ( model, Cmd.none ) result updateModelWithTSPositions
 
-        noUpdateOnError =
-            defaultOnError ( model, Cmd.none )
 
-        useWithoutCmdMsg fn =
-            Flip.flip Tuple.pair Cmd.none << fn
+setTimeSlotsElement : TS.WithTimeSlotsElement a -> Result Dom.Error Dom.Element -> ( TS.WithTimeSlotsElement a, Cmd Msg )
+setTimeSlotsElement model result =
+    case result of
+        Ok { element } ->
+            ( { model | timeSlotsElement = Just element }, Cmd.none )
 
+        Err _ ->
+            ( model, Cmd.none )
+
+
+startSelectingTimeSlot :
+    TS.WithSelectedTimeSlots (TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a))
+    -> TS.DayNum
+    -> TS.SlotNum
+    -> ( TS.WithSelectedTimeSlots (TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a)), Cmd Msg )
+startSelectingTimeSlot model dayNum slotNum =
+    let
+        noUpdateIfIntersectsSelectedTS dayNum_ startBound endBound updatedModel =
+            if TS.intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots dayNum_ startBound endBound then
+                model
+
+            else
+                updatedModel
+
+        timeSlotPosition =
+            getListItemAt slotNum model.timeSlotPositions
+    in
+    defaultWithoutData ( model, Cmd.none ) timeSlotPosition <|
+        useWithoutCmdMsg <|
+            noUpdateIfIntersectsSelectedTS dayNum slotNum slotNum
+                << TS.useTSPositionForBothSelectionBounds model dayNum
+
+
+handleTimeSlotMouseMove : a -> TS.PointerPosition -> ( a, Cmd Msg )
+handleTimeSlotMouseMove model pointerPosition =
+    ( model, Task.attempt (AdjustTimeSlotSelection pointerPosition) (Dom.getViewportOf TS.scrollableTimeSlotsId) )
+
+
+adjustTimeSlotSelection :
+    TS.WithTimeSlotsElement (TS.WithSelectedTimeSlots (TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a)))
+    -> TS.PointerPosition
+    -> Result Dom.Error Dom.Viewport
+    -> ( TS.WithTimeSlotsElement (TS.WithSelectedTimeSlots (TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a))), Cmd Msg )
+adjustTimeSlotSelection model { pageY } result =
+    let
         noUpdateIfIntersectsSelectedTS dayNum startBound endBound updatedModel =
             if TS.intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots dayNum startBound endBound then
                 model
@@ -31,88 +85,54 @@ update msg model =
             else
                 updatedModel
     in
-    case msg of
-        TS.SetTimeSlotPositions result ->
+    case ( result, model.timeSlotSelection, model.timeSlotsElement ) of
+        ( Ok { viewport }, TS.CurrentlySelecting { dayNum, startBound }, Just { y } ) ->
             let
-                updateModelWithTSPositions elementList =
-                    ( { model
-                        | timeSlotPositions = TS.setTimeSlotPositions TS.startingSlotNum 0 elementList
-                      }
-                    , Cmd.none
-                    )
-            in
-            noUpdateOnError result updateModelWithTSPositions
+                yPositionInTimeSlots =
+                    pageY - y + viewport.y
 
-        TS.SetTimeSlotsElement result ->
-            case result of
-                Ok { element } ->
-                    ( { model | timeSlotsElement = Just element }, Cmd.none )
+                maybePointerTSPosition =
+                    TS.getTimeSlotPositionOfPointer model.timeSlotPositions yPositionInTimeSlots
 
-                Err _ ->
-                    ( model, Cmd.none )
-
-        TS.StartSelectingTimeSlot dayNum slotNum ->
-            let
-                timeSlotPosition =
-                    getListItemAt slotNum model.timeSlotPositions
-            in
-            noUpdateWithoutData
-                timeSlotPosition
-            <|
-                useWithoutCmdMsg <|
-                    noUpdateIfIntersectsSelectedTS dayNum slotNum slotNum
-                        << TS.useTSPositionForBothSelectionBounds model dayNum
-
-        TS.HandleTimeSlotMouseMove pointerPosition ->
-            ( model, Task.attempt (TS.AdjustTimeSlotSelection pointerPosition) (Dom.getViewportOf TS.scrollableTimeSlotsId) )
-
-        TS.AdjustTimeSlotSelection { pageY } result ->
-            case ( result, model.timeSlotSelection, model.timeSlotsElement ) of
-                ( Ok { viewport }, TS.CurrentlySelecting { dayNum, startBound }, Just { y } ) ->
-                    let
-                        yPositionInTimeSlots =
-                            pageY - y + viewport.y
-
-                        maybePointerTSPosition =
-                            TS.getTimeSlotPositionOfPointer model.timeSlotPositions yPositionInTimeSlots
-
-                        updateSelectionWithPointerPosition pointerTSPosition =
-                            noUpdateIfIntersectsSelectedTS
-                                dayNum
-                                startBound.slotNum
-                                pointerTSPosition.slotNum
-                            <|
-                                TS.useTSPositionForEndSelectionBound
-                                    model
-                                    dayNum
-                                    startBound
-                                    pointerTSPosition
-                    in
-                    noUpdateWithoutData
-                        maybePointerTSPosition
+                updateSelectionWithPointerPosition pointerTSPosition =
+                    noUpdateIfIntersectsSelectedTS
+                        dayNum
+                        startBound.slotNum
+                        pointerTSPosition.slotNum
                     <|
-                        useWithoutCmdMsg updateSelectionWithPointerPosition
+                        TS.useTSPositionForEndSelectionBound
+                            model
+                            dayNum
+                            startBound
+                            pointerTSPosition
+            in
+            defaultWithoutData ( model, Cmd.none ) maybePointerTSPosition <|
+                useWithoutCmdMsg updateSelectionWithPointerPosition
 
-                ( _, _, _ ) ->
-                    ( model, Cmd.none )
+        ( _, _, _ ) ->
+            ( model, Cmd.none )
 
-        TS.SetSelectedTimeSlot ->
-            case ( model.eventCreation, model.timeSlotSelection ) of
-                ( EC.CurrentlyCreatingEvent eventDetails _, TS.CurrentlySelecting timeSlot ) ->
-                    let
-                        orderedTimeSlot =
-                            TS.getOrderedTimeSlot timeSlot
 
-                        selectedTimeSlot =
-                            TS.SelectedTimeSlotDetails orderedTimeSlot eventDetails
-                    in
-                    ( { model
-                        | selectedTimeSlots = selectedTimeSlot :: model.selectedTimeSlots
-                        , timeSlotSelection = TS.NotSelecting
-                        , eventCreation = EC.NotCreating
-                      }
-                    , Cmd.none
-                    )
+setSelectedTimeSlot :
+    EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a))
+    -> ( EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)), Cmd Msg )
+setSelectedTimeSlot model =
+    case ( model.eventCreation, model.timeSlotSelection ) of
+        ( EC.CurrentlyCreatingEvent eventDetails _, TS.CurrentlySelecting timeSlot ) ->
+            let
+                orderedTimeSlot =
+                    TS.getOrderedTimeSlot timeSlot
 
-                ( _, _ ) ->
-                    ( model, Cmd.none )
+                selectedTimeSlot =
+                    TS.SelectedTimeSlotDetails orderedTimeSlot eventDetails
+            in
+            ( { model
+                | selectedTimeSlots = selectedTimeSlot :: model.selectedTimeSlots
+                , timeSlotSelection = TS.NotSelecting
+                , eventCreation = EC.NotCreating
+              }
+            , Cmd.none
+            )
+
+        ( _, _ ) ->
+            ( model, Cmd.none )

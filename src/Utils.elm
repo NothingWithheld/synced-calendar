@@ -1,5 +1,7 @@
 module Utils exposing (..)
 
+import Flip
+
 
 defaultWithoutData : ( a, b ) -> Maybe c -> (c -> ( a, b )) -> ( a, b )
 defaultWithoutData default maybeData mapFunc =
@@ -37,3 +39,8 @@ getListItemAt index list =
                         getListItemAtHelper rest (curIndex + 1)
     in
     getListItemAtHelper list 0
+
+
+useWithoutCmdMsg : (a -> b) -> (a -> ( b, Cmd msg ))
+useWithoutCmdMsg fn =
+    Flip.flip Tuple.pair Cmd.none << fn

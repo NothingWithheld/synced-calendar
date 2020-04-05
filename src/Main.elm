@@ -91,12 +91,23 @@ update msg model =
         Mdc msg_ ->
             Material.update Mdc msg_ model
 
-        TimeSlotMsg timeSlotMsg ->
-            let
-                ( newModel, newMsg ) =
-                    TSUpdate.update timeSlotMsg model
-            in
-            ( newModel, Cmd.map TimeSlotMsg newMsg )
+        SetTimeSlotPositions result ->
+            TSUpdate.setTimeSlotPositions model result
+
+        SetTimeSlotsElement result ->
+            TSUpdate.setTimeSlotsElement model result
+
+        StartSelectingTimeSlot dayNum slotNum ->
+            TSUpdate.startSelectingTimeSlot model dayNum slotNum
+
+        HandleTimeSlotMouseMove pointerPosition ->
+            TSUpdate.handleTimeSlotMouseMove model pointerPosition
+
+        AdjustTimeSlotSelection pointerPosition result ->
+            TSUpdate.adjustTimeSlotSelection model pointerPosition result
+
+        SetSelectedTimeSlot ->
+            TSUpdate.setSelectedTimeSlot model
 
         EventCreationMsg eventCreationMsg ->
             let
@@ -115,12 +126,12 @@ requestTimeSlotPositions numSlots =
         getTimeSlotPosition slotNum =
             Dom.getElement (getTimeSlotId 1 slotNum)
     in
-    Task.attempt (TimeSlotMsg << TS.SetTimeSlotPositions) (Task.sequence (List.map getTimeSlotPosition slotNumList))
+    Task.attempt SetTimeSlotPositions (Task.sequence (List.map getTimeSlotPosition slotNumList))
 
 
 requestTimeSlotsElement : Cmd Msg
 requestTimeSlotsElement =
-    Task.attempt (TimeSlotMsg << TS.SetTimeSlotsElement) (Dom.getElement TS.scrollableTimeSlotsId)
+    Task.attempt SetTimeSlotsElement (Dom.getElement TS.scrollableTimeSlotsId)
 
 
 

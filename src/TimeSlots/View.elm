@@ -15,7 +15,7 @@ import TimeSlots.Update as TSUpdate
 onTimeSlotMouseMove : Options.Property c Msg
 onTimeSlotMouseMove =
     Options.on "mousemove"
-        (Decode.map (TimeSlotMsg << TS.HandleTimeSlotMouseMove)
+        (Decode.map HandleTimeSlotMouseMove
             (Decode.map2
                 TS.PointerPosition
                 (field "pageX" float)
@@ -184,7 +184,7 @@ viewTimeSlot _ dayNum slotNum =
         [ css "border-right" "1px solid #829AB1"
         , when (modBy 4 slotNum == 3) (css "border-bottom" "1px solid #829AB1")
         , css "height" "16px"
-        , Options.onMouseDown (TimeSlotMsg <| TS.StartSelectingTimeSlot dayNum slotNum)
+        , Options.onMouseDown (StartSelectingTimeSlot dayNum slotNum)
         , Options.id (TS.getTimeSlotId dayNum slotNum)
         ]
         []
