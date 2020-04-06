@@ -142,7 +142,8 @@ viewScrollableTimeSlots model =
         [ styled div
             [ css "display" "flex"
             , css "overflow" "hidden"
-            , when isSelectingTimeSlots (Options.onMouseUp HandleTimeSlotMouseUp)
+            , when isSelectingTimeSlots <| css "cursor" "move"
+            , when isSelectingTimeSlots <| Options.onMouseUp HandleTimeSlotMouseUp
             ]
             (viewTimeSlotTimes
                 :: List.map
