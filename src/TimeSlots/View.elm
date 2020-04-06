@@ -309,7 +309,7 @@ viewCurrentlySelectingTimeSlot model dayNum =
                     , css "border-radius" "8px"
                     , css "user-select" "none"
                     ]
-                    [ viewTimeSlotDuration selectionDetails
+                    [ viewTimeSlotDuration <| TS.getOrderedTimeSlot selectionDetails
                     ]
 
             else
