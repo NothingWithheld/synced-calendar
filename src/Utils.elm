@@ -44,3 +44,17 @@ getListItemAt index list =
 useWithoutCmdMsg : (a -> b) -> (a -> ( b, Cmd msg ))
 useWithoutCmdMsg fn =
     Flip.flip Tuple.pair Cmd.none << fn
+
+
+getMinMax : Int -> Int -> ( Int, Int )
+getMinMax a b =
+    if a < b then
+        ( a, b )
+
+    else
+        ( b, a )
+
+
+applyTwice : (a -> a -> b) -> a -> b
+applyTwice fn arg =
+    fn arg arg

@@ -11,10 +11,18 @@ module TimeSlots.Update exposing
 import Browser.Dom as Dom
 import EventCreation.EventCreation as EC
 import EventCreation.Update as ECUpdate
+import Flip
 import MainMsg exposing (Msg(..))
 import Task
 import TimeSlots.TimeSlots as TS
-import Utils exposing (defaultOnError, defaultWithoutData, getListItemAt, useWithoutCmdMsg)
+import Utils
+    exposing
+        ( applyTwice
+        , defaultOnError
+        , defaultWithoutData
+        , getListItemAt
+        , useWithoutCmdMsg
+        )
 
 
 setTimeSlotPositions : TS.WithTimeSlotPositions a -> Result Dom.Error (List Dom.Element) -> ( TS.WithTimeSlotPositions a, Cmd Msg )
@@ -145,58 +153,66 @@ setSelectedTimeSlot model =
 
 
 setOneHourSelection :
-    TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a)
+    TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a))
     -> TS.DayNum
     -> TS.SlotNum
-    -> ( TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a), Cmd Msg )
+    -> ( TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a)), Cmd Msg )
 setOneHourSelection model dayNum slotNum =
     let
         halfHourAdjustedSlotNum =
             2 * (slotNum // 2)
 
         endSlotNum =
-            min (halfHourAdjustedSlotNum + 4) (TS.defaultNumSlots - 1)
+            min (halfHourAdjustedSlotNum + 3) (TS.defaultNumSlots - 1)
 
-        startBound =
-            getListItemAt halfHourAdjustedSlotNum model.timeSlotPositions
+        unselectedTSRange =
+            TS.getUnselectedTimeSlotRange
+                model.selectedTimeSlots
+                dayNum
+                halfHourAdjustedSlotNum
+                endSlotNum
 
-        endBound =
-            getListItemAt endSlotNum model.timeSlotPositions
+        maybeBounds =
+            Maybe.map
+                (applyTwice
+                    Tuple.mapBoth
+                 <|
+                    Flip.flip getListItemAt <|
+                        model.timeSlotPositions
+                )
+                unselectedTSRange
     in
-    case ( startBound, endBound ) of
-        ( Just startBoundData, Just endBoundData ) ->
-            ECUpdate.initiateUserPromptForEventDetails
-                { model
-                    | timeSlotSelection =
-                        TS.CurrentlySelecting
-                            { dayNum = dayNum
-                            , startBound = startBoundData
-                            , endBound = endBoundData
-                            }
-                }
+    case maybeBounds of
+        Just ( maybeStart, maybeEnd ) ->
+            case ( maybeStart, maybeEnd ) of
+                ( Just startBound, Just endBound ) ->
+                    ECUpdate.initiateUserPromptForEventDetails
+                        { model
+                            | timeSlotSelection =
+                                TS.CurrentlySelecting
+                                    { dayNum = dayNum
+                                    , startBound = startBound
+                                    , endBound = endBound
+                                    }
+                        }
 
-        ( _, _ ) ->
-            ( model, Cmd.none )
+                ( _, _ ) ->
+                    ( model, Cmd.none )
+
+        Nothing ->
+            ( { model | timeSlotSelection = TS.NotSelecting }, Cmd.none )
 
 
 handleTimeSlotMouseUp :
-    TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a)
-    -> ( TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a), Cmd Msg )
+    TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a))
+    -> ( TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a)), Cmd Msg )
 handleTimeSlotMouseUp model =
     case model.timeSlotSelection of
-        TS.CurrentlySelecting { dayNum, startBound, endBound } ->
-            let
-                minSlotNum =
-                    min startBound.slotNum endBound.slotNum
-            in
-            ( model
-            , Task.attempt
-                PromptUserForEventDetails
-                (Dom.getElement (TS.getTimeSlotId dayNum minSlotNum))
-            )
-
         TS.InitialPressNoMove { dayNum, startBound } ->
             setOneHourSelection model dayNum startBound.slotNum
+
+        TS.CurrentlySelecting _ ->
+            ECUpdate.initiateUserPromptForEventDetails model
 
         _ ->
             ( model, Cmd.none )

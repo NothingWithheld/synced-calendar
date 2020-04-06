@@ -2,6 +2,7 @@ module TimeSlots.TimeSlots exposing (..)
 
 import Browser.Dom as Dom
 import EventCreation.EventCreation as EC
+import Utils exposing (applyTwice, getMinMax)
 
 
 scrollableTimeSlotsId : String
@@ -168,18 +169,14 @@ setTimeSlotPositions ind curYOffset elements =
                 :: setTimeSlotPositions (ind + 1) (curYOffset + element.height) xs
 
 
-intersectsCurrentlySelectedTimeSlots : List SelectedTimeSlotDetails -> DayNum -> Int -> Int -> Bool
+intersectsCurrentlySelectedTimeSlots : List SelectedTimeSlotDetails -> DayNum -> SlotNum -> SlotNum -> Bool
 intersectsCurrentlySelectedTimeSlots currentTimeSlotsDetails dayNum startSlotNum endSlotNum =
     let
         currentTimeSlots =
             List.map getTimeSlotFromDetails currentTimeSlotsDetails
 
         ( lowerSlotNum, higherSlotNum ) =
-            if startSlotNum < endSlotNum then
-                ( startSlotNum, endSlotNum )
-
-            else
-                ( endSlotNum, startSlotNum )
+            getMinMax startSlotNum endSlotNum
 
         selectedTimeSlotsForThisDay =
             List.filter (\timeSlot -> timeSlot.dayNum == dayNum) currentTimeSlots
@@ -192,6 +189,48 @@ intersectsCurrentlySelectedTimeSlots currentTimeSlotsDetails dayNum startSlotNum
                 selectedTimeSlotsForThisDay
     in
     List.any isTimeSlotTaken (List.range lowerSlotNum higherSlotNum)
+
+
+getUnselectedTimeSlotRange : List SelectedTimeSlotDetails -> DayNum -> SlotNum -> SlotNum -> Maybe ( SlotNum, SlotNum )
+getUnselectedTimeSlotRange currentTimeSlotDetails dayNum startSlotNum endSlotNum =
+    let
+        ( lowerSlotNum, higherSlotNum ) =
+            getMinMax startSlotNum endSlotNum
+
+        unselectedRange =
+            List.filter
+                (not
+                    << (applyTwice <|
+                            intersectsCurrentlySelectedTimeSlots
+                                currentTimeSlotDetails
+                                dayNum
+                       )
+                )
+            <|
+                List.range lowerSlotNum higherSlotNum
+
+        rangeStart =
+            List.head unselectedRange
+
+        getContinuousRange start =
+            Tuple.pair start <|
+                List.foldl
+                    (\( i, slotNum ) end ->
+                        if start + i == slotNum then
+                            slotNum
+
+                        else
+                            end
+                    )
+                    start
+                <|
+                    List.indexedMap Tuple.pair unselectedRange
+    in
+    if List.isEmpty unselectedRange then
+        Nothing
+
+    else
+        Maybe.map getContinuousRange rangeStart
 
 
 getTimeSlotFromDetails : SelectedTimeSlotDetails -> WithSelectedTimeSlot {}
