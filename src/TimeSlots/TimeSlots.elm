@@ -57,6 +57,19 @@ type alias SelectedTimeSlot =
     }
 
 
+type alias InitialSelectedTimeSlot =
+    { dayNum : DayNum
+    , startBound : TimeSlotBoundaryPosition
+    }
+
+
+type alias WithInitialSelectedTimeSlot a =
+    { a
+        | dayNum : DayNum
+        , startBound : TimeSlotBoundaryPosition
+    }
+
+
 type SelectedTimeSlotDetails
     = SelectedTimeSlotDetails SelectedTimeSlot EC.EventCreationDetails
 
@@ -71,6 +84,7 @@ type alias WithSelectedTimeSlot a =
 
 type TimeSlotSelection
     = NotSelecting
+    | InitialPressNoMove InitialSelectedTimeSlot
     | CurrentlySelecting SelectedTimeSlot
 
 
@@ -90,6 +104,22 @@ startingDayNum =
 startingSlotNum : SlotNum
 startingSlotNum =
     0
+
+
+useTSPositionForInitialSelection :
+    WithTimeSlotSelection a
+    -> DayNum
+    -> TimeSlotBoundaryPosition
+    -> WithTimeSlotSelection a
+useTSPositionForInitialSelection beginningSelectionRecord dayNum timeSlotPosition =
+    { beginningSelectionRecord
+        | timeSlotSelection =
+            InitialPressNoMove
+                { dayNum = dayNum
+                , startBound =
+                    timeSlotPosition
+                }
+    }
 
 
 setTimeSlotSelectionBounds :

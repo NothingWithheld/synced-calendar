@@ -1,7 +1,7 @@
 module TimeSlots.Update exposing
     ( adjustTimeSlotSelection
     , handleTimeSlotMouseMove
-    , setOneHourSelection
+    , handleTimeSlotMouseUp
     , setSelectedTimeSlot
     , setTimeSlotPositions
     , setTimeSlotsElement
@@ -60,12 +60,21 @@ startSelectingTimeSlot model dayNum slotNum =
     defaultWithoutData ( model, Cmd.none ) timeSlotPosition <|
         useWithoutCmdMsg <|
             noUpdateIfIntersectsSelectedTS dayNum slotNum slotNum
-                << TS.useTSPositionForBothSelectionBounds model dayNum
+                << TS.useTSPositionForInitialSelection model dayNum
 
 
-handleTimeSlotMouseMove : a -> TS.PointerPosition -> ( a, Cmd Msg )
+handleTimeSlotMouseMove : TS.WithTimeSlotSelection a -> TS.PointerPosition -> ( TS.WithTimeSlotSelection a, Cmd Msg )
 handleTimeSlotMouseMove model pointerPosition =
-    ( model, Task.attempt (AdjustTimeSlotSelection pointerPosition) (Dom.getViewportOf TS.scrollableTimeSlotsId) )
+    let
+        adjustTSSelectionMsg =
+            Task.attempt (AdjustTimeSlotSelection pointerPosition) (Dom.getViewportOf TS.scrollableTimeSlotsId)
+    in
+    case model.timeSlotSelection of
+        TS.InitialPressNoMove { dayNum, startBound } ->
+            ( TS.useTSPositionForBothSelectionBounds model dayNum startBound, adjustTSSelectionMsg )
+
+        _ ->
+            ( model, adjustTSSelectionMsg )
 
 
 adjustTimeSlotSelection :
@@ -136,10 +145,10 @@ setSelectedTimeSlot model =
 
 
 setOneHourSelection :
-    EC.WithEventCreation (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a))
+    TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a)
     -> TS.DayNum
     -> TS.SlotNum
-    -> ( EC.WithEventCreation (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a)), Cmd Msg )
+    -> ( TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a), Cmd Msg )
 setOneHourSelection model dayNum slotNum =
     let
         halfHourAdjustedSlotNum =
@@ -167,4 +176,27 @@ setOneHourSelection model dayNum slotNum =
                 }
 
         ( _, _ ) ->
+            ( model, Cmd.none )
+
+
+handleTimeSlotMouseUp :
+    TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a)
+    -> ( TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a), Cmd Msg )
+handleTimeSlotMouseUp model =
+    case model.timeSlotSelection of
+        TS.CurrentlySelecting { dayNum, startBound, endBound } ->
+            let
+                minSlotNum =
+                    min startBound.slotNum endBound.slotNum
+            in
+            ( model
+            , Task.attempt
+                PromptUserForEventDetails
+                (Dom.getElement (TS.getTimeSlotId dayNum minSlotNum))
+            )
+
+        TS.InitialPressNoMove { dayNum, startBound } ->
+            setOneHourSelection model dayNum startBound.slotNum
+
+        _ ->
             ( model, Cmd.none )

@@ -13,10 +13,10 @@ import Task
 import TimeSlots.TimeSlots as TS
 
 
-initiateUserPromptForEventDetails : EC.WithEventCreation (TS.WithTimeSlotSelection a) -> ( EC.WithEventCreation (TS.WithTimeSlotSelection a), Cmd Msg )
+initiateUserPromptForEventDetails : TS.WithTimeSlotSelection a -> ( TS.WithTimeSlotSelection a, Cmd Msg )
 initiateUserPromptForEventDetails model =
-    case ( model.eventCreation, model.timeSlotSelection ) of
-        ( EC.NotCreating, TS.CurrentlySelecting { dayNum, startBound, endBound } ) ->
+    case model.timeSlotSelection of
+        TS.CurrentlySelecting { dayNum, startBound, endBound } ->
             let
                 minSlotNum =
                     min startBound.slotNum endBound.slotNum
@@ -27,7 +27,7 @@ initiateUserPromptForEventDetails model =
                 (Dom.getElement (TS.getTimeSlotId dayNum minSlotNum))
             )
 
-        ( _, _ ) ->
+        _ ->
             ( model, Cmd.none )
 
 

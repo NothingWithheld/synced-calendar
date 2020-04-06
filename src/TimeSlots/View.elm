@@ -128,6 +128,9 @@ viewScrollableTimeSlots model =
                 TS.NotSelecting ->
                     False
 
+                TS.InitialPressNoMove _ ->
+                    True
+
                 TS.CurrentlySelecting _ ->
                     True
     in
@@ -139,7 +142,7 @@ viewScrollableTimeSlots model =
         [ styled div
             [ css "display" "flex"
             , css "overflow" "hidden"
-            , when isSelectingTimeSlots (Options.onMouseUp InitiateUserPromptForEventDetails)
+            , when isSelectingTimeSlots (Options.onMouseUp HandleTimeSlotMouseUp)
             ]
             (viewTimeSlotTimes
                 :: List.map
@@ -160,6 +163,9 @@ viewSingleDayTimeSlots model dayNum =
             case model.timeSlotSelection of
                 TS.NotSelecting ->
                     False
+
+                TS.InitialPressNoMove _ ->
+                    True
 
                 TS.CurrentlySelecting _ ->
                     True
@@ -286,9 +292,6 @@ getTimeForSlotNum slotNum isEndSlot =
 viewCurrentlySelectingTimeSlot : TS.WithTimeSlotSelection a -> Int -> Html Msg
 viewCurrentlySelectingTimeSlot model dayNum =
     case model.timeSlotSelection of
-        TS.NotSelecting ->
-            text ""
-
         TS.CurrentlySelecting ({ startBound, endBound } as selectionDetails) ->
             let
                 cardDimensions =
@@ -314,6 +317,9 @@ viewCurrentlySelectingTimeSlot model dayNum =
 
             else
                 text ""
+
+        _ ->
+            text ""
 
 
 getCardDimensions : TS.TimeSlotBoundaryPosition -> TS.TimeSlotBoundaryPosition -> CardDimensions

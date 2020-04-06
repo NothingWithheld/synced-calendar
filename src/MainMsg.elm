@@ -13,8 +13,7 @@ type Msg
     | HandleTimeSlotMouseMove TS.PointerPosition
     | AdjustTimeSlotSelection TS.PointerPosition (Result Dom.Error Dom.Viewport)
     | SetSelectedTimeSlot
-    | SetOneHourSelection TS.DayNum TS.SlotNum
-    | InitiateUserPromptForEventDetails
+    | HandleTimeSlotMouseUp
     | PromptUserForEventDetails (Result Dom.Error Dom.Element)
     | AdjustEventTitle String
     | AdjustEventDescription String

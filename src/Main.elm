@@ -110,13 +110,10 @@ update msg model =
         SetSelectedTimeSlot ->
             TSUpdate.setSelectedTimeSlot model
 
-        SetOneHourSelection dayNum slotNum ->
-            TSUpdate.setOneHourSelection model dayNum slotNum
+        HandleTimeSlotMouseUp ->
+            TSUpdate.handleTimeSlotMouseUp model
 
         -- EventCreation
-        InitiateUserPromptForEventDetails ->
-            ECUpdate.initiateUserPromptForEventDetails model
-
         PromptUserForEventDetails result ->
             ECUpdate.promptUserForEventDetails model result
 
