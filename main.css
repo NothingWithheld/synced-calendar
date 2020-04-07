@@ -6,3 +6,7 @@
 #select--end-time > .mdc-select__anchor {
   width: 110px;
 }
+
+#select--end-time > .mdc-select__menu {
+  width: 200px;
+}

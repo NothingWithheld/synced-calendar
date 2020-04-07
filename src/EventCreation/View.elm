@@ -105,8 +105,8 @@ viewTimeChangeSelects model =
                 , css "justify-content" "space-between"
                 ]
                 [ viewDayChangeSelect model dayNum
-                , viewTimeSlotSelect model startBound.slotNum False
-                , viewTimeSlotSelect model endBound.slotNum True
+                , viewStartTimeSlotSelect model startBound.slotNum
+                , viewEndTimeSlotSelect model startBound.slotNum endBound.slotNum
                 ]
 
         _ ->
@@ -151,39 +151,57 @@ viewDaySelectOption dayNum label isSelected =
         [ text <| label ]
 
 
-viewTimeSlotSelect : WithMdc a -> TS.SlotNum -> Bool -> Html Msg
-viewTimeSlotSelect model selectedSlotNum isEndSlot =
+viewStartTimeSlotSelect : WithMdc a -> TS.SlotNum -> Html Msg
+viewStartTimeSlotSelect model selectedSlotNum =
     let
         ( startTime, startAmOrPm ) =
-            TS.getTimeForSlotNum selectedSlotNum isEndSlot
+            TS.getTimeForSlotNum selectedSlotNum False
     in
     Select.view Mdc
-        (if isEndSlot then
-            ECConsts.endTimeSelectId
-
-         else
-            ECConsts.startTimeSelectId
-        )
+        ECConsts.startTimeSelectId
         model.mdc
-        [ Select.label <|
-            if isEndSlot then
-                "End"
-
-            else
-                "Start"
+        [ Select.label "Start"
         , Select.selectedText <| startTime ++ startAmOrPm
         , Select.required
         ]
     <|
         List.map
             (\slotNum ->
-                viewTimeSlotSelectOption isEndSlot slotNum <| slotNum == selectedSlotNum
+                viewTimeSlotSelectOption "" False slotNum <| slotNum == selectedSlotNum
             )
             TS.slotNumRange
 
 
-viewTimeSlotSelectOption : Bool -> TS.SlotNum -> Bool -> Material.Menu.Item Msg
-viewTimeSlotSelectOption isEndSlot slotNum isSelected =
+viewEndTimeSlotSelect : WithMdc a -> TS.SlotNum -> TS.SlotNum -> Html Msg
+viewEndTimeSlotSelect model selectedStartSlotNum selectedEndSlotNum =
+    let
+        ( endTime, endAmOrPm ) =
+            TS.getTimeForSlotNum selectedEndSlotNum True
+    in
+    Select.view Mdc
+        ECConsts.endTimeSelectId
+        model.mdc
+        [ Select.label "End"
+        , Select.selectedText <| endTime ++ endAmOrPm
+        , Select.required
+        ]
+    <|
+        List.map
+            (\slotNum ->
+                viewTimeSlotSelectOption
+                    (" (" ++ TS.getTimeDurationBetween selectedStartSlotNum slotNum ++ ")")
+                    True
+                    slotNum
+                <|
+                    slotNum
+                        == selectedEndSlotNum
+            )
+        <|
+            List.filter ((<=) selectedStartSlotNum) TS.slotNumRange
+
+
+viewTimeSlotSelectOption : String -> Bool -> TS.SlotNum -> Bool -> Material.Menu.Item Msg
+viewTimeSlotSelectOption labelAddition isEndSlot slotNum isSelected =
     let
         ( time, amOrPm ) =
             TS.getTimeForSlotNum slotNum isEndSlot
@@ -193,4 +211,4 @@ viewTimeSlotSelectOption isEndSlot slotNum isSelected =
         , when isSelected
             Select.selected
         ]
-        [ text <| time ++ amOrPm ]
+        [ text <| time ++ amOrPm ++ labelAddition ]

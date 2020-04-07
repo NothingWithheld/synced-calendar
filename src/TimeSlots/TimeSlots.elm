@@ -339,3 +339,19 @@ getTimeForSlotNum slotNum isEndSlot =
            )
     , amOrPm
     )
+
+
+getTimeDurationBetween : SlotNum -> SlotNum -> String
+getTimeDurationBetween startSlot endSlot =
+    let
+        diff =
+            endSlot + 1 - startSlot
+    in
+    if diff < 4 then
+        (String.fromInt <| diff * 15) ++ " mins"
+
+    else if diff == 4 then
+        "1 hr"
+
+    else
+        (String.fromFloat <| toFloat diff / 4) ++ " hrs"
