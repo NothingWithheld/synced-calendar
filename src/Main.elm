@@ -31,9 +31,7 @@ main =
 
 
 type alias Model =
-    { numDays : Int
-    , numSlotsInDay : Int
-    , timeSlotPositions : List TS.TimeSlotBoundaryPosition
+    { timeSlotPositions : List TS.TimeSlotBoundaryPosition
     , timeSlotsElement : Maybe Element
     , timeSlotSelection : TS.TimeSlotSelection
     , eventCreation : EC.EventCreation
@@ -60,9 +58,7 @@ type alias EventSelectedTimeSlot =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { numDays = 7
-      , numSlotsInDay = defaultNumSlots
-      , timeSlotPositions = []
+    ( { timeSlotPositions = []
       , timeSlotsElement = Nothing
       , timeSlotSelection = TS.NotSelecting
       , eventCreation = EC.NotCreating

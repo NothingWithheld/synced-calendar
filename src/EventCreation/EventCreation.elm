@@ -30,4 +30,4 @@ type alias EventCreationPosition =
 
 eventDetailsPromptWidth : Float
 eventDetailsPromptWidth =
-    300
+    320

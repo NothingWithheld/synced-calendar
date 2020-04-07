@@ -24,10 +24,6 @@ onTimeSlotMouseMove =
 
 viewDayHeadings : Html Msg
 viewDayHeadings =
-    let
-        dayAbbreviations =
-            [ "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" ]
-    in
     styled div
         [ css "display" "flex"
         , css "height" "10vh"
@@ -46,7 +42,7 @@ viewDayHeadings =
             []
             :: List.map
                 viewDayHeading
-                dayAbbreviations
+                TS.dayAbbreviations
         )
 
 
@@ -125,14 +121,14 @@ viewScrollableTimeSlots model =
     let
         isSelectingTimeSlots =
             case model.timeSlotSelection of
-                TS.NotSelecting ->
-                    False
-
                 TS.InitialPressNoMove _ ->
                     True
 
                 TS.CurrentlySelecting _ ->
                     True
+
+                _ ->
+                    False
     in
     styled div
         [ css "height" "80vh"
@@ -162,14 +158,14 @@ viewSingleDayTimeSlots model dayNum =
 
         isSelectingTimeSlots =
             case model.timeSlotSelection of
-                TS.NotSelecting ->
-                    False
-
                 TS.InitialPressNoMove _ ->
                     True
 
                 TS.CurrentlySelecting _ ->
                     True
+
+                _ ->
+                    False
     in
     styled div
         [ css "flex-grow" "1", css "position" "relative", when isSelectingTimeSlots onTimeSlotMouseMove ]
@@ -202,7 +198,7 @@ viewSelectedTimeSlot selectedTimeSlot =
             getCardDimensions selectedTimeSlot.startBound selectedTimeSlot.endBound
     in
     Card.view
-        [ css "background-color" "red"
+        [ css "background-color" "#147D64"
         , css "top" (String.fromFloat cardDimensions.y ++ "px")
         , css "height" (String.fromFloat (cardDimensions.height - 4) ++ "px")
         , css "position" "absolute"
@@ -218,10 +214,10 @@ viewTimeSlotDuration : TS.WithSelectedTimeSlot a -> Html Msg
 viewTimeSlotDuration { startBound, endBound } =
     let
         ( startTime, startAmOrPm ) =
-            getTimeForSlotNum startBound.slotNum False
+            TS.getTimeForSlotNum startBound.slotNum False
 
         ( endTime, endAmOrPm ) =
-            getTimeForSlotNum endBound.slotNum True
+            TS.getTimeForSlotNum endBound.slotNum True
 
         startsAndEndsSameHalfOfDay =
             startAmOrPm == endAmOrPm
@@ -247,49 +243,6 @@ viewTimeSlotDuration { startBound, endBound } =
         ]
 
 
-getTimeForSlotNum : TS.SlotNum -> Bool -> ( String, String )
-getTimeForSlotNum slotNum isEndSlot =
-    let
-        adjustedSlotNum =
-            slotNum
-                + (if isEndSlot then
-                    1
-
-                   else
-                    0
-                  )
-
-        hour =
-            modBy 12 <| adjustedSlotNum // 4
-
-        adjustedHour =
-            if hour == 0 then
-                12
-
-            else
-                hour
-
-        quarterInc =
-            modBy 4 <| adjustedSlotNum
-
-        amOrPm =
-            if adjustedSlotNum < 12 * 4 then
-                "am"
-
-            else
-                "pm"
-    in
-    ( String.fromInt adjustedHour
-        ++ (if quarterInc == 0 then
-                ""
-
-            else
-                ":" ++ String.fromInt (15 * quarterInc)
-           )
-    , amOrPm
-    )
-
-
 viewCurrentlySelectingTimeSlot : TS.WithTimeSlotSelection a -> Int -> Html Msg
 viewCurrentlySelectingTimeSlot model dayNum =
     case model.timeSlotSelection of
@@ -303,7 +256,7 @@ viewCurrentlySelectingTimeSlot model dayNum =
             in
             if dayNum == dayNumCurrentlySelected then
                 Card.view
-                    [ css "background-color" "green"
+                    [ css "background-color" "#2680C2"
                     , css "top" (String.fromFloat cardDimensions.y ++ "px")
                     , css "height" (String.fromFloat (cardDimensions.height - 4) ++ "px")
                     , css "position" "absolute"

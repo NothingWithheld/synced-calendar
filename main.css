@@ -1,0 +1,8 @@
+#select--day > .mdc-select__anchor {
+  width: 80px;
+}
+
+#select--start-time > .mdc-select__anchor,
+#select--end-time > .mdc-select__anchor {
+  width: 110px;
+}

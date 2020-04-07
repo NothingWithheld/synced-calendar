@@ -10,16 +10,6 @@ scrollableTimeSlotsId =
     "scrollable-time-slots"
 
 
-defaultNumSlots : Int
-defaultNumSlots =
-    24 * 4
-
-
-defaultNumDays : Int
-defaultNumDays =
-    7
-
-
 type alias DayNum =
     Int
 
@@ -105,6 +95,31 @@ startingDayNum =
 startingSlotNum : SlotNum
 startingSlotNum =
     0
+
+
+defaultNumSlots : Int
+defaultNumSlots =
+    24 * 4
+
+
+defaultNumDays : Int
+defaultNumDays =
+    7
+
+
+dayNumRange : List DayNum
+dayNumRange =
+    List.range startingDayNum <| defaultNumDays - 1
+
+
+slotNumRange : List SlotNum
+slotNumRange =
+    List.range startingSlotNum <| defaultNumSlots - 1
+
+
+dayAbbreviations : List String
+dayAbbreviations =
+    [ "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" ]
 
 
 useTSPositionForInitialSelection :
@@ -281,3 +296,46 @@ type alias PointerPosition =
     { pageX : Float
     , pageY : Float
     }
+
+
+getTimeForSlotNum : SlotNum -> Bool -> ( String, String )
+getTimeForSlotNum slotNum isEndSlot =
+    let
+        adjustedSlotNum =
+            slotNum
+                + (if isEndSlot then
+                    1
+
+                   else
+                    0
+                  )
+
+        hour =
+            modBy 12 <| adjustedSlotNum // 4
+
+        adjustedHour =
+            if hour == 0 then
+                12
+
+            else
+                hour
+
+        quarterInc =
+            modBy 4 <| adjustedSlotNum
+
+        amOrPm =
+            if adjustedSlotNum < 12 * 4 then
+                "am"
+
+            else
+                "pm"
+    in
+    ( String.fromInt adjustedHour
+        ++ (if quarterInc == 0 then
+                ""
+
+            else
+                ":" ++ String.fromInt (15 * quarterInc)
+           )
+    , amOrPm
+    )
