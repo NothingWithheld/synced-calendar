@@ -33,7 +33,7 @@ viewUserRequest model =
                 , Options.onClick CloseUserPromptForEventDetails
                 ]
                 [ styled div
-                    [ css "max-height" <| String.fromFloat eventCreationPosition.y ++ "px"
+                    [ css "max-height" <| String.fromFloat (max 0 eventCreationPosition.y) ++ "px"
                     , css "min-height" "32px"
                     , css "width" "0px"
                     , css "flex-grow" "1"
@@ -54,7 +54,7 @@ viewUserRequest model =
 
 
 viewUserRequestForm :
-    WithMdc (EC.WithEventCreation (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a)))
+    WithMdc (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a))
     -> EC.EventCreationDetails
     -> Html Msg
 viewUserRequestForm model eventCreationDetails =

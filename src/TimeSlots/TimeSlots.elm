@@ -347,7 +347,7 @@ getTimeForSlotNum slotNum isEndSlot =
             modBy 4 <| adjustedSlotNum
 
         amOrPm =
-            if adjustedSlotNum < 12 * 4 then
+            if adjustedSlotNum < 12 * 4 || slotNum == maxSlotNum then
                 "am"
 
             else
