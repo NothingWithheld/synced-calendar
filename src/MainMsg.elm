@@ -15,6 +15,7 @@ type Msg
     | AdjustTimeSlotSelection TS.PointerPosition (Result Dom.Error Dom.Viewport)
     | SetSelectedTimeSlot
     | HandleTimeSlotMouseUp
+    | EditTimeSlotSelection TS.SelectedTimeSlotDetails
       -- EventCreation
     | PromptUserForEventDetails (Result Dom.Error Dom.Element)
     | AdjustEventTitle String

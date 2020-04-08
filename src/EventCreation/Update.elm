@@ -31,6 +31,17 @@ initiateUserPromptForEventDetails model =
                 (Dom.getElement (TS.getTimeSlotId dayNum minSlotNum))
             )
 
+        TS.EditingSelection { dayNum, startBound, endBound } _ ->
+            let
+                minSlotNum =
+                    min startBound.slotNum endBound.slotNum
+            in
+            ( model
+            , Task.attempt
+                PromptUserForEventDetails
+                (Dom.getElement (TS.getTimeSlotId dayNum minSlotNum))
+            )
+
         _ ->
             ( model, Cmd.none )
 

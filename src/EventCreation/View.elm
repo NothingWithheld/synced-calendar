@@ -146,18 +146,26 @@ viewInitialCreationActionButtons model intersectsTimeSlots =
 viewTimeChangeSelects : WithMdc (TS.WithTimeSlotSelection a) -> Html Msg
 viewTimeChangeSelects model =
     case model.timeSlotSelection of
-        TS.CurrentlySelecting { dayNum, startBound, endBound } ->
-            styled div
-                [ css "display" "flex"
-                , css "justify-content" "space-between"
-                ]
-                [ viewDayChangeSelect model dayNum
-                , viewStartTimeSlotSelect model startBound.slotNum
-                , viewEndTimeSlotSelect model startBound.slotNum endBound.slotNum
-                ]
+        TS.CurrentlySelecting selectedTimeSlot ->
+            viewWeeklyFreeTimesSelects model selectedTimeSlot
+
+        TS.EditingSelection selectedTimeSlot _ ->
+            viewWeeklyFreeTimesSelects model selectedTimeSlot
 
         _ ->
             text ""
+
+
+viewWeeklyFreeTimesSelects : WithMdc a -> TS.SelectedTimeSlot -> Html Msg
+viewWeeklyFreeTimesSelects model { dayNum, startBound, endBound } =
+    styled div
+        [ css "display" "flex"
+        , css "justify-content" "space-between"
+        ]
+        [ viewDayChangeSelect model dayNum
+        , viewStartTimeSlotSelect model startBound.slotNum
+        , viewEndTimeSlotSelect model startBound.slotNum endBound.slotNum
+        ]
 
 
 viewDayChangeSelect : WithMdc a -> TS.DayNum -> Html Msg

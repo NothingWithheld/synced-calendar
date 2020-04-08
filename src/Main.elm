@@ -85,6 +85,9 @@ update msg model =
         HandleTimeSlotMouseUp ->
             TSUpdate.handleTimeSlotMouseUp model
 
+        EditTimeSlotSelection selectedTimeslotDetails ->
+            TSUpdate.editTimeSlotSelection model selectedTimeslotDetails
+
         -- EventCreation
         PromptUserForEventDetails result ->
             ECUpdate.promptUserForEventDetails model result

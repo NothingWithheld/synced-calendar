@@ -153,8 +153,7 @@ viewSingleDayTimeSlots : TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a) -
 viewSingleDayTimeSlots model dayNum =
     let
         selectedTimeSlotsForThisDay =
-            List.map TS.getTimeSlotFromDetails model.selectedTimeSlots
-                |> List.filter (\timeSlot -> timeSlot.dayNum == dayNum)
+            List.filter ((\timeSlot -> timeSlot.dayNum == dayNum) << TS.getTimeSlotFromDetails) model.selectedTimeSlots
 
         isSelectingTimeSlots =
             case model.timeSlotSelection of
@@ -191,11 +190,14 @@ viewTimeSlot dayNum slotNum =
         []
 
 
-viewSelectedTimeSlot : TS.WithSelectedTimeSlot a -> Html Msg
-viewSelectedTimeSlot selectedTimeSlot =
+viewSelectedTimeSlot : TS.SelectedTimeSlotDetails -> Html Msg
+viewSelectedTimeSlot selectedTimeSlotDetails =
     let
+        (TS.SelectedTimeSlotDetails selectedTimeSlot _) =
+            selectedTimeSlotDetails
+
         cardDimensions =
-            getCardDimensions selectedTimeSlot.startBound selectedTimeSlot.endBound
+            getCardDimensions selectedTimeSlot
     in
     Card.view
         [ css "background-color" "#147D64"
@@ -205,6 +207,7 @@ viewSelectedTimeSlot selectedTimeSlot =
         , css "width" "95%"
         , css "border-radius" "8px"
         , css "user-select" "none"
+        , Options.onClick <| EditTimeSlotSelection selectedTimeSlotDetails
         ]
         [ viewTimeSlotDuration selectedTimeSlot ]
 
@@ -242,57 +245,69 @@ viewTimeSlotDuration { startBound, endBound } =
         ]
 
 
-viewCurrentlySelectingTimeSlot : TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a) -> Int -> Html Msg
+viewCurrentlySelectingTimeSlot : TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a) -> TS.DayNum -> Html Msg
 viewCurrentlySelectingTimeSlot model dayNum =
     case model.timeSlotSelection of
-        TS.CurrentlySelecting ({ startBound, endBound } as selectionDetails) ->
-            let
-                cardDimensions =
-                    getCardDimensions startBound endBound
+        TS.CurrentlySelecting timeSlotSelection ->
+            viewUserChangingTimeSlot model timeSlotSelection dayNum
 
-                dayNumCurrentlySelected =
-                    selectionDetails.dayNum
-
-                intersectsTimeSlots =
-                    TS.doesTSSelectionIntersectSelectedTimeSlots
-                        model.selectedTimeSlots
-                        model.timeSlotSelection
-            in
-            if dayNum == dayNumCurrentlySelected then
-                Card.view
-                    [ if intersectsTimeSlots then
-                        css "background-color" "#D64545"
-
-                      else
-                        css "background-color" "#2680C2"
-                    , css "top" (String.fromFloat cardDimensions.y ++ "px")
-                    , css "height" (String.fromFloat (cardDimensions.height - 4) ++ "px")
-                    , css "position" "absolute"
-                    , css "width" "95%"
-                    , css "z-index" "4"
-                    , css "box-shadow" "0 6px 10px 0 rgba(0,0,0,0.14), 0 1px 18px 0 rgba(0,0,0,0.12), 0 3px 5px -1px rgba(0,0,0,0.2)"
-                    , css "border-radius" "8px"
-                    , css "user-select" "none"
-                    ]
-                    [ viewTimeSlotDuration <| TS.getOrderedTimeSlot selectionDetails
-                    ]
-
-            else
-                text ""
+        TS.EditingSelection timeSlotSelection _ ->
+            viewUserChangingTimeSlot model timeSlotSelection dayNum
 
         _ ->
             text ""
 
 
-getCardDimensions : TS.TimeSlotBoundaryPosition -> TS.TimeSlotBoundaryPosition -> CardDimensions
-getCardDimensions boundA boundB =
+viewUserChangingTimeSlot :
+    TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a)
+    -> TS.SelectedTimeSlot
+    -> TS.DayNum
+    -> Html Msg
+viewUserChangingTimeSlot model timeSlotSelection dayNum =
+    let
+        cardDimensions =
+            getCardDimensions timeSlotSelection
+
+        dayNumCurrentlySelected =
+            timeSlotSelection.dayNum
+
+        intersectsTimeSlots =
+            TS.doesTSSelectionIntersectSelectedTimeSlots
+                model.selectedTimeSlots
+                model.timeSlotSelection
+    in
+    if dayNum == dayNumCurrentlySelected then
+        Card.view
+            [ if intersectsTimeSlots then
+                css "background-color" "#D64545"
+
+              else
+                css "background-color" "#2680C2"
+            , css "top" (String.fromFloat cardDimensions.y ++ "px")
+            , css "height" (String.fromFloat (cardDimensions.height - 4) ++ "px")
+            , css "position" "absolute"
+            , css "width" "95%"
+            , css "z-index" "4"
+            , css "box-shadow" "0 6px 10px 0 rgba(0,0,0,0.14), 0 1px 18px 0 rgba(0,0,0,0.12), 0 3px 5px -1px rgba(0,0,0,0.2)"
+            , css "border-radius" "8px"
+            , css "user-select" "none"
+            ]
+            [ viewTimeSlotDuration <| TS.getOrderedTimeSlot timeSlotSelection
+            ]
+
+    else
+        text ""
+
+
+getCardDimensions : TS.WithSelectedTimeSlot a -> CardDimensions
+getCardDimensions { startBound, endBound } =
     let
         ( higherBound, lowerBound ) =
-            if boundA.y < boundB.y then
-                ( boundA, boundB )
+            if startBound.y < endBound.y then
+                ( startBound, endBound )
 
             else
-                ( boundB, boundA )
+                ( endBound, startBound )
 
         totalHeight =
             lowerBound.y + lowerBound.height - higherBound.y

@@ -77,6 +77,7 @@ type TimeSlotSelection
     = NotSelecting
     | InitialPressNoMove InitialSelectedTimeSlot
     | CurrentlySelecting SelectedTimeSlot
+    | EditingSelection SelectedTimeSlot SelectedTimeSlotDetails
 
 
 type alias WithTimeSlotSelection a =

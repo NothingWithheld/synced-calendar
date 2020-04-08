@@ -1,5 +1,6 @@
 module TimeSlots.Update exposing
     ( adjustTimeSlotSelection
+    , editTimeSlotSelection
     , handleTimeSlotMouseMove
     , handleTimeSlotMouseUp
     , setSelectedTimeSlot
@@ -131,33 +132,63 @@ setSelectedTimeSlot :
     EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a))
     -> ( EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)), Cmd Msg )
 setSelectedTimeSlot model =
-    case ( model.eventCreation, model.timeSlotSelection ) of
-        ( EC.CurrentlyCreatingEvent eventDetails _, TS.CurrentlySelecting timeSlot ) ->
-            let
-                orderedTimeSlot =
-                    TS.getOrderedTimeSlot timeSlot
+    case model.eventCreation of
+        EC.CurrentlyCreatingEvent eventDetails _ ->
+            case model.timeSlotSelection of
+                TS.CurrentlySelecting timeSlot ->
+                    let
+                        orderedTimeSlot =
+                            TS.getOrderedTimeSlot timeSlot
 
-                selectedTimeSlot =
-                    TS.SelectedTimeSlotDetails orderedTimeSlot eventDetails
+                        selectedTimeSlot =
+                            TS.SelectedTimeSlotDetails orderedTimeSlot eventDetails
 
-                intersectsTimeSlots =
-                    TS.doesTSSelectionIntersectSelectedTimeSlots
-                        model.selectedTimeSlots
-                        model.timeSlotSelection
-            in
-            if intersectsTimeSlots then
-                ( model, Cmd.none )
+                        intersectsTimeSlots =
+                            TS.doesTSSelectionIntersectSelectedTimeSlots
+                                model.selectedTimeSlots
+                                model.timeSlotSelection
+                    in
+                    if intersectsTimeSlots then
+                        ( model, Cmd.none )
 
-            else
-                ( { model
-                    | selectedTimeSlots = selectedTimeSlot :: model.selectedTimeSlots
-                    , timeSlotSelection = TS.NotSelecting
-                    , eventCreation = EC.NotCreating
-                  }
-                , Cmd.none
-                )
+                    else
+                        ( { model
+                            | selectedTimeSlots = selectedTimeSlot :: model.selectedTimeSlots
+                            , timeSlotSelection = TS.NotSelecting
+                            , eventCreation = EC.NotCreating
+                          }
+                        , Cmd.none
+                        )
 
-        ( _, _ ) ->
+                TS.EditingSelection timeSlot _ ->
+                    let
+                        orderedTimeSlot =
+                            TS.getOrderedTimeSlot timeSlot
+
+                        selectedTimeSlot =
+                            TS.SelectedTimeSlotDetails orderedTimeSlot eventDetails
+
+                        intersectsTimeSlots =
+                            TS.doesTSSelectionIntersectSelectedTimeSlots
+                                model.selectedTimeSlots
+                                model.timeSlotSelection
+                    in
+                    if intersectsTimeSlots then
+                        ( model, Cmd.none )
+
+                    else
+                        ( { model
+                            | selectedTimeSlots = selectedTimeSlot :: model.selectedTimeSlots
+                            , timeSlotSelection = TS.NotSelecting
+                            , eventCreation = EC.NotCreating
+                          }
+                        , Cmd.none
+                        )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        _ ->
             ( model, Cmd.none )
 
 
@@ -225,3 +256,23 @@ handleTimeSlotMouseUp model =
 
         _ ->
             ( model, Cmd.none )
+
+
+editTimeSlotSelection :
+    TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a)
+    -> TS.SelectedTimeSlotDetails
+    -> ( TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a), Cmd Msg )
+editTimeSlotSelection model selectedTimeSlotDetails =
+    let
+        (TS.SelectedTimeSlotDetails selectedTimeSlot _) =
+            selectedTimeSlotDetails
+
+        selectedTimeSlotsWithoutChosen =
+            List.filter ((/=) selectedTimeSlotDetails) model.selectedTimeSlots
+    in
+    ECUpdate.initiateUserPromptForEventDetails
+        { model
+            | timeSlotSelection =
+                TS.EditingSelection selectedTimeSlot selectedTimeSlotDetails
+            , selectedTimeSlots = selectedTimeSlotsWithoutChosen
+        }
