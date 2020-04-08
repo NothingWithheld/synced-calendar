@@ -3,6 +3,11 @@ module Utils exposing (..)
 import Flip
 
 
+applicative : Maybe (a -> b) -> Maybe a -> Maybe b
+applicative =
+    Maybe.map2 (<|)
+
+
 defaultWithoutData : ( a, b ) -> Maybe c -> (c -> ( a, b )) -> ( a, b )
 defaultWithoutData default maybeData mapFunc =
     case maybeData of

@@ -119,6 +119,15 @@ update msg model =
         AdjustEventDescription description ->
             ECUpdate.adjustEventDescription model description
 
+        ChangeSelectionDayNum dayNum ->
+            ECUpdate.changeSelectionDayNum model dayNum
+
+        ChangeSelectionStartSlot startSlot ->
+            ECUpdate.changeSelectionStartSlot model startSlot
+
+        ChangeSelectionEndSlot endSlot ->
+            ECUpdate.changeSelectionEndSlot model endSlot
+
         CloseUserPromptForEventDetails ->
             ECUpdate.closeUserPromptForEventDetails model
 

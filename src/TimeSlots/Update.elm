@@ -114,7 +114,7 @@ adjustTimeSlotSelection model { pageY } result =
                         startBound.slotNum
                         pointerTSPosition.slotNum
                     <|
-                        TS.useTSPositionForEndSelectionBound
+                        TS.useTSPositionsForSelectionBounds
                             model
                             dayNum
                             startBound

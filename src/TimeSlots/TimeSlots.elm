@@ -107,14 +107,24 @@ defaultNumDays =
     7
 
 
+maxDayNum : DayNum
+maxDayNum =
+    defaultNumDays - 1
+
+
+maxSlotNum : SlotNum
+maxSlotNum =
+    defaultNumSlots - 1
+
+
 dayNumRange : List DayNum
 dayNumRange =
-    List.range startingDayNum <| defaultNumDays - 1
+    List.range startingDayNum maxDayNum
 
 
 slotNumRange : List SlotNum
 slotNumRange =
-    List.range startingSlotNum <| defaultNumSlots - 1
+    List.range startingSlotNum maxSlotNum
 
 
 dayAbbreviations : List String
@@ -159,13 +169,13 @@ useTSPositionForBothSelectionBounds beginningSelectionRecord dayNum timeSlotPosi
         SelectedTimeSlot dayNum timeSlotPosition timeSlotPosition
 
 
-useTSPositionForEndSelectionBound :
+useTSPositionsForSelectionBounds :
     WithTimeSlotSelection a
     -> DayNum
     -> TimeSlotBoundaryPosition
     -> TimeSlotBoundaryPosition
     -> WithTimeSlotSelection a
-useTSPositionForEndSelectionBound beginningSelectionRecord dayNum startBound timeSlotPosition =
+useTSPositionsForSelectionBounds beginningSelectionRecord dayNum startBound timeSlotPosition =
     setTimeSlotSelectionBounds beginningSelectionRecord <|
         SelectedTimeSlot dayNum startBound timeSlotPosition
 

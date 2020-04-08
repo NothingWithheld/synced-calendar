@@ -128,6 +128,7 @@ viewDayChangeSelect model selectedDayNum =
         [ Select.label "Day"
         , Select.selectedText selectedDayAbbr
         , Select.required
+        , Select.onSelect ChangeSelectionDayNum
         ]
     <|
         List.map
@@ -163,6 +164,7 @@ viewStartTimeSlotSelect model selectedSlotNum =
         [ Select.label "Start"
         , Select.selectedText <| startTime ++ startAmOrPm
         , Select.required
+        , Select.onSelect ChangeSelectionStartSlot
         ]
     <|
         List.map
@@ -184,6 +186,7 @@ viewEndTimeSlotSelect model selectedStartSlotNum selectedEndSlotNum =
         [ Select.label "End"
         , Select.selectedText <| endTime ++ endAmOrPm
         , Select.required
+        , Select.onSelect ChangeSelectionEndSlot
         ]
     <|
         List.map
