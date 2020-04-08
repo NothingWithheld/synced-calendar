@@ -58,7 +58,7 @@ promptUserForEventDetails model result =
             in
             ( { model
                 | eventCreation =
-                    EC.CurrentlyCreatingEvent { title = "", description = "" } { x = x, y = element.y }
+                    EC.CurrentlyCreatingEvent EC.WeeklyFreeTimes { x = x, y = element.y }
               }
             , Cmd.none
             )
@@ -70,17 +70,24 @@ promptUserForEventDetails model result =
 adjustEventTitle : EC.WithEventCreation a -> String -> ( EC.WithEventCreation a, Cmd Msg )
 adjustEventTitle model title =
     case model.eventCreation of
-        EC.CurrentlyCreatingEvent eventDetails eventPosition ->
-            ( { model
-                | eventCreation =
-                    EC.CurrentlyCreatingEvent
-                        { eventDetails
-                            | title = title
-                        }
-                        eventPosition
-              }
-            , Cmd.none
-            )
+        EC.CurrentlyCreatingEvent eventCreationDetails eventPosition ->
+            case eventCreationDetails of
+                EC.EventDetails eventDetails ->
+                    ( { model
+                        | eventCreation =
+                            EC.CurrentlyCreatingEvent
+                                (EC.EventDetails
+                                    { eventDetails
+                                        | title = title
+                                    }
+                                )
+                                eventPosition
+                      }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
 
         EC.NotCreating ->
             ( model, Cmd.none )
@@ -89,17 +96,24 @@ adjustEventTitle model title =
 adjustEventDescription : EC.WithEventCreation a -> String -> ( EC.WithEventCreation a, Cmd Msg )
 adjustEventDescription model description =
     case model.eventCreation of
-        EC.CurrentlyCreatingEvent eventDetails eventPosition ->
-            ( { model
-                | eventCreation =
-                    EC.CurrentlyCreatingEvent
-                        { eventDetails
-                            | description = description
-                        }
-                        eventPosition
-              }
-            , Cmd.none
-            )
+        EC.CurrentlyCreatingEvent eventCreationDetails eventPosition ->
+            case eventCreationDetails of
+                EC.EventDetails eventDetails ->
+                    ( { model
+                        | eventCreation =
+                            EC.CurrentlyCreatingEvent
+                                (EC.EventDetails
+                                    { eventDetails
+                                        | description = description
+                                    }
+                                )
+                                eventPosition
+                      }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
 
         EC.NotCreating ->
             ( model, Cmd.none )

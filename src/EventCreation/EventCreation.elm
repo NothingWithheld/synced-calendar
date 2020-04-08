@@ -1,7 +1,8 @@
 module EventCreation.EventCreation exposing
     ( EventCreation(..)
-    , EventCreationDetails
+    , EventCreationDetails(..)
     , EventCreationPosition
+    , EventItems
     , WithEventCreation
     , eventDetailsPromptWidth
     )
@@ -16,7 +17,12 @@ type alias WithEventCreation a =
     { a | eventCreation : EventCreation }
 
 
-type alias EventCreationDetails =
+type EventCreationDetails
+    = WeeklyFreeTimes
+    | EventDetails EventItems
+
+
+type alias EventItems =
     { title : String
     , description : String
     }

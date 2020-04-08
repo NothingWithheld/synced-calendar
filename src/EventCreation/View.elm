@@ -77,45 +77,68 @@ viewUserRequestForm model eventCreationDetails =
                 }
             )
         ]
-        [ TextField.view Mdc
-            "event-title"
-            model.mdc
-            [ TextField.label "Title"
-            , TextField.value eventCreationDetails.title
-            , Options.onInput AdjustEventTitle
-            ]
-            []
-        , TextField.view Mdc
-            "event-description"
-            model.mdc
-            [ TextField.label "Description"
-            , TextField.value eventCreationDetails.description
-            , Options.onInput AdjustEventDescription
-            ]
-            []
-        , viewTimeChangeSelects model
-        , Card.actions [ css "display" "flex", css "flex-direction" "row-reverse" ]
-            [ Card.actionButtons []
-                [ Button.view Mdc
-                    "close-event-button"
-                    model.mdc
-                    [ Card.actionButton
-                    , Button.ripple
-                    , Options.onClick CloseUserPromptForEventDetails
-                    , css "margin-right" "8px"
-                    ]
-                    [ text "Cancel" ]
-                , Button.view Mdc
-                    "set-event-button"
-                    model.mdc
-                    [ Card.actionButton
-                    , Button.ripple
-                    , Button.unelevated
-                    , Options.onClick SetSelectedTimeSlot
-                    , when intersectsTimeSlots Button.disabled
-                    ]
-                    [ text "Submit" ]
+        (case eventCreationDetails of
+            EC.WeeklyFreeTimes ->
+                viewWeeklyFreeTimesForm model intersectsTimeSlots
+
+            EC.EventDetails eventItems ->
+                viewEventDetailsForm model eventItems intersectsTimeSlots
+        )
+
+
+viewWeeklyFreeTimesForm : WithMdc (TS.WithTimeSlotSelection a) -> Bool -> List (Html Msg)
+viewWeeklyFreeTimesForm model intersectsTimeSlots =
+    [ viewTimeChangeSelects model
+    , viewInitialCreationActionButtons model intersectsTimeSlots
+    ]
+
+
+viewEventDetailsForm : WithMdc (TS.WithTimeSlotSelection a) -> EC.EventItems -> Bool -> List (Html Msg)
+viewEventDetailsForm model eventItems intersectsTimeSlots =
+    [ TextField.view Mdc
+        "event-title"
+        model.mdc
+        [ TextField.label "Title"
+        , TextField.value eventItems.title
+        , Options.onInput AdjustEventTitle
+        ]
+        []
+    , viewTimeChangeSelects model
+    , TextField.view Mdc
+        "event-description"
+        model.mdc
+        [ TextField.label "Description"
+        , TextField.value eventItems.description
+        , Options.onInput AdjustEventDescription
+        ]
+        []
+    , viewInitialCreationActionButtons model intersectsTimeSlots
+    ]
+
+
+viewInitialCreationActionButtons : WithMdc a -> Bool -> Html Msg
+viewInitialCreationActionButtons model intersectsTimeSlots =
+    Card.actions [ css "display" "flex", css "flex-direction" "row-reverse" ]
+        [ Card.actionButtons []
+            [ Button.view Mdc
+                "close-event-button"
+                model.mdc
+                [ Card.actionButton
+                , Button.ripple
+                , Options.onClick CloseUserPromptForEventDetails
+                , css "margin-right" "8px"
                 ]
+                [ text "Cancel" ]
+            , Button.view Mdc
+                "set-event-button"
+                model.mdc
+                [ Card.actionButton
+                , Button.ripple
+                , Button.unelevated
+                , Options.onClick SetSelectedTimeSlot
+                , when intersectsTimeSlots Button.disabled
+                ]
+                [ text "Submit" ]
             ]
         ]
 
