@@ -28,21 +28,37 @@ viewUserRequest model =
                 , css "width" "100%"
                 , css "height" "100%"
                 , css "z-index" "100"
+                , css "display" "flex"
+                , css "flex-direction" "column"
                 , Options.onClick CloseUserPromptForEventDetails
                 ]
-                [ viewUserRequestForm model eventCreationDetails eventCreationPosition ]
+                [ styled div
+                    [ css "max-height" <| String.fromFloat eventCreationPosition.y ++ "px"
+                    , css "min-height" "32px"
+                    , css "width" "0px"
+                    , css "flex-grow" "1"
+                    ]
+                    []
+                , styled div
+                    [ css "display" "flex"
+                    ]
+                    [ styled div [ css "width" <| String.fromFloat eventCreationPosition.x ++ "px", css "height" "0px" ] []
+                    , viewUserRequestForm model eventCreationDetails
+                    ]
+                , styled div
+                    [ css "min-height" "32px"
+                    , css "width" "0px"
+                    ]
+                    []
+                ]
 
 
 viewUserRequestForm :
     WithMdc (EC.WithEventCreation (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a)))
     -> EC.EventCreationDetails
-    -> EC.EventCreationPosition
     -> Html Msg
-viewUserRequestForm model eventCreationDetails eventCreationPosition =
+viewUserRequestForm model eventCreationDetails =
     let
-        positionFromTop =
-            Basics.max eventCreationPosition.y 50
-
         intersectsTimeSlots =
             TS.doesTSSelectionIntersectSelectedTimeSlots
                 model.selectedTimeSlots
@@ -50,10 +66,7 @@ viewUserRequestForm model eventCreationDetails eventCreationPosition =
     in
     Card.view
         [ when intersectsTimeSlots <| css "border" "2px solid #D64545"
-        , css "position" "absolute"
         , css "width" (String.fromFloat EC.eventDetailsPromptWidth ++ "px")
-        , css "left" (String.fromFloat eventCreationPosition.x ++ "px")
-        , css "top" (String.fromFloat positionFromTop ++ "px")
         , css "padding" "12px 8px 0px"
         , css "box-shadow" "0 24px 38px 3px rgba(0,0,0,0.14), 0 9px 46px 8px rgba(0,0,0,0.12), 0 11px 15px -7px rgba(0,0,0,0.2)"
         , Options.onWithOptions "click"
