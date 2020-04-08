@@ -147,6 +147,16 @@ changeSelectionDayNum model dayNumStr =
                             }
                 }
 
+        ( TS.EditingSelection selectionBounds _, Just dayNum ) ->
+            initiateUserPromptForEventDetails
+                { model
+                    | timeSlotSelection =
+                        TS.CurrentlySelecting
+                            { selectionBounds
+                                | dayNum = dayNum
+                            }
+                }
+
         ( _, _ ) ->
             ( model, Cmd.none )
 
@@ -159,9 +169,8 @@ changeSelectionStartSlot model startSlotStr =
     let
         maybeStartSlotNum =
             String.toInt startSlotStr
-    in
-    case ( model.timeSlotSelection, maybeStartSlotNum ) of
-        ( TS.CurrentlySelecting { startBound, endBound, dayNum }, Just startSlotNum ) ->
+
+        updateFunc { startBound, endBound, dayNum } startSlotNum =
             let
                 startSlotDiff =
                     startSlotNum - startBound.slotNum
@@ -180,8 +189,17 @@ changeSelectionStartSlot model startSlotStr =
                     applicative
                         (Maybe.map (TS.useTSPositionsForSelectionBounds model dayNum) newStartBound)
                         newEndBound
+    in
+    case model.timeSlotSelection of
+        TS.CurrentlySelecting selectionBounds ->
+            Maybe.withDefault ( model, Cmd.none ) <|
+                Maybe.map (updateFunc selectionBounds) maybeStartSlotNum
 
-        ( _, _ ) ->
+        TS.EditingSelection selectionBounds _ ->
+            Maybe.withDefault ( model, Cmd.none ) <|
+                Maybe.map (updateFunc selectionBounds) maybeStartSlotNum
+
+        _ ->
             ( model, Cmd.none )
 
 
@@ -196,6 +214,16 @@ changeSelectionEndSlot model endSlotStr =
     in
     case ( model.timeSlotSelection, maybeEndSlotNum ) of
         ( TS.CurrentlySelecting { startBound, dayNum }, Just endSlotNum ) ->
+            let
+                newEndBound =
+                    getListItemAt endSlotNum model.timeSlotPositions
+            in
+            ( Maybe.withDefault model <|
+                Maybe.map (TS.useTSPositionsForSelectionBounds model dayNum startBound) newEndBound
+            , Cmd.none
+            )
+
+        ( TS.EditingSelection { startBound, dayNum } _, Just endSlotNum ) ->
             let
                 newEndBound =
                     getListItemAt endSlotNum model.timeSlotPositions

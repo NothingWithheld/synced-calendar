@@ -132,61 +132,38 @@ setSelectedTimeSlot :
     EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a))
     -> ( EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)), Cmd Msg )
 setSelectedTimeSlot model =
-    case model.eventCreation of
-        EC.CurrentlyCreatingEvent eventDetails _ ->
-            case model.timeSlotSelection of
-                TS.CurrentlySelecting timeSlot ->
-                    let
-                        orderedTimeSlot =
-                            TS.getOrderedTimeSlot timeSlot
+    let
+        updateFunc eventDetails selectionBounds =
+            let
+                orderedSelectionBounds =
+                    TS.getOrderedTimeSlot selectionBounds
 
-                        selectedTimeSlot =
-                            TS.SelectedTimeSlotDetails orderedTimeSlot eventDetails
+                selectedTimeSlot =
+                    TS.SelectedTimeSlotDetails orderedSelectionBounds eventDetails
 
-                        intersectsTimeSlots =
-                            TS.doesTSSelectionIntersectSelectedTimeSlots
-                                model.selectedTimeSlots
-                                model.timeSlotSelection
-                    in
-                    if intersectsTimeSlots then
-                        ( model, Cmd.none )
+                intersectsTimeSlots =
+                    TS.doesTSSelectionIntersectSelectedTimeSlots
+                        model.selectedTimeSlots
+                        model.timeSlotSelection
+            in
+            if intersectsTimeSlots then
+                ( model, Cmd.none )
 
-                    else
-                        ( { model
-                            | selectedTimeSlots = selectedTimeSlot :: model.selectedTimeSlots
-                            , timeSlotSelection = TS.NotSelecting
-                            , eventCreation = EC.NotCreating
-                          }
-                        , Cmd.none
-                        )
+            else
+                ( { model
+                    | selectedTimeSlots = selectedTimeSlot :: model.selectedTimeSlots
+                    , timeSlotSelection = TS.NotSelecting
+                    , eventCreation = EC.NotCreating
+                  }
+                , Cmd.none
+                )
+    in
+    case ( model.eventCreation, model.timeSlotSelection ) of
+        ( EC.CurrentlyCreatingEvent eventDetails _, TS.CurrentlySelecting selectionBounds ) ->
+            updateFunc eventDetails selectionBounds
 
-                TS.EditingSelection timeSlot _ ->
-                    let
-                        orderedTimeSlot =
-                            TS.getOrderedTimeSlot timeSlot
-
-                        selectedTimeSlot =
-                            TS.SelectedTimeSlotDetails orderedTimeSlot eventDetails
-
-                        intersectsTimeSlots =
-                            TS.doesTSSelectionIntersectSelectedTimeSlots
-                                model.selectedTimeSlots
-                                model.timeSlotSelection
-                    in
-                    if intersectsTimeSlots then
-                        ( model, Cmd.none )
-
-                    else
-                        ( { model
-                            | selectedTimeSlots = selectedTimeSlot :: model.selectedTimeSlots
-                            , timeSlotSelection = TS.NotSelecting
-                            , eventCreation = EC.NotCreating
-                          }
-                        , Cmd.none
-                        )
-
-                _ ->
-                    ( model, Cmd.none )
+        ( EC.CurrentlyCreatingEvent eventDetails _, TS.EditingSelection selectionBounds _ ) ->
+            updateFunc eventDetails selectionBounds
 
         _ ->
             ( model, Cmd.none )
