@@ -139,14 +139,23 @@ setSelectedTimeSlot model =
 
                 selectedTimeSlot =
                     TS.SelectedTimeSlotDetails orderedTimeSlot eventDetails
+
+                intersectsTimeSlots =
+                    TS.doesTSSelectionIntersectSelectedTimeSlots
+                        model.selectedTimeSlots
+                        model.timeSlotSelection
             in
-            ( { model
-                | selectedTimeSlots = selectedTimeSlot :: model.selectedTimeSlots
-                , timeSlotSelection = TS.NotSelecting
-                , eventCreation = EC.NotCreating
-              }
-            , Cmd.none
-            )
+            if intersectsTimeSlots then
+                ( model, Cmd.none )
+
+            else
+                ( { model
+                    | selectedTimeSlots = selectedTimeSlot :: model.selectedTimeSlots
+                    , timeSlotSelection = TS.NotSelecting
+                    , eventCreation = EC.NotCreating
+                  }
+                , Cmd.none
+                )
 
         ( _, _ ) ->
             ( model, Cmd.none )

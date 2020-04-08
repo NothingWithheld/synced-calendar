@@ -216,6 +216,19 @@ intersectsCurrentlySelectedTimeSlots currentTimeSlotsDetails dayNum startSlotNum
     List.any isTimeSlotTaken (List.range lowerSlotNum higherSlotNum)
 
 
+doesTSSelectionIntersectSelectedTimeSlots : List SelectedTimeSlotDetails -> TimeSlotSelection -> Bool
+doesTSSelectionIntersectSelectedTimeSlots currentTimeSlotDetails timeSlotSelection =
+    case timeSlotSelection of
+        CurrentlySelecting { dayNum, startBound, endBound } ->
+            intersectsCurrentlySelectedTimeSlots currentTimeSlotDetails
+                dayNum
+                startBound.slotNum
+                endBound.slotNum
+
+        _ ->
+            False
+
+
 getUnselectedTimeSlotRange : List SelectedTimeSlotDetails -> DayNum -> SlotNum -> SlotNum -> Maybe ( SlotNum, SlotNum )
 getUnselectedTimeSlotRange currentTimeSlotDetails dayNum startSlotNum endSlotNum =
     let

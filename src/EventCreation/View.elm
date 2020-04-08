@@ -15,7 +15,7 @@ import TimeSlots.TimeSlots as TS
 import Utils exposing (getListItemAt)
 
 
-viewUserRequest : WithMdc (EC.WithEventCreation (TS.WithTimeSlotSelection a)) -> Html Msg
+viewUserRequest : WithMdc (EC.WithEventCreation (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a))) -> Html Msg
 viewUserRequest model =
     case model.eventCreation of
         EC.NotCreating ->
@@ -33,14 +33,24 @@ viewUserRequest model =
                 [ viewUserRequestForm model eventCreationDetails eventCreationPosition ]
 
 
-viewUserRequestForm : WithMdc (EC.WithEventCreation (TS.WithTimeSlotSelection a)) -> EC.EventCreationDetails -> EC.EventCreationPosition -> Html Msg
+viewUserRequestForm :
+    WithMdc (EC.WithEventCreation (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a)))
+    -> EC.EventCreationDetails
+    -> EC.EventCreationPosition
+    -> Html Msg
 viewUserRequestForm model eventCreationDetails eventCreationPosition =
     let
         positionFromTop =
             Basics.max eventCreationPosition.y 50
+
+        intersectsTimeSlots =
+            TS.doesTSSelectionIntersectSelectedTimeSlots
+                model.selectedTimeSlots
+                model.timeSlotSelection
     in
     Card.view
-        [ css "position" "absolute"
+        [ when intersectsTimeSlots <| css "border" "2px solid #D64545"
+        , css "position" "absolute"
         , css "width" (String.fromFloat EC.eventDetailsPromptWidth ++ "px")
         , css "left" (String.fromFloat eventCreationPosition.x ++ "px")
         , css "top" (String.fromFloat positionFromTop ++ "px")
@@ -89,6 +99,7 @@ viewUserRequestForm model eventCreationDetails eventCreationPosition =
                     , Button.ripple
                     , Button.unelevated
                     , Options.onClick SetSelectedTimeSlot
+                    , when intersectsTimeSlots Button.disabled
                     ]
                     [ text "Submit" ]
                 ]

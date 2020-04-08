@@ -203,7 +203,6 @@ viewSelectedTimeSlot selectedTimeSlot =
         , css "height" (String.fromFloat (cardDimensions.height - 4) ++ "px")
         , css "position" "absolute"
         , css "width" "95%"
-        , css "z-index" "4"
         , css "border-radius" "8px"
         , css "user-select" "none"
         ]
@@ -243,7 +242,7 @@ viewTimeSlotDuration { startBound, endBound } =
         ]
 
 
-viewCurrentlySelectingTimeSlot : TS.WithTimeSlotSelection a -> Int -> Html Msg
+viewCurrentlySelectingTimeSlot : TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a) -> Int -> Html Msg
 viewCurrentlySelectingTimeSlot model dayNum =
     case model.timeSlotSelection of
         TS.CurrentlySelecting ({ startBound, endBound } as selectionDetails) ->
@@ -253,10 +252,19 @@ viewCurrentlySelectingTimeSlot model dayNum =
 
                 dayNumCurrentlySelected =
                     selectionDetails.dayNum
+
+                intersectsTimeSlots =
+                    TS.doesTSSelectionIntersectSelectedTimeSlots
+                        model.selectedTimeSlots
+                        model.timeSlotSelection
             in
             if dayNum == dayNumCurrentlySelected then
                 Card.view
-                    [ css "background-color" "#2680C2"
+                    [ if intersectsTimeSlots then
+                        css "background-color" "#D64545"
+
+                      else
+                        css "background-color" "#2680C2"
                     , css "top" (String.fromFloat cardDimensions.y ++ "px")
                     , css "height" (String.fromFloat (cardDimensions.height - 4) ++ "px")
                     , css "position" "absolute"
