@@ -1,4 +1,4 @@
-module EventCreation.View exposing (viewUserRequest)
+module EventCreation.View exposing (viewDiscardConfirmationModal, viewUserRequest)
 
 import EventCreation.Constants as ECConsts
 import EventCreation.EventCreation as EC
@@ -7,10 +7,12 @@ import Json.Decode as Decode
 import MainMsg exposing (Msg(..), WithMdc)
 import Material.Button as Button
 import Material.Card as Card
+import Material.IconButton as IconButton
 import Material.Menu
 import Material.Options as Options exposing (css, styled, when)
 import Material.Select as Select
 import Material.TextField as TextField
+import Material.Typography as Typography
 import TimeSlots.TimeSlots as TS
 import Utils exposing (getListItemAt)
 
@@ -157,23 +159,23 @@ viewEditingActionButtons : WithMdc a -> Bool -> Html Msg
 viewEditingActionButtons model intersectsTimeSlots =
     Card.actions [ css "display" "flex", css "flex-direction" "row-reverse" ]
         [ Card.actionButtons []
-            [ Button.view Mdc
+            [ IconButton.view Mdc
+                "trash-event-button"
+                model.mdc
+                [ IconButton.icon1 "delete"
+                , IconButton.label1 "Delete this time slot"
+                , Options.onClick CloseUserPromptForEventDetails
+                ]
+                []
+            , Button.view Mdc
                 "cancel-event-button"
                 model.mdc
                 [ Card.actionButton
                 , Button.ripple
                 , Options.onClick CloseUserPromptForEventDetails
+                , css "margin-right" "8px"
                 ]
                 [ text "Cancel" ]
-            , Button.view Mdc
-                "trash-event-button"
-                model.mdc
-                [ Card.actionButton
-                , Button.ripple
-                , Options.onClick CloseUserPromptForEventDetails
-                , Button.icon "delete"
-                ]
-                []
             , Button.view Mdc
                 "set-event-button"
                 model.mdc
@@ -315,3 +317,52 @@ viewTimeSlotSelectOption labelAddition isEndSlot slotNum isSelected =
             Select.selected
         ]
         [ text <| time ++ amOrPm ++ labelAddition ]
+
+
+viewDiscardConfirmationModal : WithMdc (EC.WithDiscardConfirmationModal a) -> Html Msg
+viewDiscardConfirmationModal model =
+    if model.isDiscardConfirmationModalOpen then
+        styled div
+            [ css "position" "absolute"
+            , css "background-color" "rgba(0,0,0,0.4)"
+            , css "z-index" "101"
+            , css "height" "100%"
+            , css "width" "100%"
+            , css "display" "flex"
+            , css "justify-content" "center"
+            , css "align-items" "center"
+            ]
+            [ Card.view [ css "padding" "4px 12px 8px" ]
+                [ styled div
+                    []
+                    [ styled Html.h2
+                        [ Typography.headline6 ]
+                        [ text "Discard unsaved changes?" ]
+                    ]
+                , Card.actions [ css "display" "flex", css "flex-direction" "row-reverse" ]
+                    [ Card.actionButtons []
+                        [ Button.view Mdc
+                            "close-event-button"
+                            model.mdc
+                            [ Card.actionButton
+                            , Button.ripple
+                            , Options.onClick CancelDiscardConfirmationModal
+                            , css "margin-right" "8px"
+                            ]
+                            [ text "Cancel" ]
+                        , Button.view Mdc
+                            "set-event-button"
+                            model.mdc
+                            [ Card.actionButton
+                            , Button.ripple
+                            , Button.unelevated
+                            , Options.onClick CloseUserPromptForEventDetails
+                            ]
+                            [ text "Discard" ]
+                        ]
+                    ]
+                ]
+            ]
+
+    else
+        text ""

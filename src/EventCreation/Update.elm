@@ -1,6 +1,7 @@
 module EventCreation.Update exposing
     ( adjustEventDescription
     , adjustEventTitle
+    , cancelDiscardConfirmationModal
     , changeSelectionDayNum
     , changeSelectionEndSlot
     , changeSelectionStartSlot
@@ -147,14 +148,15 @@ changeSelectionDayNum model dayNumStr =
                             }
                 }
 
-        ( TS.EditingSelection selectionBounds _, Just dayNum ) ->
+        ( TS.EditingSelection selectionBounds previousDetails, Just dayNum ) ->
             initiateUserPromptForEventDetails
                 { model
                     | timeSlotSelection =
-                        TS.CurrentlySelecting
+                        TS.EditingSelection
                             { selectionBounds
                                 | dayNum = dayNum
                             }
+                            previousDetails
                 }
 
         ( _, _ ) ->
@@ -237,6 +239,19 @@ changeSelectionEndSlot model endSlotStr =
             ( model, Cmd.none )
 
 
-closeUserPromptForEventDetails : EC.WithEventCreation (TS.WithTimeSlotSelection a) -> ( EC.WithEventCreation (TS.WithTimeSlotSelection a), Cmd Msg )
+closeUserPromptForEventDetails :
+    EC.WithDiscardConfirmationModal (EC.WithEventCreation (TS.WithTimeSlotSelection a))
+    -> ( EC.WithDiscardConfirmationModal (EC.WithEventCreation (TS.WithTimeSlotSelection a)), Cmd Msg )
 closeUserPromptForEventDetails model =
-    ( { model | timeSlotSelection = TS.NotSelecting, eventCreation = EC.NotCreating }, Cmd.none )
+    ( { model
+        | timeSlotSelection = TS.NotSelecting
+        , eventCreation = EC.NotCreating
+        , isDiscardConfirmationModalOpen = False
+      }
+    , Cmd.none
+    )
+
+
+cancelDiscardConfirmationModal : EC.WithDiscardConfirmationModal a -> ( EC.WithDiscardConfirmationModal a, Cmd Msg )
+cancelDiscardConfirmationModal model =
+    ( { model | isDiscardConfirmationModalOpen = False }, Cmd.none )

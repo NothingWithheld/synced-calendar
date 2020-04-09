@@ -153,11 +153,19 @@ setTimeSlotSelectionBounds :
     WithTimeSlotSelection a
     -> SelectedTimeSlot
     -> WithTimeSlotSelection a
-setTimeSlotSelectionBounds beginningSelectionRecord timeSlotSelection =
-    { beginningSelectionRecord
-        | timeSlotSelection =
-            CurrentlySelecting timeSlotSelection
-    }
+setTimeSlotSelectionBounds beginningSelectionRecord selectionBounds =
+    case beginningSelectionRecord.timeSlotSelection of
+        EditingSelection _ prevDetails ->
+            { beginningSelectionRecord
+                | timeSlotSelection =
+                    EditingSelection selectionBounds prevDetails
+            }
+
+        _ ->
+            { beginningSelectionRecord
+                | timeSlotSelection =
+                    CurrentlySelecting selectionBounds
+            }
 
 
 useTSPositionForBothSelectionBounds :

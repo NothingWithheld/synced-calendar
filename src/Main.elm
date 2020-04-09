@@ -3,7 +3,7 @@ module Main exposing (main)
 import Browser
 import EventCreation.EventCreation as EC
 import EventCreation.Update as ECUpdate
-import EventCreation.View exposing (viewUserRequest)
+import EventCreation.View exposing (viewDiscardConfirmationModal, viewUserRequest)
 import Html exposing (Html, div)
 import MainMsg exposing (Msg(..))
 import Material
@@ -33,6 +33,7 @@ type alias Model =
     , timeSlotSelection : TS.TimeSlotSelection
     , eventCreation : EC.EventCreation
     , selectedTimeSlots : List TS.SelectedTimeSlotDetails
+    , isDiscardConfirmationModalOpen : Bool
     , mdc : Material.Model Msg
     }
 
@@ -44,6 +45,7 @@ init =
       , timeSlotSelection = TS.NotSelecting
       , eventCreation = EC.NotCreating
       , selectedTimeSlots = []
+      , isDiscardConfirmationModalOpen = False
       , mdc = Material.defaultModel
       }
     , Cmd.batch [ Material.init Mdc, requestTimeSlotPositions, requestTimeSlotsElement ]
@@ -110,6 +112,9 @@ update msg model =
         CloseUserPromptForEventDetails ->
             ECUpdate.closeUserPromptForEventDetails model
 
+        CancelDiscardConfirmationModal ->
+            ECUpdate.cancelDiscardConfirmationModal model
+
 
 
 -- VIEW
@@ -129,6 +134,7 @@ view model =
             , viewScrollableTimeSlots model
             ]
         , viewUserRequest model
+        , viewDiscardConfirmationModal model
         ]
 
 

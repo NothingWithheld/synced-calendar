@@ -24,6 +24,7 @@ type Msg
     | ChangeSelectionStartSlot String
     | ChangeSelectionEndSlot String
     | CloseUserPromptForEventDetails
+    | CancelDiscardConfirmationModal
     | Mdc (Material.Msg Msg)
 
 

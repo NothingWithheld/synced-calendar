@@ -3,6 +3,7 @@ module EventCreation.EventCreation exposing
     , EventCreationDetails(..)
     , EventCreationPosition
     , EventItems
+    , WithDiscardConfirmationModal
     , WithEventCreation
     , eventDetailsPromptWidth
     )
@@ -32,6 +33,10 @@ type alias EventCreationPosition =
     { x : Float
     , y : Float
     }
+
+
+type alias WithDiscardConfirmationModal a =
+    { a | isDiscardConfirmationModalOpen : Bool }
 
 
 eventDetailsPromptWidth : Float
