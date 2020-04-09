@@ -88,9 +88,19 @@ viewUserRequestForm model eventCreationDetails =
 
 viewWeeklyFreeTimesForm : WithMdc (TS.WithTimeSlotSelection a) -> Bool -> List (Html Msg)
 viewWeeklyFreeTimesForm model intersectsTimeSlots =
-    [ viewTimeChangeSelects model
-    , viewInitialCreationActionButtons model intersectsTimeSlots
-    ]
+    case model.timeSlotSelection of
+        TS.CurrentlySelecting _ ->
+            [ viewTimeChangeSelects model
+            , viewInitialCreationActionButtons model intersectsTimeSlots
+            ]
+
+        TS.EditingSelection _ _ ->
+            [ viewTimeChangeSelects model
+            , viewEditingActionButtons model intersectsTimeSlots
+            ]
+
+        _ ->
+            []
 
 
 viewEventDetailsForm : WithMdc (TS.WithTimeSlotSelection a) -> EC.EventItems -> Bool -> List (Html Msg)
@@ -129,6 +139,41 @@ viewInitialCreationActionButtons model intersectsTimeSlots =
                 , css "margin-right" "8px"
                 ]
                 [ text "Cancel" ]
+            , Button.view Mdc
+                "set-event-button"
+                model.mdc
+                [ Card.actionButton
+                , Button.ripple
+                , Button.unelevated
+                , Options.onClick SetSelectedTimeSlot
+                , when intersectsTimeSlots Button.disabled
+                ]
+                [ text "Submit" ]
+            ]
+        ]
+
+
+viewEditingActionButtons : WithMdc a -> Bool -> Html Msg
+viewEditingActionButtons model intersectsTimeSlots =
+    Card.actions [ css "display" "flex", css "flex-direction" "row-reverse" ]
+        [ Card.actionButtons []
+            [ Button.view Mdc
+                "cancel-event-button"
+                model.mdc
+                [ Card.actionButton
+                , Button.ripple
+                , Options.onClick CloseUserPromptForEventDetails
+                ]
+                [ text "Cancel" ]
+            , Button.view Mdc
+                "trash-event-button"
+                model.mdc
+                [ Card.actionButton
+                , Button.ripple
+                , Options.onClick CloseUserPromptForEventDetails
+                , Button.icon "delete"
+                ]
+                []
             , Button.view Mdc
                 "set-event-button"
                 model.mdc
