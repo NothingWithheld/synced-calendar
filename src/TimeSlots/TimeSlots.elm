@@ -234,6 +234,12 @@ doesTSSelectionIntersectSelectedTimeSlots currentTimeSlotDetails timeSlotSelecti
                 startBound.slotNum
                 endBound.slotNum
 
+        EditingSelection { dayNum, startBound, endBound } _ ->
+            intersectsCurrentlySelectedTimeSlots currentTimeSlotDetails
+                dayNum
+                startBound.slotNum
+                endBound.slotNum
+
         _ ->
             False
 
