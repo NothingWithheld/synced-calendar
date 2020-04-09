@@ -3,7 +3,8 @@
 
 module Database where 
 
-import Import 
+import Import
+import Data.List 
 import Data.Time.LocalTime
 import Data.Dates
 import Data.Text.Read
@@ -14,8 +15,8 @@ import qualified Data.Text as T
 -- * timeString: format "HH:SS"
 -- * offset: integer in between -12 to 14 to represent offset in hours of localtime from utctime
 -- * dayString: "monday"
-convertTextToTime :: Maybe Text :: Maybe Text :: Maybe Text -> Maybe TimeOfDay 
-convertTextToTime (Just timeString) (Just offset) (Just dayString)  = do 
+convertTextToTime :: Maybe Text -> Maybe Text -> Maybe (Integer, TimeOfDay)
+convertTextToTime (Just timeString) (Just offset) = do 
     let timeStringSplit = T.splitOn ":" timeString 
     case timeStringSplit of 
         [hourText, minText] -> do 
@@ -24,17 +25,13 @@ convertTextToTime (Just timeString) (Just offset) (Just dayString)  = do
             case (eitherHourInt, eitherMinInt) of 
                 (Right (hourInt, ""), Right (minInt, "")) -> 
                     if hourInt < 24 && hourInt >= 0 && minInt < 60 && minInt >= 0
-                        then do 
-                            let eitherTimeOfDay = convertLocalToUTC $ (TimeOfDay hourInt minInt 0) offset
-                            case eitherTimeOfDay of 
-                                Just (dayOffset, timeOfDay) -> (updateDayString dayString dayOffset, timeOfDay)
-                                _ -> Nothing
+                        then convertLocalToUTC (TimeOfDay hourInt minInt 0) offset
                         else Nothing
                 (_, _) -> Nothing
         _ -> Nothing
-convertTextToTime _ _ _ = Nothing
+convertTextToTime _ _ = Nothing
 
-convertTextToDate :: Maybe Text -> Maybe Day 
+convertTextToDate :: Maybe Text -> Maybe Day
 convertTextToDate Nothing = Nothing
 convertTextToDate (Just s) = do 
     let sSplit = T.splitOn "-" s 
@@ -55,22 +52,21 @@ convertTextToDate (Just s) = do
 -- Params: 
 -- * time: type TimeOfDay
 -- * offset: integer in between -12 to 14 to represent offset in hours of localtime from utctime
-convertLocalToUTC :: Maybe TimeOfDay :: Maybe Text -> Maybe (Integer,TimeOfDay)
-convertLocalToUTC Nothing _ = Nothing 
-convertLocalToUTC (Just time) offsetText = do 
+convertLocalToUTC :: TimeOfDay -> Text -> Maybe (Integer, TimeOfDay)
+convertLocalToUTC time offsetText = do 
     let eitherOffsetInt = decimal offsetText
     case eitherOffsetInt of 
-        Right offsetInt -> if offsetInt >= -12 and offsetInt <= 14 
-            then utcToLocalTimeOfDay (TimeZone offsetInt False "") time
+        Right (offsetInt, "") -> if offsetInt >= -12 && offsetInt <= 14 
+            then Just $ utcToLocalTimeOfDay (TimeZone offsetInt False "") time
             else Nothing
         _ -> Nothing
 
-updateDayString :: Text :: Integer -> Maybe Text
+updateDayString :: Text -> Integer -> Maybe Text
 updateDayString dayString dayOffset = do
     let days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-    let eitherIndexOfDay = elemIndex dayString days 
+    let eitherIndexOfDay = elemIndex (toLower dayString) days 
     case eitherIndexOfDay of 
         Just indexOfDay -> do 
-            let nextIndexOfDay = (indexOfDay + dayOffset) `mod` (length days)
-            return $ Just days !! nextIndexOfDay
+            let nextIndexOfDay = (indexOfDay + (fromInteger dayOffset)) `mod` (Import.length days)
+            return $ days !! nextIndexOfDay
         _ -> Nothing
