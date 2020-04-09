@@ -32,7 +32,7 @@ viewUserRequest model =
                 , css "z-index" "100"
                 , css "display" "flex"
                 , css "flex-direction" "column"
-                , Options.onClick CloseUserPromptForEventDetails
+                , Options.onClick HandleEditingCancel
                 ]
                 [ styled div
                     [ css "max-height" <| String.fromFloat (max 0 eventCreationPosition.y) ++ "px"
@@ -172,7 +172,7 @@ viewEditingActionButtons model intersectsTimeSlots =
                 model.mdc
                 [ Card.actionButton
                 , Button.ripple
-                , Options.onClick CloseUserPromptForEventDetails
+                , Options.onClick HandleEditingCancel
                 , css "margin-right" "8px"
                 ]
                 [ text "Cancel" ]

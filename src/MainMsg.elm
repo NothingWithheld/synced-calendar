@@ -23,6 +23,7 @@ type Msg
     | ChangeSelectionDayNum String
     | ChangeSelectionStartSlot String
     | ChangeSelectionEndSlot String
+    | HandleEditingCancel
     | CloseUserPromptForEventDetails
     | CancelDiscardConfirmationModal
     | Mdc (Material.Msg Msg)

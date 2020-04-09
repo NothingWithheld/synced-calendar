@@ -6,6 +6,7 @@ module EventCreation.Update exposing
     , changeSelectionEndSlot
     , changeSelectionStartSlot
     , closeUserPromptForEventDetails
+    , handleEditingCancel
     , initiateUserPromptForEventDetails
     , promptUserForEventDetails
     )
@@ -237,6 +238,33 @@ changeSelectionEndSlot model endSlotStr =
 
         ( _, _ ) ->
             ( model, Cmd.none )
+
+
+handleEditingCancel :
+    TS.WithSelectedTimeSlots (EC.WithDiscardConfirmationModal (EC.WithEventCreation (TS.WithTimeSlotSelection a)))
+    -> ( TS.WithSelectedTimeSlots (EC.WithDiscardConfirmationModal (EC.WithEventCreation (TS.WithTimeSlotSelection a))), Cmd Msg )
+handleEditingCancel model =
+    case ( model.eventCreation, model.timeSlotSelection ) of
+        ( EC.CurrentlyCreatingEvent eventCreationDetails _, TS.EditingSelection selectionBounds prevDetails ) ->
+            let
+                (TS.SelectedTimeSlotDetails prevSelectionBounds prevEventDetails) =
+                    prevDetails
+
+                areEventCreationsEqual =
+                    EC.areEventCreationsEqual eventCreationDetails prevEventDetails
+            in
+            if not areEventCreationsEqual || selectionBounds /= prevSelectionBounds then
+                ( { model | isDiscardConfirmationModalOpen = True }, Cmd.none )
+
+            else
+                closeUserPromptForEventDetails
+                    { model
+                        | selectedTimeSlots =
+                            prevDetails :: model.selectedTimeSlots
+                    }
+
+        ( _, _ ) ->
+            closeUserPromptForEventDetails model
 
 
 closeUserPromptForEventDetails :

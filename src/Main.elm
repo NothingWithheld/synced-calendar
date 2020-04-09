@@ -109,6 +109,9 @@ update msg model =
         ChangeSelectionEndSlot endSlot ->
             ECUpdate.changeSelectionEndSlot model endSlot
 
+        HandleEditingCancel ->
+            ECUpdate.handleEditingCancel model
+
         CloseUserPromptForEventDetails ->
             ECUpdate.closeUserPromptForEventDetails model
 

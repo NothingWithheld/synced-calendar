@@ -5,6 +5,7 @@ module EventCreation.EventCreation exposing
     , EventItems
     , WithDiscardConfirmationModal
     , WithEventCreation
+    , areEventCreationsEqual
     , eventDetailsPromptWidth
     )
 
@@ -37,6 +38,19 @@ type alias EventCreationPosition =
 
 type alias WithDiscardConfirmationModal a =
     { a | isDiscardConfirmationModalOpen : Bool }
+
+
+areEventCreationsEqual : EventCreationDetails -> EventCreationDetails -> Bool
+areEventCreationsEqual eventCreationDetailsA eventCreationDetailsB =
+    case ( eventCreationDetailsA, eventCreationDetailsB ) of
+        ( WeeklyFreeTimes, WeeklyFreeTimes ) ->
+            True
+
+        ( EventDetails eventItemsA, EventDetails eventItemsB ) ->
+            eventItemsA == eventItemsB
+
+        ( _, _ ) ->
+            False
 
 
 eventDetailsPromptWidth : Float
