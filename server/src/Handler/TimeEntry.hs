@@ -12,7 +12,11 @@ import qualified Database
 getFreeTimeEntryR :: Text -> Handler Value 
 getFreeTimeEntryR userId = do 
     allTimeEntries <- runDB $ selectList [FreeTimeEntryUserId <-. [userId]] []
-    returnJson allTimeEntries
+    maybeTimeZone <- lookupGetParam "timezone"
+    case maybeTimeZone of 
+        Just timezone -> returnJson $ catMaybes $ 
+            Import.map (\x -> Database.convertFreeTimeEntryToLocal x timezone) allTimeEntries
+        _ -> invalidArgs ["Failed to parse timezone"]
 
 postFreeTimeEntryR :: Text -> Handler Value 
 postFreeTimeEntryR userId = do 
@@ -77,11 +81,12 @@ deleteFreeTimeEntryR entryIdText = do
 getAvailableTimeEntryR :: Text -> Handler Value 
 getAvailableTimeEntryR userId = do 
     maybeEventId <- lookupGetParam "event_id"
-    case maybeEventId of 
-        (Just eventId) -> do 
+    maybeTimeZone <- lookupGetParam "timezone"
+    case (maybeEventId, maybeTimeZone) of 
+        (Just eventId, Just timezone) -> do 
             allTimeEntries <- runDB $ selectList [AvailableTimeEntryUserId <-. [userId], AvailableTimeEntryEventId <-. [eventId]] []
-            returnJson allTimeEntries
-        _ -> invalidArgs ["Failed to parse event_id params"]
+            returnJson $ catMaybes $ Import.map (\x -> Database.convertAvailableTimeEntryToLocal x timezone) allTimeEntries
+        (_, _) -> invalidArgs ["Failed to parse event_id params"]
 
 postAvailableTimeEntryR :: Text -> Handler Value 
 postAvailableTimeEntryR userId = do 
