@@ -5,37 +5,10 @@ module Database where
 
 import Import
 import Data.List 
-import Data.Time.Calendar
 import Data.Time.LocalTime
 import Data.Dates
 import Data.Text.Read
 import qualified Data.Text as T
-
-convertFreeTimeEntryToLocal :: Entity FreeTimeEntry -> Text -> Maybe (Entity FreeTimeEntry)
-convertFreeTimeEntryToLocal (Entity entryId (FreeTimeEntry userId day fromTime toTime)) timezone = do 
-    let eitherLocalFromTime = Database.convertUTCToLocal fromTime timezone
-    let eitherLocalToTime = Database.convertUTCToLocal toTime timezone
-    case (eitherLocalFromTime, eitherLocalToTime) of 
-        (Just (fromTimeDayOffset, localFromTime), Just (_, localToTime)) -> do 
-            -- The database will hold in the day of fromTime if the event is staggered 
-            -- between to two days 
-            let maybeLocalDay = Database.updateDayString day fromTimeDayOffset
-            case maybeLocalDay of 
-                Just localDay -> Just $ Entity entryId (FreeTimeEntry userId localDay localFromTime localToTime)
-                _ -> Nothing
-        (_, _) -> Nothing
-
-convertAvailableTimeEntryToLocal :: Entity AvailableTimeEntry -> Text -> Maybe (Entity AvailableTimeEntry)
-convertAvailableTimeEntryToLocal (Entity entryId (AvailableTimeEntry userId eventId date fromTime toTime)) timezone = do 
-    let eitherLocalFromTime = Database.convertUTCToLocal fromTime timezone
-    let eitherLocalToTime = Database.convertUTCToLocal toTime timezone
-    case (eitherLocalFromTime, eitherLocalToTime) of 
-        (Just (fromTimeDayOffset, localFromTime), Just (_, localToTime)) -> do 
-            -- The database will hold in the day of fromTime if the event is staggered 
-            -- between to two days 
-            let localDate = addDays fromTimeDayOffset date
-            return $ Entity entryId (AvailableTimeEntry userId eventId localDate localFromTime localToTime)
-        (_, _) -> Nothing
 
 -- | Convert text string "HH:SS" to TimeOfDay in UTC time
 -- Params: 
@@ -73,6 +46,14 @@ convertTextToDate (Just s) = do
                         then Just $ dateTimeToDay $ DateTime yearInt monthInt dayInt 0 0 0
                         else Nothing
                 (_, _, _) -> Nothing
+        _ -> Nothing
+
+convertTextToBool :: Maybe Text -> Maybe Bool 
+convertTextToBool Nothing = Nothing
+convertTextToBool (Just s) = do 
+    let boolString = T.unpack s 
+    case toLower boolString of 
+        "true" -> Just True 
         _ -> Nothing
 
 -- | Convert TimeOfDay in Local time to UTC time

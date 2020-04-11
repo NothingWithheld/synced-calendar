@@ -38,11 +38,8 @@ ProposedEvent json
     toDate Day
     confirmed Bool
     deriving Show Eq
-ConfirmedEvent json 
-    creatorId Text 
-    recipientId Text 
-    name Text Maybe
-    description Text Maybe 
+ConfirmedEvent json
+    proposedEventId ProposedEventId
     date Day 
     fromTime TimeOfDay 
     toTime TimeOfDay 

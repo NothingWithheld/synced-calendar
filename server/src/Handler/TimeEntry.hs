@@ -9,13 +9,39 @@ import Data.Time.Calendar
 import Data.Text.Read
 import qualified Database
 
+convertFreeTimeEntryToLocal :: Entity FreeTimeEntry -> Text -> Maybe (Entity FreeTimeEntry)
+convertFreeTimeEntryToLocal (Entity entryId (FreeTimeEntry userId day fromTime toTime)) timezone = do 
+    let maybeLocalFromTime = Database.convertUTCToLocal fromTime timezone
+    let maybeLocalToTime = Database.convertUTCToLocal toTime timezone
+    case (maybeLocalFromTime, maybeLocalToTime) of 
+        (Just (fromTimeDayOffset, localFromTime), Just (_, localToTime)) -> do 
+            -- The database will hold in the day of fromTime if the event is staggered 
+            -- between to two days 
+            let maybeLocalDay = Database.updateDayString day fromTimeDayOffset
+            case maybeLocalDay of 
+                Just localDay -> Just $ Entity entryId (FreeTimeEntry userId localDay localFromTime localToTime)
+                _ -> Nothing
+        (_, _) -> Nothing
+
+convertAvailableTimeEntryToLocal :: Entity AvailableTimeEntry -> Text -> Maybe (Entity AvailableTimeEntry)
+convertAvailableTimeEntryToLocal (Entity entryId (AvailableTimeEntry userId eventId date fromTime toTime)) timezone = do 
+    let maybeLocalFromTime = Database.convertUTCToLocal fromTime timezone
+    let maybeLocalToTime = Database.convertUTCToLocal toTime timezone
+    case (maybeLocalFromTime, maybeLocalToTime) of 
+        (Just (fromTimeDayOffset, localFromTime), Just (_, localToTime)) -> do 
+            -- The database will hold in the day of fromTime if the event is staggered 
+            -- between to two days 
+            let localDate = addDays fromTimeDayOffset date
+            return $ Entity entryId (AvailableTimeEntry userId eventId localDate localFromTime localToTime)
+        (_, _) -> Nothing
+
 getFreeTimeEntryR :: Text -> Handler Value 
 getFreeTimeEntryR userId = do 
     allTimeEntries <- runDB $ selectList [FreeTimeEntryUserId <-. [userId]] []
     maybeTimeZone <- lookupGetParam "timezone"
     case maybeTimeZone of 
         Just timezone -> returnJson $ catMaybes $ 
-            Import.map (\x -> Database.convertFreeTimeEntryToLocal x timezone) allTimeEntries
+            Import.map (\x -> convertFreeTimeEntryToLocal x timezone) allTimeEntries
         _ -> invalidArgs ["Failed to parse timezone"]
 
 postFreeTimeEntryR :: Text -> Handler Value 
@@ -85,7 +111,7 @@ getAvailableTimeEntryR userId = do
     case (maybeEventId, maybeTimeZone) of 
         (Just eventId, Just timezone) -> do 
             allTimeEntries <- runDB $ selectList [AvailableTimeEntryUserId <-. [userId], AvailableTimeEntryEventId <-. [eventId]] []
-            returnJson $ catMaybes $ Import.map (\x -> Database.convertAvailableTimeEntryToLocal x timezone) allTimeEntries
+            returnJson $ catMaybes $ Import.map (\x -> convertAvailableTimeEntryToLocal x timezone) allTimeEntries
         (_, _) -> invalidArgs ["Failed to parse event_id params"]
 
 postAvailableTimeEntryR :: Text -> Handler Value 
