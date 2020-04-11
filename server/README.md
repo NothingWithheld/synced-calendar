@@ -33,41 +33,91 @@ stack exec -- yesod devel
 As your code changes, your site will be automatically recompiled and redeployed to localhost.
 
 ## API
+### FreeTimeEntry
 - **GET** `/api/{user_id}/free-times`
 	
 	Retrieves free time entries for a given user. Response sends in a JSON
-	array of data objects with `id`, `userId`, `day`, `from_time`, and `to_time` variables (see below requests for possible values of these variables)
+	array of data objects with `id`, `userId`, `day`, `from_time`, and `to_time` variables (see POST documentation for possible values of these variables)
+
+	user_id (Int) -> unique number that identifies a user
+
+	**Parameters**
 	
-	user_id (Int) -> Unique number that identifies a user
+	- timezone (Int) -> offset from UTC time (range: -14 to 12)
 
 - **POST** `/api/{user_id}/free-times`
 
-	Creates a time entry for a given user. Response sends in a JSON object of the 
+	Creates a free time entry for a given user. Response sends in a JSON object of the 
 	newly created `FreeTimeEntry`.
 
-	user_id (Int) -> Unique number that identifies a user
+	user_id (Int) -> unique number that identifies a user
 
-	**Parameters**
+	**x-www-form-urlencoded body**
 	
-	- day (String) -> "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", or "Sunday"
-	- from_time (String) -> Written in the format of `HH:MM` using military time
-	- to_time (String) -> Written in the format of `HH:MM` using military time
+	- day (String) -> "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"
+	- timezone (Int) -> offset from UTC time (range: -14 to 12)
+	- from_time (String) -> written in the format of `HH:MM` using military time
+	- to_time (String) -> written in the format of `HH:MM` using military time
 - **PUT** `/api/{id}/free-times`
 
-	Updates a time entry given its `id`, which is provided in a GET request. 
+	Updates a free time entry given its `id`, which is provided in a GET request. 
 
-	id (Int) -> Unique number that identifies a `FreeTimeEntry`
+	id (Int) -> unique number that identifies a `FreeTimeEntry`
 
-	**Parameters**
+	**x-www-form-urlencoded body**
 	
+	- day (String) -> "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"
+	- timezone (Int) -> offset from UTC time (range: -14 to 12)
 	- from_time (String) -> Written in the format of `HH:MM` using military time
 	- to_time (String) -> Written in the format of `HH:MM` using military time
 - **DELETE** `/api/{id}/free-times`
 	
-	Deletes a time entry given its `id`, which is provided in a GET request. 
+	Deletes a free time entry given its `id`, which is provided in a GET request. 
 
-	id (Int) -> Unique number that identifies a `FreeTimeEntry`
+	id (Int) -> unique number that identifies a `FreeTimeEntry`
 
+### AvailableTimeEntry
+- **GET** `/api/{user_id}/available-times`
+	
+	Retrieves available time entries for a given user for a given event. Response sends in a JSON array of data objects with `id`, `userId`, `event_id`, `date`, `from_time`, and `to_time` variables (see POST documentation for possible values of these variables)
+
+	user_id (Int) -> unique number that identifies a user
+
+	**Parameters**
+	
+	- event_id (Int) -> id that corresponds to a ProposedEvent object
+	- timezone (Int) -> offset from UTC time (range: -14 to 12)
+
+- **POST** `/api/{user_id}/available-times`
+
+	Creates an available time entry for a given user and event. User responds to ProposedEvent with availabilites. Response sends in a JSON object of the newly created `AvailableTimeEntry`.
+
+	user_id (Int) -> unique number that identifies a user
+
+	**x-www-form-urlencoded body**
+	
+	- event_id (Int) -> id that corresponds to a ProposedEvent object
+	- date (String) -> written in the format of `"MM-DD-YYYY"`
+	- timezone (Int) -> offset from UTC time (range: -14 to 12)
+	- from_time (String) -> written in the format of `HH:MM` using military time
+	- to_time (String) -> written in the format of `HH:MM` using military time
+- **PUT** `/api/{id}/available-times`
+
+	Updates an available time entry given its `id`, which is provided in a GET request. 
+
+	id (Int) -> Unique number that identifies a `AvailableTimeEntry`
+
+	**x-www-form-urlencoded body**
+	
+	- date (String) -> written in the format of `"MM-DD-YYYY"`
+	- timezone (Int) -> offset from UTC time (range: -14 to 12)
+	- from_time (String) -> Written in the format of `HH:MM` using military time
+	- to_time (String) -> Written in the format of `HH:MM` using military time
+- **DELETE** `/api/{id}/available-times`
+	
+	Deletes an available time entry given its `id`, which is provided in a GET request. 
+
+	id (Int) -> Unique number that identifies a `AvailableTimeEntry`
 ## Tests
 
 ```
