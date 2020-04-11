@@ -16,3 +16,9 @@ Comment json -- Adding "json" causes ToJSON and FromJSON instances to be derived
     userId UserId Maybe
     deriving Eq
     deriving Show
+FreeTimeEntry json
+    userId Text
+    day Text
+    fromTime TimeOfDay
+    toTime TimeOfDay
+    deriving Show Eq
