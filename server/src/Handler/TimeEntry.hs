@@ -116,7 +116,7 @@ getAvailableTimeEntryR userId = do
 
 postAvailableTimeEntryR :: Text -> Handler Value 
 postAvailableTimeEntryR userId = do 
-    maybeEventId <- lookupGetParam "event_id"
+    maybeEventId <- lookupPostParam "event_id"
     maybeDateText <- lookupPostParam "date"
     maybeTimeZone <- lookupPostParam "timezone"
     maybeFromTimeText <- lookupPostParam "from_time"

@@ -14,7 +14,6 @@ import qualified Data.Text as T
 -- Params: 
 -- * timeString: format "HH:SS"
 -- * offset: integer in between -12 to 14 to represent offset in hours of localtime from utctime
--- * dayString: "monday"
 convertTextToTime :: Maybe Text -> Maybe Text -> Maybe (Integer, TimeOfDay)
 convertTextToTime (Just timeString) (Just offset) = do 
     let timeStringSplit = T.splitOn ":" timeString 
@@ -65,7 +64,8 @@ convertLocalToUTC time offsetText = do
     let eitherOffsetInt = decimal offsetText
     case eitherOffsetInt of 
         Right (offsetInt, "") -> if offsetInt >= -12 && offsetInt <= 14 
-            then Just $ utcToLocalTimeOfDay (TimeZone offsetInt False "") time
+            then let offsetMinInt = offsetInt * 60
+                in Just $ localToUTCTimeOfDay (TimeZone offsetMinInt False "") time
             else Nothing
         _ -> Nothing
 
@@ -78,7 +78,8 @@ convertUTCToLocal time offsetText = do
     let eitherOffsetInt = decimal offsetText
     case eitherOffsetInt of 
         Right (offsetInt, "") -> if offsetInt >= -12 && offsetInt <= 14 
-            then Just $ localToUTCTimeOfDay (TimeZone offsetInt False "") time
+            then let offsetMinInt = offsetInt * 60 
+                in Just $ utcToLocalTimeOfDay (TimeZone offsetMinInt False "") time
             else Nothing
         _ -> Nothing
 
