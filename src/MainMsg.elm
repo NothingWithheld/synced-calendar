@@ -1,7 +1,9 @@
 module MainMsg exposing (Msg(..), WithMdc)
 
 import Browser.Dom as Dom
+import Http
 import Material
+import TimeSlots.Messaging as TSMessaging
 import TimeSlots.TimeSlots as TS
 
 
@@ -10,6 +12,7 @@ type Msg
       -- TimeSlots
     | SetTimeSlotPositions (Result Dom.Error (List Dom.Element))
     | SetTimeSlotsElement (Result Dom.Error Dom.Element)
+    | SetSavedWeeklyTimeSlots (Result Http.Error (List TSMessaging.ServerTimeSlot))
     | StartSelectingTimeSlot TS.DayNum TS.SlotNum
     | HandleTimeSlotMouseMove TS.PointerPosition
     | AdjustTimeSlotSelection TS.PointerPosition (Result Dom.Error Dom.Viewport)

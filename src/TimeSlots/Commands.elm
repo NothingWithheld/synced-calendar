@@ -1,8 +1,14 @@
-module TimeSlots.Commands exposing (requestTimeSlotPositions, requestTimeSlotsElement)
+module TimeSlots.Commands exposing
+    ( requestSavedWeeklyTimeSlots
+    , requestTimeSlotPositions
+    , requestTimeSlotsElement
+    )
 
 import Browser.Dom as Dom
+import Http
 import MainMsg exposing (Msg(..))
 import Task
+import TimeSlots.Messaging as TSMessaging
 import TimeSlots.TimeSlots as TS
 
 
@@ -18,3 +24,11 @@ requestTimeSlotPositions =
 requestTimeSlotsElement : Cmd Msg
 requestTimeSlotsElement =
     Task.attempt SetTimeSlotsElement (Dom.getElement TS.scrollableTimeSlotsId)
+
+
+requestSavedWeeklyTimeSlots : String -> Cmd Msg
+requestSavedWeeklyTimeSlots userId =
+    Http.get
+        { url = "http://localhost:3000/api/" ++ userId ++ "/free-times"
+        , expect = Http.expectJson SetSavedWeeklyTimeSlots TSMessaging.serverTimeSlotListDecoder
+        }

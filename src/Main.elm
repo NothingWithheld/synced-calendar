@@ -48,7 +48,11 @@ init =
       , isDiscardConfirmationModalOpen = False
       , mdc = Material.defaultModel
       }
-    , Cmd.batch [ Material.init Mdc, requestTimeSlotPositions, requestTimeSlotsElement ]
+    , Cmd.batch
+        [ Material.init Mdc
+        , requestTimeSlotPositions
+        , requestTimeSlotsElement
+        ]
     )
 
 
@@ -71,6 +75,9 @@ update msg model =
 
         SetTimeSlotsElement result ->
             TSUpdate.setTimeSlotsElement model result
+
+        SetSavedWeeklyTimeSlots result ->
+            TSUpdate.setSavedWeeklyTimeSlots model result
 
         StartSelectingTimeSlot dayNum slotNum ->
             TSUpdate.startSelectingTimeSlot model dayNum slotNum

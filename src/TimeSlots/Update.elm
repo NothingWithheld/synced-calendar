@@ -3,6 +3,7 @@ module TimeSlots.Update exposing
     , editTimeSlotSelection
     , handleTimeSlotMouseMove
     , handleTimeSlotMouseUp
+    , setSavedWeeklyTimeSlots
     , setSelectedTimeSlot
     , setTimeSlotPositions
     , setTimeSlotsElement
@@ -13,8 +14,11 @@ import Browser.Dom as Dom
 import EventCreation.EventCreation as EC
 import EventCreation.Update as ECUpdate
 import Flip
+import Http
 import MainMsg exposing (Msg(..))
 import Task
+import TimeSlots.Commands exposing (requestSavedWeeklyTimeSlots)
+import TimeSlots.Messaging as TSMessaging
 import TimeSlots.TimeSlots as TS
 import Utils
     exposing
@@ -33,7 +37,7 @@ setTimeSlotPositions model result =
             ( { model
                 | timeSlotPositions = TS.setTimeSlotPositions TS.startingSlotNum 0 elementList
               }
-            , Cmd.none
+            , requestSavedWeeklyTimeSlots "25"
             )
     in
     defaultOnError ( model, Cmd.none ) result updateModelWithTSPositions
@@ -44,6 +48,39 @@ setTimeSlotsElement model result =
     case result of
         Ok { element } ->
             ( { model | timeSlotsElement = Just element }, Cmd.none )
+
+        Err _ ->
+            ( model, Cmd.none )
+
+
+setSavedWeeklyTimeSlots :
+    TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a)
+    -> Result Http.Error (List TSMessaging.ServerTimeSlot)
+    -> ( TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a), Cmd Msg )
+setSavedWeeklyTimeSlots model result =
+    let
+        updateWithTimeSlot { dayNum, startSlot, endSlot } model_ =
+            let
+                startBound =
+                    getListItemAt startSlot model_.timeSlotPositions
+
+                endBound =
+                    getListItemAt endSlot model_.timeSlotPositions
+            in
+            case Maybe.map2 (TS.SelectedTimeSlot dayNum) startBound endBound of
+                Just selectionBounds ->
+                    { model_
+                        | selectedTimeSlots =
+                            TS.SelectedTimeSlotDetails selectionBounds EC.WeeklyFreeTimes
+                                :: model_.selectedTimeSlots
+                    }
+
+                Nothing ->
+                    model_
+    in
+    case result of
+        Ok timeSlotList ->
+            ( List.foldl updateWithTimeSlot model timeSlotList, Cmd.none )
 
         Err _ ->
             ( model, Cmd.none )
