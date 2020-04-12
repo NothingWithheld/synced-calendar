@@ -29,6 +29,7 @@ type Msg
     | HandleEditingCancel
     | CloseUserPromptForEventDetails
     | CancelDiscardConfirmationModal
+    | SaveEditingTimeSlotWithoutChanges
     | Mdc (Material.Msg Msg)
 
 

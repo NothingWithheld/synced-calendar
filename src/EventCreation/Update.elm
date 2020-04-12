@@ -9,6 +9,7 @@ module EventCreation.Update exposing
     , handleEditingCancel
     , initiateUserPromptForEventDetails
     , promptUserForEventDetails
+    , saveEditingTimeSlotWithoutChanges
     )
 
 import Browser.Dom as Dom
@@ -257,11 +258,7 @@ handleEditingCancel model =
                 ( { model | isDiscardConfirmationModalOpen = True }, Cmd.none )
 
             else
-                closeUserPromptForEventDetails
-                    { model
-                        | selectedTimeSlots =
-                            prevDetails :: model.selectedTimeSlots
-                    }
+                saveEditingTimeSlotWithoutChanges model
 
         ( _, _ ) ->
             closeUserPromptForEventDetails model
@@ -283,3 +280,19 @@ closeUserPromptForEventDetails model =
 cancelDiscardConfirmationModal : EC.WithDiscardConfirmationModal a -> ( EC.WithDiscardConfirmationModal a, Cmd Msg )
 cancelDiscardConfirmationModal model =
     ( { model | isDiscardConfirmationModalOpen = False }, Cmd.none )
+
+
+saveEditingTimeSlotWithoutChanges :
+    TS.WithSelectedTimeSlots (EC.WithDiscardConfirmationModal (EC.WithEventCreation (TS.WithTimeSlotSelection a)))
+    -> ( TS.WithSelectedTimeSlots (EC.WithDiscardConfirmationModal (EC.WithEventCreation (TS.WithTimeSlotSelection a))), Cmd Msg )
+saveEditingTimeSlotWithoutChanges model =
+    case model.timeSlotSelection of
+        TS.EditingSelection _ prevDetails ->
+            closeUserPromptForEventDetails
+                { model
+                    | selectedTimeSlots =
+                        prevDetails :: model.selectedTimeSlots
+                }
+
+        _ ->
+            ( model, Cmd.none )

@@ -356,7 +356,7 @@ viewDiscardConfirmationModal model =
                             [ Card.actionButton
                             , Button.ripple
                             , Button.unelevated
-                            , Options.onClick CloseUserPromptForEventDetails
+                            , Options.onClick SaveEditingTimeSlotWithoutChanges
                             ]
                             [ text "Discard" ]
                         ]

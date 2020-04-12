@@ -125,6 +125,9 @@ update msg model =
         CancelDiscardConfirmationModal ->
             ECUpdate.cancelDiscardConfirmationModal model
 
+        SaveEditingTimeSlotWithoutChanges ->
+            ECUpdate.saveEditingTimeSlotWithoutChanges model
+
 
 
 -- VIEW
