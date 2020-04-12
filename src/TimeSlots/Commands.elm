@@ -1,5 +1,6 @@
 module TimeSlots.Commands exposing
-    ( requestSavedWeeklyTimeSlots
+    ( deleteWeeklyTimeSlot
+    , requestSavedWeeklyTimeSlots
     , requestTimeSlotPositions
     , requestTimeSlotsElement
     , saveWeeklyTimeSlot
@@ -66,3 +67,16 @@ updateWeeklyTimeSlot timeSlotId dayNum startSlot endSlot =
 
         Nothing ->
             Cmd.none
+
+
+deleteWeeklyTimeSlot : Int -> Cmd Msg
+deleteWeeklyTimeSlot timeSlotId =
+    Http.request
+        { method = "DELETE"
+        , headers = []
+        , url = "http://localhost:3000/api/" ++ String.fromInt timeSlotId ++ "/free-times"
+        , body = Http.emptyBody
+        , expect = Http.expectJson DeleteTimeSlot TSMessaging.noDataDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }

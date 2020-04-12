@@ -23,6 +23,8 @@ type Msg
     | SetSelectedTimeSlotAfterEditing (Result Http.Error NoData)
     | HandleTimeSlotMouseUp
     | EditTimeSlotSelection TS.SelectedTimeSlotDetails
+    | SendDeleteTimeSlotRequest
+    | DeleteTimeSlot (Result Http.Error NoData)
       -- EventCreation
     | PromptUserForEventDetails (Result Dom.Error Dom.Element)
     | AdjustEventTitle String

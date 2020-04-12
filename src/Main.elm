@@ -108,6 +108,12 @@ update msg model =
         EditTimeSlotSelection selectedTimeslotDetails ->
             TSUpdate.editTimeSlotSelection model selectedTimeslotDetails
 
+        SendDeleteTimeSlotRequest ->
+            TSUpdate.sendDeleteTimeSlotRequest model
+
+        DeleteTimeSlot result ->
+            TSUpdate.deleteTimeSlot model result
+
         -- EventCreation
         PromptUserForEventDetails result ->
             ECUpdate.promptUserForEventDetails model result

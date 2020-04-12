@@ -1,8 +1,10 @@
 module TimeSlots.Update exposing
     ( adjustTimeSlotSelection
+    , deleteTimeSlot
     , editTimeSlotSelection
     , handleTimeSlotMouseMove
     , handleTimeSlotMouseUp
+    , sendDeleteTimeSlotRequest
     , sendSaveTimeSlotRequest
     , sendUpdateTimeSlotRequest
     , setSavedWeeklyTimeSlots
@@ -22,7 +24,8 @@ import MainMsg exposing (Msg(..))
 import Task
 import TimeSlots.Commands
     exposing
-        ( requestSavedWeeklyTimeSlots
+        ( deleteWeeklyTimeSlot
+        , requestSavedWeeklyTimeSlots
         , saveWeeklyTimeSlot
         , updateWeeklyTimeSlot
         )
@@ -379,3 +382,32 @@ editTimeSlotSelection model selectedTimeSlotDetails =
                 TS.EditingSelection (TS.selectedToSelectingTimeSlot selectedTimeSlot) selectedTimeSlotDetails
             , selectedTimeSlots = selectedTimeSlotsWithoutChosen
         }
+
+
+sendDeleteTimeSlotRequest : TS.WithTimeSlotSelection a -> ( TS.WithTimeSlotSelection a, Cmd Msg )
+sendDeleteTimeSlotRequest model =
+    case model.timeSlotSelection of
+        TS.EditingSelection _ prevSelection ->
+            let
+                timeSlotId =
+                    .id <| TS.getTimeSlotFromDetails prevSelection
+            in
+            ( model
+            , deleteWeeklyTimeSlot timeSlotId
+            )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+deleteTimeSlot :
+    EC.WithDiscardConfirmationModal (EC.WithEventCreation (TS.WithTimeSlotSelection a))
+    -> Result Http.Error NoData
+    -> ( EC.WithDiscardConfirmationModal (EC.WithEventCreation (TS.WithTimeSlotSelection a)), Cmd Msg )
+deleteTimeSlot model result =
+    case result of
+        Ok _ ->
+            ECUpdate.closeUserPromptForEventDetails model
+
+        _ ->
+            ( model, Cmd.none )

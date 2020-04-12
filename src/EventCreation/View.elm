@@ -164,7 +164,7 @@ viewEditingActionButtons model intersectsTimeSlots =
                 model.mdc
                 [ IconButton.icon1 "delete"
                 , IconButton.label1 "Delete this time slot"
-                , Options.onClick CloseUserPromptForEventDetails
+                , Options.onClick SendDeleteTimeSlotRequest
                 ]
                 []
             , Button.view Mdc
