@@ -3,6 +3,7 @@ module TimeSlots.Commands exposing
     , requestTimeSlotPositions
     , requestTimeSlotsElement
     , saveWeeklyTimeSlot
+    , updateWeeklyTimeSlot
     )
 
 import Browser.Dom as Dom
@@ -37,12 +38,30 @@ requestSavedWeeklyTimeSlots userId =
 
 saveWeeklyTimeSlot : String -> TS.DayNum -> TS.SlotNum -> TS.SlotNum -> Cmd Msg
 saveWeeklyTimeSlot userId dayNum startSlot endSlot =
-    case TSMessaging.getPostFreeTimesQueryString dayNum startSlot endSlot of
+    case TSMessaging.getFreeTimesQueryString dayNum startSlot endSlot of
         Just queryString ->
             Http.post
                 { url = "http://localhost:3000/api/" ++ userId ++ "/free-times"
                 , body = Http.stringBody "application/x-www-form-urlencoded" queryString
                 , expect = Http.expectJson SetSelectedTimeSlotAfterCreation TSMessaging.idDecoder
+                }
+
+        Nothing ->
+            Cmd.none
+
+
+updateWeeklyTimeSlot : Int -> TS.DayNum -> TS.SlotNum -> TS.SlotNum -> Cmd Msg
+updateWeeklyTimeSlot timeSlotId dayNum startSlot endSlot =
+    case TSMessaging.getFreeTimesQueryString dayNum startSlot endSlot of
+        Just queryString ->
+            Http.request
+                { method = "PUT"
+                , headers = []
+                , url = "http://localhost:3000/api/" ++ String.fromInt timeSlotId ++ "/free-times"
+                , body = Http.stringBody "application/x-www-form-urlencoded" queryString
+                , expect = Http.expectJson SetSelectedTimeSlotAfterEditing TSMessaging.noDataDecoder
+                , timeout = Nothing
+                , tracker = Nothing
                 }
 
         Nothing ->

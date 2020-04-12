@@ -1,14 +1,11 @@
-module MainMsg exposing (Msg(..), NoData(..), WithMdc)
+module MainMsg exposing (Msg(..), WithMdc)
 
 import Browser.Dom as Dom
 import Http
 import Material
 import TimeSlots.Messaging as TSMessaging
 import TimeSlots.TimeSlots as TS
-
-
-type NoData
-    = NoData
+import Utils exposing (NoData)
 
 
 type Msg
@@ -21,6 +18,7 @@ type Msg
     | HandleTimeSlotMouseMove TS.PointerPosition
     | AdjustTimeSlotSelection TS.PointerPosition (Result Dom.Error Dom.Viewport)
     | SendSaveTimeSlotRequest
+    | SendUpdateTimeSlotRequest
     | SetSelectedTimeSlotAfterCreation (Result Http.Error Int)
     | SetSelectedTimeSlotAfterEditing (Result Http.Error NoData)
     | HandleTimeSlotMouseUp

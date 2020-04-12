@@ -4,6 +4,7 @@ module TimeSlots.Update exposing
     , handleTimeSlotMouseMove
     , handleTimeSlotMouseUp
     , sendSaveTimeSlotRequest
+    , sendUpdateTimeSlotRequest
     , setSavedWeeklyTimeSlots
     , setSelectedTimeSlotAfterCreation
     , setSelectedTimeSlotAfterEditing
@@ -17,14 +18,20 @@ import EventCreation.EventCreation as EC
 import EventCreation.Update as ECUpdate
 import Flip
 import Http
-import MainMsg exposing (Msg(..), NoData)
+import MainMsg exposing (Msg(..))
 import Task
-import TimeSlots.Commands exposing (requestSavedWeeklyTimeSlots, saveWeeklyTimeSlot)
+import TimeSlots.Commands
+    exposing
+        ( requestSavedWeeklyTimeSlots
+        , saveWeeklyTimeSlot
+        , updateWeeklyTimeSlot
+        )
 import TimeSlots.Messaging as TSMessaging
 import TimeSlots.TimeSlots as TS
 import Utils
     exposing
-        ( applyTwice
+        ( NoData
+        , applyTwice
         , defaultOnError
         , defaultWithoutData
         , getListItemAt
@@ -180,6 +187,28 @@ sendSaveTimeSlotRequest model =
             in
             ( model
             , saveWeeklyTimeSlot model.userId
+                dayNum
+                startBound.slotNum
+                endBound.slotNum
+            )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+sendUpdateTimeSlotRequest : TS.WithTimeSlotSelection a -> ( TS.WithTimeSlotSelection a, Cmd Msg )
+sendUpdateTimeSlotRequest model =
+    case model.timeSlotSelection of
+        TS.EditingSelection selectionBounds prevSelection ->
+            let
+                { dayNum, startBound, endBound } =
+                    TS.getOrderedTimeSlot selectionBounds
+
+                timeSlotId =
+                    .id <| TS.getTimeSlotFromDetails prevSelection
+            in
+            ( model
+            , updateWeeklyTimeSlot timeSlotId
                 dayNum
                 startBound.slotNum
                 endBound.slotNum

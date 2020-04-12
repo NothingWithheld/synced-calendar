@@ -3,6 +3,10 @@ module Utils exposing (..)
 import Flip
 
 
+type NoData
+    = NoData
+
+
 applicative : Maybe (a -> b) -> Maybe a -> Maybe b
 applicative =
     Maybe.map2 (<|)

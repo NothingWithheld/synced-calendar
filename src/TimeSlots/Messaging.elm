@@ -1,8 +1,9 @@
 module TimeSlots.Messaging exposing
     ( ServerTimeSlot
+    , getFreeTimesQueryString
     , getPostFreeTimesJson
-    , getPostFreeTimesQueryString
     , idDecoder
+    , noDataDecoder
     , serverTimeSlotDecoder
     , serverTimeSlotListDecoder
     )
@@ -11,7 +12,7 @@ import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode exposing (Value)
 import TimeSlots.TimeSlots as TS
 import Url.Builder as Builder
-import Utils exposing (getListItemAt)
+import Utils exposing (NoData(..), getListItemAt)
 
 
 type alias ServerTimeSlot =
@@ -41,6 +42,11 @@ idDecoder =
     Decode.field "id" Decode.int
 
 
+noDataDecoder : Decoder NoData
+noDataDecoder =
+    Decode.succeed NoData
+
+
 getPostFreeTimesJson : TS.DayNum -> TS.SlotNum -> TS.SlotNum -> Maybe Value
 getPostFreeTimesJson dayNum startSlotNum endSlotNum =
     let
@@ -54,8 +60,8 @@ getPostFreeTimesJson dayNum startSlotNum endSlotNum =
     Maybe.map mapFunc <| dayNumToDay dayNum
 
 
-getPostFreeTimesQueryString : TS.DayNum -> TS.SlotNum -> TS.SlotNum -> Maybe String
-getPostFreeTimesQueryString dayNum startSlotNum endSlotNum =
+getFreeTimesQueryString : TS.DayNum -> TS.SlotNum -> TS.SlotNum -> Maybe String
+getFreeTimesQueryString dayNum startSlotNum endSlotNum =
     let
         mapFunc day =
             String.dropLeft 1 <|

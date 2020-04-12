@@ -93,6 +93,9 @@ update msg model =
         SendSaveTimeSlotRequest ->
             TSUpdate.sendSaveTimeSlotRequest model
 
+        SendUpdateTimeSlotRequest ->
+            TSUpdate.sendUpdateTimeSlotRequest model
+
         SetSelectedTimeSlotAfterCreation result ->
             TSUpdate.setSelectedTimeSlotAfterCreation model result
 

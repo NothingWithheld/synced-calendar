@@ -182,7 +182,7 @@ viewEditingActionButtons model intersectsTimeSlots =
                 [ Card.actionButton
                 , Button.ripple
                 , Button.unelevated
-                , Options.onClick SendSaveTimeSlotRequest
+                , Options.onClick SendUpdateTimeSlotRequest
                 , when intersectsTimeSlots Button.disabled
                 ]
                 [ text "Submit" ]
