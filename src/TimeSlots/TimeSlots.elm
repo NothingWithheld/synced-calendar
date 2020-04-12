@@ -10,6 +10,12 @@ scrollableTimeSlotsId =
     "scrollable-time-slots"
 
 
+type alias WithLoadingTimeSlots a =
+    { a
+        | loadingTimeSlots : Bool
+    }
+
+
 type alias DayNum =
     Int
 

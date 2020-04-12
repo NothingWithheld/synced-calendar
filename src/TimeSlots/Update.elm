@@ -69,9 +69,9 @@ setTimeSlotsElement model result =
 
 
 setSavedWeeklyTimeSlots :
-    TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a)
+    TS.WithLoadingTimeSlots (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a))
     -> Result Http.Error (List TSMessaging.ServerTimeSlot)
-    -> ( TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a), Cmd Msg )
+    -> ( TS.WithLoadingTimeSlots (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a)), Cmd Msg )
 setSavedWeeklyTimeSlots model result =
     let
         updateWithTimeSlot { dayNum, startSlot, endSlot, id } model_ =
@@ -95,7 +95,12 @@ setSavedWeeklyTimeSlots model result =
     in
     case result of
         Ok timeSlotList ->
-            ( List.foldl updateWithTimeSlot model timeSlotList, Cmd.none )
+            ( List.foldl
+                updateWithTimeSlot
+                { model | loadingTimeSlots = False }
+                timeSlotList
+            , Cmd.none
+            )
 
         Err _ ->
             ( model, Cmd.none )

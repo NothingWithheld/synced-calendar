@@ -29,6 +29,7 @@ main =
 
 type alias Model =
     { userId : String
+    , loadingTimeSlots : Bool
     , timeSlotPositions : List TS.TimeSlotBoundaryPosition
     , timeSlotsElement : Maybe TS.Element
     , timeSlotSelection : TS.TimeSlotSelection
@@ -42,6 +43,7 @@ type alias Model =
 init : ( Model, Cmd Msg )
 init =
     ( { userId = "25"
+      , loadingTimeSlots = True
       , timeSlotPositions = []
       , timeSlotsElement = Nothing
       , timeSlotSelection = TS.NotSelecting

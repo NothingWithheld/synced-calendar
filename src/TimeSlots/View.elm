@@ -116,7 +116,7 @@ viewTimeSlotTime hour =
         ]
 
 
-viewScrollableTimeSlots : TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a) -> Html Msg
+viewScrollableTimeSlots : TS.WithLoadingTimeSlots (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)) -> Html Msg
 viewScrollableTimeSlots model =
     let
         isSelectingTimeSlots =
@@ -133,9 +133,15 @@ viewScrollableTimeSlots model =
     styled div
         [ css "height" "80vh"
         , css "overflow-y" "scroll"
+        , css "position" "relative"
         , Options.id TS.scrollableTimeSlotsId
         ]
-        [ styled div
+        [ if model.loadingTimeSlots then
+            viewLoader
+
+          else
+            text ""
+        , styled div
             [ css "display" "flex"
             , css "overflow" "hidden"
             , when isSelectingTimeSlots <| css "cursor" "move"
@@ -144,7 +150,7 @@ viewScrollableTimeSlots model =
             (viewTimeSlotTimes
                 :: List.map
                     (viewSingleDayTimeSlots model)
-                    (List.range TS.startingDayNum (TS.startingDayNum + TS.defaultNumDays - 1))
+                    TS.dayNumRange
             )
         ]
 
@@ -171,7 +177,7 @@ viewSingleDayTimeSlots model dayNum =
         (List.append
             [ div
                 []
-                (List.map (viewTimeSlot dayNum) (List.range TS.startingSlotNum (TS.startingSlotNum + TS.defaultNumSlots - 1)))
+                (List.map (viewTimeSlot dayNum) TS.slotNumRange)
             , viewCurrentlySelectingTimeSlot model dayNum
             ]
             (List.map viewSelectedTimeSlot selectedTimeSlotsForThisDay)
@@ -319,3 +325,29 @@ type alias CardDimensions =
     { y : Float
     , height : Float
     }
+
+
+viewLoader : Html Msg
+viewLoader =
+    let
+        viewLoaderDot _ =
+            styled div [ Options.cs "loader--dot" ] []
+    in
+    styled div
+        [ css "display" "flex"
+        , css "justify-content" "center"
+        , css "align-items" "center"
+        , css "position" "absolute"
+        , css "z-index" "1"
+        , css "background-color" "white"
+        , css "width" "100%"
+        , css "height" "100%"
+        ]
+        [ styled div
+            [ Options.cs "loader" ]
+            (List.map
+                viewLoaderDot
+             <|
+                List.range 1 6
+            )
+        ]
