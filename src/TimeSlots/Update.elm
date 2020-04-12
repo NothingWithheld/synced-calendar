@@ -169,7 +169,11 @@ adjustTimeSlotSelection model { pageY } result =
 sendSaveTimeSlotRequest : TS.WithTimeSlotSelection a -> ( TS.WithTimeSlotSelection a, Cmd Msg )
 sendSaveTimeSlotRequest model =
     case model.timeSlotSelection of
-        TS.CurrentlySelecting { dayNum, startBound, endBound } ->
+        TS.CurrentlySelecting selectionBounds ->
+            let
+                { dayNum, startBound, endBound } =
+                    TS.getOrderedTimeSlot selectionBounds
+            in
             ( model, saveWeeklyTimeSlot "25" dayNum startBound.slotNum endBound.slotNum )
 
         _ ->
