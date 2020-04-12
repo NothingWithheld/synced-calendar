@@ -28,7 +28,8 @@ main =
 
 
 type alias Model =
-    { timeSlotPositions : List TS.TimeSlotBoundaryPosition
+    { userId : String
+    , timeSlotPositions : List TS.TimeSlotBoundaryPosition
     , timeSlotsElement : Maybe TS.Element
     , timeSlotSelection : TS.TimeSlotSelection
     , eventCreation : EC.EventCreation
@@ -40,7 +41,8 @@ type alias Model =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { timeSlotPositions = []
+    ( { userId = "25"
+      , timeSlotPositions = []
       , timeSlotsElement = Nothing
       , timeSlotSelection = TS.NotSelecting
       , eventCreation = EC.NotCreating
@@ -91,8 +93,11 @@ update msg model =
         SendSaveTimeSlotRequest ->
             TSUpdate.sendSaveTimeSlotRequest model
 
-        SetSelectedTimeSlot timeSlotId ->
-            TSUpdate.setSelectedTimeSlot model timeSlotId
+        SetSelectedTimeSlotAfterCreation result ->
+            TSUpdate.setSelectedTimeSlotAfterCreation model result
+
+        SetSelectedTimeSlotAfterEditing result ->
+            TSUpdate.setSelectedTimeSlotAfterEditing model result
 
         HandleTimeSlotMouseUp ->
             TSUpdate.handleTimeSlotMouseUp model

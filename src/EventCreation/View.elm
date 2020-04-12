@@ -203,7 +203,7 @@ viewTimeChangeSelects model =
             text ""
 
 
-viewWeeklyFreeTimesSelects : WithMdc a -> TS.SelectedTimeSlot -> Html Msg
+viewWeeklyFreeTimesSelects : WithMdc a -> TS.WithSelectingTimeSlot b -> Html Msg
 viewWeeklyFreeTimesSelects model { dayNum, startBound, endBound } =
     styled div
         [ css "display" "flex"

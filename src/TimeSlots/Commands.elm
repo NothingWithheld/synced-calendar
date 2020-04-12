@@ -42,7 +42,7 @@ saveWeeklyTimeSlot userId dayNum startSlot endSlot =
             Http.post
                 { url = "http://localhost:3000/api/" ++ userId ++ "/free-times"
                 , body = Http.stringBody "application/x-www-form-urlencoded" queryString
-                , expect = Http.expectJson SetSelectedTimeSlot TSMessaging.idDecoder
+                , expect = Http.expectJson SetSelectedTimeSlotAfterCreation TSMessaging.idDecoder
                 }
 
         Nothing ->

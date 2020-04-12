@@ -5,7 +5,8 @@ module TimeSlots.Update exposing
     , handleTimeSlotMouseUp
     , sendSaveTimeSlotRequest
     , setSavedWeeklyTimeSlots
-    , setSelectedTimeSlot
+    , setSelectedTimeSlotAfterCreation
+    , setSelectedTimeSlotAfterEditing
     , setTimeSlotPositions
     , setTimeSlotsElement
     , startSelectingTimeSlot
@@ -16,7 +17,7 @@ import EventCreation.EventCreation as EC
 import EventCreation.Update as ECUpdate
 import Flip
 import Http
-import MainMsg exposing (Msg(..))
+import MainMsg exposing (Msg(..), NoData)
 import Task
 import TimeSlots.Commands exposing (requestSavedWeeklyTimeSlots, saveWeeklyTimeSlot)
 import TimeSlots.Messaging as TSMessaging
@@ -31,14 +32,17 @@ import Utils
         )
 
 
-setTimeSlotPositions : TS.WithTimeSlotPositions a -> Result Dom.Error (List Dom.Element) -> ( TS.WithTimeSlotPositions a, Cmd Msg )
+setTimeSlotPositions :
+    TS.WithTimeSlotPositions (TS.WithUserId a)
+    -> Result Dom.Error (List Dom.Element)
+    -> ( TS.WithTimeSlotPositions (TS.WithUserId a), Cmd Msg )
 setTimeSlotPositions model result =
     let
         updateModelWithTSPositions elementList =
             ( { model
                 | timeSlotPositions = TS.setTimeSlotPositions TS.startingSlotNum 0 elementList
               }
-            , requestSavedWeeklyTimeSlots "25"
+            , requestSavedWeeklyTimeSlots model.userId
             )
     in
     defaultOnError ( model, Cmd.none ) result updateModelWithTSPositions
@@ -60,7 +64,7 @@ setSavedWeeklyTimeSlots :
     -> ( TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a), Cmd Msg )
 setSavedWeeklyTimeSlots model result =
     let
-        updateWithTimeSlot { dayNum, startSlot, endSlot } model_ =
+        updateWithTimeSlot { dayNum, startSlot, endSlot, id } model_ =
             let
                 startBound =
                     getListItemAt startSlot model_.timeSlotPositions
@@ -68,7 +72,7 @@ setSavedWeeklyTimeSlots model result =
                 endBound =
                     getListItemAt endSlot model_.timeSlotPositions
             in
-            case Maybe.map2 (TS.SelectedTimeSlot dayNum) startBound endBound of
+            case Maybe.map2 (TS.SelectedTimeSlot dayNum id) startBound endBound of
                 Just selectionBounds ->
                     { model_
                         | selectedTimeSlots =
@@ -166,7 +170,7 @@ adjustTimeSlotSelection model { pageY } result =
             ( model, Cmd.none )
 
 
-sendSaveTimeSlotRequest : TS.WithTimeSlotSelection a -> ( TS.WithTimeSlotSelection a, Cmd Msg )
+sendSaveTimeSlotRequest : TS.WithTimeSlotSelection (TS.WithUserId a) -> ( TS.WithTimeSlotSelection (TS.WithUserId a), Cmd Msg )
 sendSaveTimeSlotRequest model =
     case model.timeSlotSelection of
         TS.CurrentlySelecting selectionBounds ->
@@ -174,25 +178,32 @@ sendSaveTimeSlotRequest model =
                 { dayNum, startBound, endBound } =
                     TS.getOrderedTimeSlot selectionBounds
             in
-            ( model, saveWeeklyTimeSlot "25" dayNum startBound.slotNum endBound.slotNum )
+            ( model
+            , saveWeeklyTimeSlot model.userId
+                dayNum
+                startBound.slotNum
+                endBound.slotNum
+            )
 
         _ ->
             ( model, Cmd.none )
 
 
-setSelectedTimeSlot :
+setSelectedTimeSlotAfterCreation :
     EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a))
     -> Result Http.Error Int
     -> ( EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)), Cmd Msg )
-setSelectedTimeSlot model timeSlotId =
-    let
-        updateFunc eventDetails selectionBounds =
+setSelectedTimeSlotAfterCreation model result =
+    case ( model.eventCreation, model.timeSlotSelection, result ) of
+        ( EC.CurrentlyCreatingEvent eventDetails _, TS.CurrentlySelecting selectionBounds, Ok timeSlotId ) ->
             let
                 orderedSelectionBounds =
                     TS.getOrderedTimeSlot selectionBounds
 
                 selectedTimeSlot =
-                    TS.SelectedTimeSlotDetails orderedSelectionBounds eventDetails
+                    TS.SelectedTimeSlotDetails
+                        (TS.selectingToSelectedTimeSlot orderedSelectionBounds timeSlotId)
+                        eventDetails
 
                 intersectsTimeSlots =
                     TS.doesTSSelectionIntersectSelectedTimeSlots
@@ -210,13 +221,46 @@ setSelectedTimeSlot model timeSlotId =
                   }
                 , Cmd.none
                 )
-    in
-    case ( model.eventCreation, model.timeSlotSelection ) of
-        ( EC.CurrentlyCreatingEvent eventDetails _, TS.CurrentlySelecting selectionBounds ) ->
-            updateFunc eventDetails selectionBounds
 
-        ( EC.CurrentlyCreatingEvent eventDetails _, TS.EditingSelection selectionBounds _ ) ->
-            updateFunc eventDetails selectionBounds
+        _ ->
+            ( model, Cmd.none )
+
+
+setSelectedTimeSlotAfterEditing :
+    EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a))
+    -> Result Http.Error NoData
+    -> ( EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)), Cmd Msg )
+setSelectedTimeSlotAfterEditing model result =
+    case ( model.eventCreation, model.timeSlotSelection, result ) of
+        ( EC.CurrentlyCreatingEvent eventDetails _, TS.EditingSelection selectionBounds prevSelection, Ok _ ) ->
+            let
+                orderedSelectionBounds =
+                    TS.getOrderedTimeSlot selectionBounds
+
+                selectedTimeSlot =
+                    TS.SelectedTimeSlotDetails
+                        (TS.selectingToSelectedTimeSlot orderedSelectionBounds <|
+                            .id <|
+                                TS.getTimeSlotFromDetails prevSelection
+                        )
+                        eventDetails
+
+                intersectsTimeSlots =
+                    TS.doesTSSelectionIntersectSelectedTimeSlots
+                        model.selectedTimeSlots
+                        model.timeSlotSelection
+            in
+            if intersectsTimeSlots then
+                ( model, Cmd.none )
+
+            else
+                ( { model
+                    | selectedTimeSlots = selectedTimeSlot :: model.selectedTimeSlots
+                    , timeSlotSelection = TS.NotSelecting
+                    , eventCreation = EC.NotCreating
+                  }
+                , Cmd.none
+                )
 
         _ ->
             ( model, Cmd.none )
@@ -303,6 +347,6 @@ editTimeSlotSelection model selectedTimeSlotDetails =
     ECUpdate.initiateUserPromptForEventDetails
         { model
             | timeSlotSelection =
-                TS.EditingSelection selectedTimeSlot selectedTimeSlotDetails
+                TS.EditingSelection (TS.selectedToSelectingTimeSlot selectedTimeSlot) selectedTimeSlotDetails
             , selectedTimeSlots = selectedTimeSlotsWithoutChosen
         }

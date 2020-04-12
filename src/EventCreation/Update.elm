@@ -253,8 +253,11 @@ handleEditingCancel model =
 
                 areEventCreationsEqual =
                     EC.areEventCreationsEqual eventCreationDetails prevEventDetails
+
+                areSelectionBoundsEqual =
+                    TS.areSelectionBoundsEqual selectionBounds prevSelectionBounds
             in
-            if not areEventCreationsEqual || selectionBounds /= prevSelectionBounds then
+            if not (areEventCreationsEqual && areSelectionBoundsEqual) then
                 ( { model | isDiscardConfirmationModalOpen = True }, Cmd.none )
 
             else
