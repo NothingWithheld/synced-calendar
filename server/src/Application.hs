@@ -48,6 +48,31 @@ import Handler.Profile
 import Handler.Number
 import Handler.TimeEntry
 
+
+-- TODO: TAKE OUT for non-development
+-- | CORS middleware configured with 'appCorsResourcePolicy'.
+corsified :: Middleware
+corsified = cors (const $ Just appCorsResourcePolicy)
+
+-- | Cors resource policy to be used with 'corsified' middleware.
+--
+-- This policy will set the following:
+--
+-- * RequestHeaders: @Content-Type@
+-- * MethodsAllowed: @OPTIONS, GET, PUT, POST@
+appCorsResourcePolicy :: CorsResourcePolicy
+appCorsResourcePolicy = CorsResourcePolicy {
+    corsOrigins        = Nothing
+  , corsMethods        = ["OPTIONS", "GET", "PUT", "POST", "DELETE"]
+  , corsRequestHeaders = ["Authorization", "Content-Type"]
+  , corsExposedHeaders = Nothing
+  , corsMaxAge         = Nothing
+  , corsVaryOrigin     = False
+  , corsRequireOrigin  = False
+  , corsIgnoreFailures = False
+}
+
+
 -- This line actually creates our YesodDispatch instance. It is the second half
 -- of the call to mkYesodData which occurs in Foundation.hs. Please see the
 -- comments there for more details.
@@ -97,7 +122,7 @@ makeApplication foundation = do
     logWare <- makeLogWare foundation
     -- Create the WAI application and apply middlewares
     appPlain <- toWaiAppPlain foundation
-    return $ logWare $ defaultMiddlewaresNoLogging $ simpleCors appPlain
+    return $ logWare $ defaultMiddlewaresNoLogging $ corsified appPlain
 
 makeLogWare :: App -> IO Middleware
 makeLogWare foundation =
