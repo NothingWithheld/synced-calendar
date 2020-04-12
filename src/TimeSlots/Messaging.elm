@@ -1,7 +1,17 @@
-module TimeSlots.Messaging exposing (ServerTimeSlot, serverTimeSlotDecoder, serverTimeSlotListDecoder)
+module TimeSlots.Messaging exposing
+    ( ServerTimeSlot
+    , getPostFreeTimesJson
+    , getPostFreeTimesQueryString
+    , idDecoder
+    , serverTimeSlotDecoder
+    , serverTimeSlotListDecoder
+    )
 
 import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode exposing (Value)
 import TimeSlots.TimeSlots as TS
+import Url.Builder as Builder
+import Utils exposing (getListItemAt)
 
 
 type alias ServerTimeSlot =
@@ -26,6 +36,38 @@ serverTimeSlotDecoder =
         (Decode.map (militaryToSlotNum True) <| Decode.field "toTime" Decode.string)
 
 
+idDecoder : Decoder Int
+idDecoder =
+    Decode.field "id" Decode.int
+
+
+getPostFreeTimesJson : TS.DayNum -> TS.SlotNum -> TS.SlotNum -> Maybe Value
+getPostFreeTimesJson dayNum startSlotNum endSlotNum =
+    let
+        mapFunc day =
+            Encode.object
+                [ ( "day", Encode.string day )
+                , ( "from_time", Encode.string <| slotNumToMilitary startSlotNum False )
+                , ( "to_time", Encode.string <| slotNumToMilitary endSlotNum True )
+                ]
+    in
+    Maybe.map mapFunc <| dayNumToDay dayNum
+
+
+getPostFreeTimesQueryString : TS.DayNum -> TS.SlotNum -> TS.SlotNum -> Maybe String
+getPostFreeTimesQueryString dayNum startSlotNum endSlotNum =
+    let
+        mapFunc day =
+            String.dropLeft 1 <|
+                Builder.toQuery
+                    [ Builder.string "day" day
+                    , Builder.string "from_time" <| slotNumToMilitary startSlotNum False
+                    , Builder.string "to_time" <| slotNumToMilitary endSlotNum True
+                    ]
+    in
+    Maybe.map mapFunc <| dayNumToDay dayNum
+
+
 dayNames : List String
 dayNames =
     [ "sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday" ]
@@ -42,6 +84,11 @@ dayToDayNum dayString =
                 acc
     in
     List.foldl takeIfEquals Nothing <| List.indexedMap Tuple.pair dayNames
+
+
+dayNumToDay : TS.DayNum -> Maybe String
+dayNumToDay dayNum =
+    getListItemAt dayNum dayNames
 
 
 militaryToSlotNum : Bool -> String -> Maybe TS.SlotNum
@@ -86,3 +133,22 @@ hoursMinutesToSlotNum isEndSlot hours minutes =
 
     else
         Nothing
+
+
+slotNumToMilitary : TS.SlotNum -> Bool -> String
+slotNumToMilitary slotNum isEndSlot =
+    let
+        adjustedSlotNum =
+            if isEndSlot then
+                slotNum + 1
+
+            else
+                slotNum
+
+        hours =
+            adjustedSlotNum // 4
+
+        minutes =
+            15 * modBy 4 adjustedSlotNum
+    in
+    String.fromInt hours ++ ":" ++ String.fromInt minutes

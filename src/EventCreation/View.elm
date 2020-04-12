@@ -147,7 +147,7 @@ viewInitialCreationActionButtons model intersectsTimeSlots =
                 [ Card.actionButton
                 , Button.ripple
                 , Button.unelevated
-                , Options.onClick SetSelectedTimeSlot
+                , Options.onClick SendSaveTimeSlotRequest
                 , when intersectsTimeSlots Button.disabled
                 ]
                 [ text "Submit" ]
@@ -182,7 +182,7 @@ viewEditingActionButtons model intersectsTimeSlots =
                 [ Card.actionButton
                 , Button.ripple
                 , Button.unelevated
-                , Options.onClick SetSelectedTimeSlot
+                , Options.onClick SendSaveTimeSlotRequest
                 , when intersectsTimeSlots Button.disabled
                 ]
                 [ text "Submit" ]

@@ -2,6 +2,7 @@ module TimeSlots.Commands exposing
     ( requestSavedWeeklyTimeSlots
     , requestTimeSlotPositions
     , requestTimeSlotsElement
+    , saveWeeklyTimeSlot
     )
 
 import Browser.Dom as Dom
@@ -32,3 +33,17 @@ requestSavedWeeklyTimeSlots userId =
         { url = "http://localhost:3000/api/" ++ userId ++ "/free-times"
         , expect = Http.expectJson SetSavedWeeklyTimeSlots TSMessaging.serverTimeSlotListDecoder
         }
+
+
+saveWeeklyTimeSlot : String -> TS.DayNum -> TS.SlotNum -> TS.SlotNum -> Cmd Msg
+saveWeeklyTimeSlot userId dayNum startSlot endSlot =
+    case TSMessaging.getPostFreeTimesQueryString dayNum startSlot endSlot of
+        Just queryString ->
+            Http.post
+                { url = "http://localhost:3000/api/" ++ userId ++ "/free-times"
+                , body = Http.stringBody "application/x-www-form-urlencoded" queryString
+                , expect = Http.expectJson SetSelectedTimeSlot TSMessaging.idDecoder
+                }
+
+        Nothing ->
+            Cmd.none

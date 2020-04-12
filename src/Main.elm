@@ -88,8 +88,11 @@ update msg model =
         AdjustTimeSlotSelection pointerPosition result ->
             TSUpdate.adjustTimeSlotSelection model pointerPosition result
 
-        SetSelectedTimeSlot ->
-            TSUpdate.setSelectedTimeSlot model
+        SendSaveTimeSlotRequest ->
+            TSUpdate.sendSaveTimeSlotRequest model
+
+        SetSelectedTimeSlot timeSlotId ->
+            TSUpdate.setSelectedTimeSlot model timeSlotId
 
         HandleTimeSlotMouseUp ->
             TSUpdate.handleTimeSlotMouseUp model

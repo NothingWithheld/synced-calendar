@@ -3,6 +3,7 @@ module TimeSlots.Update exposing
     , editTimeSlotSelection
     , handleTimeSlotMouseMove
     , handleTimeSlotMouseUp
+    , sendSaveTimeSlotRequest
     , setSavedWeeklyTimeSlots
     , setSelectedTimeSlot
     , setTimeSlotPositions
@@ -17,7 +18,7 @@ import Flip
 import Http
 import MainMsg exposing (Msg(..))
 import Task
-import TimeSlots.Commands exposing (requestSavedWeeklyTimeSlots)
+import TimeSlots.Commands exposing (requestSavedWeeklyTimeSlots, saveWeeklyTimeSlot)
 import TimeSlots.Messaging as TSMessaging
 import TimeSlots.TimeSlots as TS
 import Utils
@@ -165,10 +166,21 @@ adjustTimeSlotSelection model { pageY } result =
             ( model, Cmd.none )
 
 
+sendSaveTimeSlotRequest : TS.WithTimeSlotSelection a -> ( TS.WithTimeSlotSelection a, Cmd Msg )
+sendSaveTimeSlotRequest model =
+    case model.timeSlotSelection of
+        TS.CurrentlySelecting { dayNum, startBound, endBound } ->
+            ( model, saveWeeklyTimeSlot "25" dayNum startBound.slotNum endBound.slotNum )
+
+        _ ->
+            ( model, Cmd.none )
+
+
 setSelectedTimeSlot :
     EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a))
+    -> Result Http.Error Int
     -> ( EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)), Cmd Msg )
-setSelectedTimeSlot model =
+setSelectedTimeSlot model timeSlotId =
     let
         updateFunc eventDetails selectionBounds =
             let

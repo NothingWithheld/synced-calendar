@@ -16,7 +16,8 @@ type Msg
     | StartSelectingTimeSlot TS.DayNum TS.SlotNum
     | HandleTimeSlotMouseMove TS.PointerPosition
     | AdjustTimeSlotSelection TS.PointerPosition (Result Dom.Error Dom.Viewport)
-    | SetSelectedTimeSlot
+    | SendSaveTimeSlotRequest
+    | SetSelectedTimeSlot (Result Http.Error Int)
     | HandleTimeSlotMouseUp
     | EditTimeSlotSelection TS.SelectedTimeSlotDetails
       -- EventCreation
