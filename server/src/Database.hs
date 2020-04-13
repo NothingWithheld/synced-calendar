@@ -47,13 +47,13 @@ convertTextToDate (Just s) = do
                 (_, _, _) -> Nothing
         _ -> Nothing
 
-convertTextToBool :: Maybe Text -> Maybe Bool 
-convertTextToBool Nothing = Nothing
+convertTextToBool :: Maybe Text -> Bool 
+convertTextToBool Nothing = False
 convertTextToBool (Just s) = do 
     let boolString = T.unpack s 
     case toLower boolString of 
-        "true" -> Just True 
-        _ -> Nothing
+        "true" -> True
+        _ -> False
 
 -- | Convert TimeOfDay in Local time to UTC time
 -- Params: 

@@ -16,7 +16,7 @@
 
 /api/#Text/free-times FreeTimeEntryR GET POST PUT DELETE
 /api/#Text/available-times AvailableTimeEntryR GET POST PUT DELETE
-/api/#Text/proposed-event/creator ProposedEventCreatorR GET POST PUT
+/api/#Text/proposed-event/creator ProposedEventCreatorR GET POST PUT DELETE
 /api/#Text/proposed-event/recipient ProposedEventRecipientR GET
-/api/#Text/confirmed-event/creator ConfirmedEventCreatorR GET POST
+/api/#Text/confirmed-event/creator ConfirmedEventCreatorR GET POST DELETE
 /api/#Text/confirmed-event/recipient ConfirmedEventRecipientR GET

@@ -83,10 +83,10 @@ putProposedEventCreatorR eventIdText = do
     maybeConfirmedText <- lookupPostParam "confirmed"
     let maybeFromDate = Database.convertTextToDate maybeFromDateText
     let maybeToDate = Database.convertTextToDate maybeToDateText
-    let maybeConfirmed = Database.convertTextToBool maybeConfirmedText
+    let confirmed = Database.convertTextToBool maybeConfirmedText
     let eitherEventId = decimal eventIdText
-    case (maybeRecipientId, maybeFromDate, maybeToDate, maybeConfirmed, eitherEventId) of
-        (Just recipientId, Just fromDate, Just toDate, Just confirmed, Right (eventIdInt, "")) -> do
+    case (maybeRecipientId, maybeFromDate, maybeToDate, eitherEventId) of
+        (Just recipientId, Just fromDate, Just toDate, Right (eventIdInt, "")) -> do
             allEvents <- runDB $ selectList [ProposedEventId ==. toSqlKey (fromIntegral (eventIdInt::Integer))] []
             case allEvents of 
                 [Entity eventId ProposedEvent {..}] -> do 
@@ -101,7 +101,7 @@ putProposedEventCreatorR eventIdText = do
                         ]
                     return Null
                 _ -> invalidArgs ["Failed to find event with id: " Import.++ eventIdText]
-        (_, _, _, _, _) -> invalidArgs ["Failed to parse arguments. Check API documentation for valid formatting"]
+        (_, _, _, _) -> invalidArgs ["Failed to parse arguments. Check API documentation for valid formatting"]
 
 deleteProposedEventCreatorR :: Text -> Handler Value 
 deleteProposedEventCreatorR eventIdText = do 
