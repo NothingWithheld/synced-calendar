@@ -37,7 +37,7 @@ As your code changes, your site will be automatically recompiled and redeployed 
 - **GET** `/api/{user_id}/free-times`
 	
 	Retrieves free time entries for a given user. Response sends in a JSON
-	array of data objects with `id`, `userId`, `day`, `from_time`, and `to_time` variables (see POST documentation for possible values of these variables)
+	array of data objects with `id`, `userId`, `day`, `fromTime`, and `toTime` variables (see POST documentation for possible values of these variables)
 
 	user_id (Int) -> unique number that identifies a user
 
@@ -58,6 +58,7 @@ As your code changes, your site will be automatically recompiled and redeployed 
 	- timezone (Int) -> offset from UTC time (range: -14 to 12)
 	- from_time (String) -> written in the format of `HH:MM` using military time
 	- to_time (String) -> written in the format of `HH:MM` using military time
+
 - **PUT** `/api/{id}/free-times`
 
 	Updates a free time entry given its `id`, which is provided in a GET request. 
@@ -70,6 +71,7 @@ As your code changes, your site will be automatically recompiled and redeployed 
 	- timezone (Int) -> offset from UTC time (range: -14 to 12)
 	- from_time (String) -> Written in the format of `HH:MM` using military time
 	- to_time (String) -> Written in the format of `HH:MM` using military time
+
 - **DELETE** `/api/{id}/free-times`
 	
 	Deletes a free time entry given its `id`, which is provided in a GET request. 
@@ -79,7 +81,7 @@ As your code changes, your site will be automatically recompiled and redeployed 
 ### AvailableTimeEntry
 - **GET** `/api/{user_id}/available-times`
 	
-	Retrieves available time entries for a given user for a given event. Response sends in a JSON array of data objects with `id`, `userId`, `event_id`, `date`, `from_time`, and `to_time` variables (see POST documentation for possible values of these variables)
+	Retrieves available time entries for a given user for a given event. Response sends in a JSON array of data objects with `id`, `userId`, `eventId`, `date`, `fromTime`, and `toTime` variables (see POST documentation for possible values of these variables)
 
 	user_id (Int) -> unique number that identifies a user
 
@@ -101,6 +103,7 @@ As your code changes, your site will be automatically recompiled and redeployed 
 	- timezone (Int) -> offset from UTC time (range: -14 to 12)
 	- from_time (String) -> written in the format of `HH:MM` using military time
 	- to_time (String) -> written in the format of `HH:MM` using military time
+
 - **PUT** `/api/{id}/available-times`
 
 	Updates an available time entry given its `id`, which is provided in a GET request. 
@@ -113,11 +116,108 @@ As your code changes, your site will be automatically recompiled and redeployed 
 	- timezone (Int) -> offset from UTC time (range: -14 to 12)
 	- from_time (String) -> Written in the format of `HH:MM` using military time
 	- to_time (String) -> Written in the format of `HH:MM` using military time
+
 - **DELETE** `/api/{id}/available-times`
 	
 	Deletes an available time entry given its `id`, which is provided in a GET request. 
 
 	id (Int) -> Unique number that identifies a `AvailableTimeEntry`
+
+### ProposedEvent
+- **GET** `/api/{user_id}/proposed-event/creator`
+	
+	Retrieves proposed events created by `user_id`. Response sends in a JSON array of data objects with `id`, `creatorId`, `recipientId`, `name`, `description`, `fromDate`, `toDate`, `confirmed` variables (see POST documentation for possible values of these variables)
+
+	user_id (Int) -> unique number that identifies a user
+
+- **GET** `/api/{user_id}/proposed-event/recipient`
+	
+	Retrieves proposed events received by `user_id`. Response sends in a JSON array of data objects with `id`, `creatorId`, `recipientId`, `name`, `description`, `fromDate`, `toDate`, `confirmed` variables (see POST documentation for possible values of these variables)
+
+	user_id (Int) -> unique number that identifies a user
+
+- **POST** `/api/{user_id}/proposed-event/creator`
+
+	Creates a ProposedEvent for a given creator and recipient. Recipient can POST `AvailableTimeEntry` for given ProposedEvent `id`. Response sends in a JSON object of the newly created `ProposedEvent`.
+
+	user_id (Int) -> unique number that identifies a user
+
+	**x-www-form-urlencoded body**
+	
+	- recipient_id (Int) -> unique number that identifies a user
+	- from_date (String) ->  written in the format of `MM-DD-YYYY`
+	- to_date (String) -> written in the format of `MM-DD-YYYY`
+	- name (Maybe String) -> optional string parameter to name the event
+	- description (Maybe String) -> optional string parameter to describe the event
+
+- **PUT** `/api/{id}/proposed-event/creator`
+
+	Updates a ProposedEvent given its `id`, which is provided in a GET request. 
+
+	id (Int) -> Unique number that identifies a `ProposedEvent`
+
+	**x-www-form-urlencoded body**
+	
+	- recipient_id (Int) -> unique number that identifies a user
+	- from_date (String) ->  written in the format of `MM-DD-YYYY`
+	- to_date (String) -> written in the format of `MM-DD-YYYY`
+	- name (Maybe String) -> optional string parameter to name the event
+	- description (Maybe String) -> optional string parameter to describe the event
+	- confirmed (Bool) -> (*Experimental*) changes status of ProposedEvent, might get removed
+	because GET requests doesn't retreive ProposedEvents that are confirmed as they should
+	have a corresponding ConfirmedEvent linked to the ProposedEvent `id`.
+
+- **DELETE** `/api/{id}/proposed-event/creator`
+	
+	Deletes a ProposedEvent given its `id`, which is provided in a GET request. 
+
+	id (Int) -> Unique number that identifies a `ProposedEvent`
+
+### ConfirmedEvent
+- **GET** `/api/{user_id}/confirmed-event/creator`
+	
+	Retrieves confirmed events created by `user_id`. Response sends in a JSON array of data objects with `eventId`, `creatorId`, `recipientId`, `name`, `description`, `date`, `fromTime`, `toTime` variables (see POST documentation of ProposedEvent for possible values of these variables)
+
+	user_id (Int) -> unique number that identifies a user
+
+- **GET** `/api/{user_id}/confirmed-event/recipient`
+	
+	Retrieves confirmed events received by `user_id`. Response sends in a JSON array of data objects with `eventId`, `creatorId`, `recipientId`, `name`, `description`, `date`, `fromTime`, `toTime` variables (see POST documentation of ProposedEvent for possible values of these variables)
+
+	user_id (Int) -> unique number that identifies a user
+
+- **POST** `/api/{id}/confirmed-event/creator`
+
+	Creates a confirmed event that corresponds to a ProposedEvent `id`. Response sends in a JSON object of the newly created `ConfirmedEvent`. This also marks the corresponding ProposedEvent `confirmed` status to True, so it would no longer show up in GET requests for ProposedEvent.
+
+	id (Int) -> unique number that identifies a `ProposedEvent`
+
+	**x-www-form-urlencoded body**
+	
+	- date (String) ->  written in the format of `MM-DD-YYYY`
+	- timezone (Int) -> offset from UTC time (range: -14 to 12)
+	- from_time (String) -> written in the format of `HH:MM` using military time
+	- to_time (String) -> written in the format of `HH:MM` using military time
+
+- **PUT** `/api/{id}/confirmed-event/creator`
+
+	Updates a ConfirmedEvent given its `id` (not the ProposedEvent `event_id`), which is provided in a GET request. 
+
+	id (Int) -> Unique number that identifies a `ConfirmedEvent`
+
+	**x-www-form-urlencoded body**
+	
+	- date (String) ->  written in the format of `MM-DD-YYYY`
+	- timezone (Int) -> offset from UTC time (range: -14 to 12)
+	- from_time (String) -> written in the format of `HH:MM` using military time
+	- to_time (String) -> written in the format of `HH:MM` using military time
+
+- **DELETE** `/api/{id}/confirmed-event/creator`
+	
+	Deletes a ConfirmedEvent given the corresponding ProposedEvent's `id`, which is provided in a GET request of ProposedEvent. 
+
+	id (Int) -> Unique number that identifies a `ProposedEvent`
+
 ## Tests
 
 ```
