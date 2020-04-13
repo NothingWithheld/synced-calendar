@@ -10,11 +10,12 @@ import Data.Time.LocalTime
 import Data.Text.Read
 import qualified Database
 
-data ConfirmedEventData = ConfirmedEventData ProposedEventId Text Text (Maybe Text) (Maybe Text) Day TimeOfDay TimeOfDay
+data ConfirmedEventData = ConfirmedEventData ConfirmedEventId ProposedEventId Text Text (Maybe Text) (Maybe Text) Day TimeOfDay TimeOfDay
 
 instance ToJSON ConfirmedEventData where 
-    toJSON (ConfirmedEventData eventId creatorId recipientId name description date fromTime toTime) =
+    toJSON (ConfirmedEventData confirmedEventId eventId creatorId recipientId name description date fromTime toTime) =
         object [
+            "id" .= confirmedEventId,
             "eventId" .= eventId, 
             "creatorId" .= creatorId,
             "recipientId" .= recipientId,
@@ -27,7 +28,7 @@ instance ToJSON ConfirmedEventData where
 
 convertConfirmedEventToLocal :: ConfirmedEventData -> Text -> Maybe (ConfirmedEventData)
 convertConfirmedEventToLocal 
-    (ConfirmedEventData proposedEventId creatorId recipientId name description date fromTime toTime) timezone = do 
+    (ConfirmedEventData confirmedEventId proposedEventId creatorId recipientId name description date fromTime toTime) timezone = do 
         let maybeLocalFromTime = Database.convertUTCToLocal fromTime timezone
         let maybeLocalToTime = Database.convertUTCToLocal toTime timezone
         case (maybeLocalFromTime, maybeLocalToTime) of 
@@ -35,7 +36,7 @@ convertConfirmedEventToLocal
                 -- The database will hold in the day of fromTime if the event is staggered 
                 -- between to two days 
                 let localDate = addDays fromTimeDayOffset date
-                return $ ConfirmedEventData proposedEventId creatorId recipientId name description localDate localFromTime localToTime
+                return $ ConfirmedEventData confirmedEventId proposedEventId creatorId recipientId name description localDate localFromTime localToTime
             (_, _) -> Nothing
 
 getConfirmedEventFromProposedEvent :: Entity ProposedEvent -> Handler (Maybe ConfirmedEventData)
@@ -43,8 +44,8 @@ getConfirmedEventFromProposedEvent
     (Entity proposedEventId (ProposedEvent creatorId recipientId name description _ _ _)) = do 
         allEvents <- runDB $ selectList [ConfirmedEventProposedEventId ==. proposedEventId] []
         case allEvents of 
-            [Entity _ (ConfirmedEvent _ date fromTime toTime)] -> 
-                return $ Just $ ConfirmedEventData proposedEventId creatorId recipientId name description date fromTime toTime
+            [Entity confirmedEventId (ConfirmedEvent _ date fromTime toTime)] -> 
+                return $ Just $ ConfirmedEventData confirmedEventId proposedEventId creatorId recipientId name description date fromTime toTime
             _ -> return $ Nothing
 
 getProposedEventCreatorR :: Text -> Handler Value
@@ -141,7 +142,11 @@ postConfirmedEventCreatorR eventIdText = do
     let eitherEventId = decimal eventIdText
     case eitherEventId of 
         Right (eventIdInt, "") -> do
-            allProposedEvents <- runDB $ selectList [ProposedEventId ==. toSqlKey (fromIntegral (eventIdInt::Integer))] []
+            allProposedEvents <- runDB $ 
+                selectList [
+                    ProposedEventId ==. toSqlKey (fromIntegral (eventIdInt::Integer)),
+                    ProposedEventConfirmed <-. [False]
+                ] []
             case allProposedEvents of 
                 [Entity eventId (ProposedEvent creatorId recipientId name description _ _ _)] -> do 
                     maybeDateText <- lookupPostParam "date"
@@ -157,12 +162,40 @@ postConfirmedEventCreatorR eventIdText = do
                             -- between to two days
                             let utcDate = addDays fromTimeDayOffset date
                             let event' = ConfirmedEvent eventId utcDate fromTime toTime
-                            _ <- runDB $ insertEntity event'
+                            (Entity confirmedEventId _) <- runDB $ insertEntity event'
                             runDB $ update eventId [ProposedEventConfirmed =. True]
-                            returnJson $ ConfirmedEventData eventId creatorId recipientId name description date fromTime toTime
+                            returnJson $ ConfirmedEventData confirmedEventId eventId creatorId recipientId name description date fromTime toTime
                         (_, _, _) -> invalidArgs ["Failed to parse date, from_time and/or to_time"]
                 _ -> invalidArgs ["Failed to find event with id: " Import.++ eventIdText]
         _ -> invalidArgs ["Failed to find event with id: " Import.++ eventIdText]
+
+putConfirmedEventCreatorR :: Text -> Handler Value 
+putConfirmedEventCreatorR eventIdText = do 
+    maybeDateText <- lookupPostParam "date"
+    maybeTimezone <- lookupPostParam "timezone"
+    maybeFromTimeText <- lookupPostParam "from_time"
+    maybeToTimeText <- lookupPostParam "to_time"
+    let maybeDate = Database.convertTextToDate maybeDateText
+    let maybeUTCFromTime = Database.convertTextToTime maybeFromTimeText maybeTimezone
+    let maybeUTCToTime = Database.convertTextToTime maybeToTimeText maybeTimezone
+    let eitherEventId = decimal eventIdText
+    case (maybeDate, maybeUTCFromTime, maybeUTCToTime, eitherEventId) of
+        (Just date, Just (fromTimeDayOffset, fromTime), Just (_, toTime), Right (eventIdInt, "")) -> do
+            allEventEntries <- runDB $ selectList [ConfirmedEventId ==. toSqlKey (fromIntegral (eventIdInt::Integer))] []
+            case allEventEntries of 
+                [Entity eventId ConfirmedEvent {..}] -> do 
+                     -- The database will hold in the date of fromTime if the event is staggered 
+                    -- between to two days 
+                    let utcDate = addDays fromTimeDayOffset date
+                    runDB $ update eventId 
+                        [
+                            ConfirmedEventDate =. utcDate,
+                            ConfirmedEventFromTime =. fromTime, 
+                            ConfirmedEventToTime =. toTime
+                        ]
+                    return Null
+                _ -> notFound
+        (_, _, _, _) -> invalidArgs ["Failed to parse date, timezone, from_time and/or to_time params"]
 
 deleteConfirmedEventCreatorR :: Text -> Handler Value 
 deleteConfirmedEventCreatorR eventIdText = do 
