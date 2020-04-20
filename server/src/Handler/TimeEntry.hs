@@ -6,10 +6,27 @@ module Handler.TimeEntry where
 import Import 
 import Database.Persist.Sql (toSqlKey)
 import Data.Time.Calendar
+import Data.Time.LocalTime
 import Data.Text.Read
 import qualified Database
 
-convertFreeTimeEntryToLocal :: Entity FreeTimeEntry -> Text -> Maybe (Entity FreeTimeEntry)
+data FreeTimeEntryData = FreeTimeEntryData FreeTimeEntryId Text Text TimeOfDay TimeOfDay
+
+showWithZeros :: Int -> String 
+showWithZeros n | Prelude.length (show n) == 1 = "0" Prelude.++ (show n)
+                | otherwise = show n
+
+instance ToJSON FreeTimeEntryData where 
+    toJSON (FreeTimeEntryData freeTimeEntryId userId day (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _)) =
+        object [
+            "id" .= freeTimeEntryId,
+            "userId" .= userId, 
+            "day" .= day,
+            "fromTime" .= ((showWithZeros fromHour) Prelude.++ ":" Prelude.++ (showWithZeros fromMinutes)),
+            "toTime" .= ((showWithZeros toHour) Prelude.++ ":" Prelude.++ (showWithZeros toMinutes))
+        ]
+
+convertFreeTimeEntryToLocal :: Entity FreeTimeEntry -> Text -> Maybe FreeTimeEntryData
 convertFreeTimeEntryToLocal (Entity entryId (FreeTimeEntry userId day fromTime toTime)) timezone = do 
     let maybeLocalFromTime = Database.convertUTCToLocal fromTime timezone
     let maybeLocalToTime = Database.convertUTCToLocal toTime timezone
@@ -19,7 +36,7 @@ convertFreeTimeEntryToLocal (Entity entryId (FreeTimeEntry userId day fromTime t
             -- between to two days 
             let maybeLocalDay = Database.updateDayString day fromTimeDayOffset
             case maybeLocalDay of 
-                Just localDay -> Just $ Entity entryId (FreeTimeEntry userId localDay localFromTime localToTime)
+                Just localDay -> Just $ FreeTimeEntryData entryId userId localDay localFromTime localToTime
                 _ -> Nothing
         (_, _) -> Nothing
 
