@@ -11,19 +11,27 @@ import Data.Text.Read
 import qualified Database
 
 data FreeTimeEntryData = FreeTimeEntryData FreeTimeEntryId Text Text TimeOfDay TimeOfDay
-
-showWithZeros :: Int -> String 
-showWithZeros n | Prelude.length (show n) == 1 = "0" Prelude.++ (show n)
-                | otherwise = show n
+data AvailableTimeEntryData = AvailableTimeEntryData AvailableTimeEntryId Text Text Day TimeOfDay TimeOfDay
 
 instance ToJSON FreeTimeEntryData where 
-    toJSON (FreeTimeEntryData freeTimeEntryId userId day (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _)) =
+    toJSON (FreeTimeEntryData entryId userId day (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _)) =
         object [
-            "id" .= freeTimeEntryId,
+            "id" .= entryId,
             "userId" .= userId, 
             "day" .= day,
-            "fromTime" .= ((showWithZeros fromHour) Prelude.++ ":" Prelude.++ (showWithZeros fromMinutes)),
-            "toTime" .= ((showWithZeros toHour) Prelude.++ ":" Prelude.++ (showWithZeros toMinutes))
+            "fromTime" .= ((Database.showWithZeros fromHour) Prelude.++ ":" Prelude.++ (Database.showWithZeros fromMinutes)),
+            "toTime" .= ((Database.showWithZeros toHour) Prelude.++ ":" Prelude.++ (Database.showWithZeros toMinutes))
+        ]
+
+instance ToJSON AvailableTimeEntryData where 
+    toJSON (AvailableTimeEntryData entryId userId eventId date (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _)) =
+        object [
+            "id" .= entryId,
+            "userId" .= userId, 
+            "eventId" .= eventId,
+            "date" .= date,
+            "fromTime" .= ((Database.showWithZeros fromHour) Prelude.++ ":" Prelude.++ (Database.showWithZeros fromMinutes)),
+            "toTime" .= ((Database.showWithZeros toHour) Prelude.++ ":" Prelude.++ (Database.showWithZeros toMinutes))
         ]
 
 convertFreeTimeEntryToLocal :: Entity FreeTimeEntry -> Text -> Maybe FreeTimeEntryData
@@ -40,7 +48,7 @@ convertFreeTimeEntryToLocal (Entity entryId (FreeTimeEntry userId day fromTime t
                 _ -> Nothing
         (_, _) -> Nothing
 
-convertAvailableTimeEntryToLocal :: Entity AvailableTimeEntry -> Text -> Maybe (Entity AvailableTimeEntry)
+convertAvailableTimeEntryToLocal :: Entity AvailableTimeEntry -> Text -> Maybe AvailableTimeEntryData
 convertAvailableTimeEntryToLocal (Entity entryId (AvailableTimeEntry userId eventId date fromTime toTime)) timezone = do 
     let maybeLocalFromTime = Database.convertUTCToLocal fromTime timezone
     let maybeLocalToTime = Database.convertUTCToLocal toTime timezone
@@ -49,7 +57,7 @@ convertAvailableTimeEntryToLocal (Entity entryId (AvailableTimeEntry userId even
             -- The database will hold in the day of fromTime if the event is staggered 
             -- between to two days 
             let localDate = addDays fromTimeDayOffset date
-            return $ Entity entryId (AvailableTimeEntry userId eventId localDate localFromTime localToTime)
+            return $ AvailableTimeEntryData entryId userId eventId localDate localFromTime localToTime
         (_, _) -> Nothing
 
 getFreeTimeEntryR :: Text -> Handler Value 
@@ -77,8 +85,8 @@ postFreeTimeEntryR userId = do
             case maybeUtcDay of 
                 Just utcDay -> do
                     let timeEntry' = FreeTimeEntry userId (toLower utcDay) fromTime toTime
-                    insertedFreeTimeEntry <- runDB $ insertEntity timeEntry'
-                    returnJson insertedFreeTimeEntry
+                    (Entity entryId _) <- runDB $ insertEntity timeEntry'
+                    returnJson $ FreeTimeEntryData entryId userId (toLower utcDay) fromTime toTime
                 _ -> invalidArgs ["Failed to parse day, from_time and/or to_time params"]
         (_, _, _) -> invalidArgs ["Failed to parse day, from_time and/or to_time params"]
 
@@ -147,8 +155,8 @@ postAvailableTimeEntryR userId = do
             -- between to two days
             let utcDate = addDays fromTimeDayOffset date
             let timeEntry' = AvailableTimeEntry userId eventId utcDate fromTime toTime
-            insertedAvailableTimeEntry <- runDB $ insertEntity timeEntry'
-            returnJson insertedAvailableTimeEntry
+            (Entity entryId _) <- runDB $ insertEntity timeEntry'
+            returnJson $ AvailableTimeEntryData entryId userId eventId utcDate fromTime toTime
         (_, _, _, _) -> invalidArgs ["Failed to parse date, from_time and/or to_time params"]
 
 putAvailableTimeEntryR :: Text -> Handler Value 

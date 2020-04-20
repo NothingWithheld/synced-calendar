@@ -13,7 +13,7 @@ import qualified Database
 data ConfirmedEventData = ConfirmedEventData ConfirmedEventId ProposedEventId Text Text (Maybe Text) (Maybe Text) Day TimeOfDay TimeOfDay
 
 instance ToJSON ConfirmedEventData where 
-    toJSON (ConfirmedEventData confirmedEventId eventId creatorId recipientId name description date fromTime toTime) =
+    toJSON (ConfirmedEventData confirmedEventId eventId creatorId recipientId name description date (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _)) =
         object [
             "id" .= confirmedEventId,
             "eventId" .= eventId, 
@@ -22,8 +22,8 @@ instance ToJSON ConfirmedEventData where
             "name" .= name,
             "description" .= description,
             "date" .= date,
-            "fromTime" .= fromTime,
-            "toTime" .= toTime
+            "fromTime" .= ((Database.showWithZeros fromHour) Prelude.++ ":" Prelude.++ (Database.showWithZeros fromMinutes)),
+            "toTime" .= ((Database.showWithZeros toHour) Prelude.++ ":" Prelude.++ (Database.showWithZeros toMinutes))
         ]
 
 convertConfirmedEventToLocal :: ConfirmedEventData -> Text -> Maybe (ConfirmedEventData)

@@ -10,6 +10,10 @@ import Data.Dates
 import Data.Text.Read
 import qualified Data.Text as T
 
+showWithZeros :: Int -> String 
+showWithZeros n | Prelude.length (show n) == 1 = "0" Prelude.++ (show n)
+                | otherwise = show n
+
 -- | Convert text string "HH:SS" to TimeOfDay in UTC time
 -- Params: 
 -- * timeString: format "HH:SS"
