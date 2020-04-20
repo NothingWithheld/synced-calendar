@@ -2,9 +2,10 @@ module Main exposing (main)
 
 import Browser exposing (Document, UrlRequest(..))
 import Html
+import Login.Main
 import Url exposing (Url)
-import WeeklyFreeTimes.Main as WeeklyFreeTimes
-import WeeklyFreeTimes.MainMsg as WeeklyFreeTimesMsg
+import WeeklyFreeTimes.Main
+import WeeklyFreeTimes.MainMsg
 
 
 
@@ -28,12 +29,13 @@ main =
 
 
 type Model
-    = WeeklyFreeTimes WeeklyFreeTimes.Model
+    = Login Login.Main.Model
+    | WeeklyFreeTimes WeeklyFreeTimes.Main.Model
 
 
 init : ( Model, Cmd Msg )
 init =
-    updateWith WeeklyFreeTimes WeeklyFreeTimesMsg <| WeeklyFreeTimes.init
+    updateWith Login LoginMsg <| Login.Main.init
 
 
 
@@ -43,7 +45,8 @@ init =
 type Msg
     = ChangedUrl Url
     | ClickedLink UrlRequest
-    | WeeklyFreeTimesMsg WeeklyFreeTimesMsg.Msg
+    | LoginMsg Login.Main.Msg
+    | WeeklyFreeTimesMsg WeeklyFreeTimes.MainMsg.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -55,9 +58,16 @@ update msg model =
         ( ClickedLink _, _ ) ->
             ( model, Cmd.none )
 
+        ( LoginMsg subMsg, Login login ) ->
+            updateWith Login LoginMsg <|
+                Login.Main.update subMsg login
+
         ( WeeklyFreeTimesMsg subMsg, WeeklyFreeTimes weeklyFreeTimes ) ->
             updateWith WeeklyFreeTimes WeeklyFreeTimesMsg <|
-                WeeklyFreeTimes.update subMsg weeklyFreeTimes
+                WeeklyFreeTimes.Main.update subMsg weeklyFreeTimes
+
+        ( _, _ ) ->
+            ( model, Cmd.none )
 
 
 updateWith : (subModel -> Model) -> (subMsg -> Msg) -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )
@@ -74,9 +84,12 @@ updateWith toModel toMsg ( subModel, subCmd ) =
 view : Model -> Document Msg
 view model =
     case model of
+        Login login ->
+            viewWith LoginMsg <| Login.Main.view login
+
         WeeklyFreeTimes weeklyFreeTimes ->
             viewWith WeeklyFreeTimesMsg <|
-                WeeklyFreeTimes.view weeklyFreeTimes
+                WeeklyFreeTimes.Main.view weeklyFreeTimes
 
 
 viewWith : (subMsg -> Msg) -> Document subMsg -> Document Msg
@@ -93,6 +106,10 @@ viewWith toMsg { title, body } =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model of
+        Login login ->
+            Sub.map LoginMsg <|
+                Login.Main.subscriptions login
+
         WeeklyFreeTimes weeklyFreeTimes ->
             Sub.map WeeklyFreeTimesMsg <|
-                WeeklyFreeTimes.subscriptions weeklyFreeTimes
+                WeeklyFreeTimes.Main.subscriptions weeklyFreeTimes
