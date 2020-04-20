@@ -20,7 +20,6 @@ import EventCreation.EventCreation as EC
 import EventCreation.Update as ECUpdate
 import Flip
 import Http
-import MainMsg exposing (Msg(..))
 import Task
 import TimeSlots.Commands
     exposing
@@ -40,6 +39,7 @@ import Utils
         , getListItemAt
         , useWithoutCmdMsg
         )
+import WeeklyFreeTimes.MainMsg exposing (Msg(..))
 
 
 setTimeSlotPositions :

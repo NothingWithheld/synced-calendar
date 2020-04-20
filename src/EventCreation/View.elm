@@ -4,7 +4,6 @@ import EventCreation.Constants as ECConsts
 import EventCreation.EventCreation as EC
 import Html exposing (Html, div, text)
 import Json.Decode as Decode
-import MainMsg exposing (Msg(..), WithMdc)
 import Material.Button as Button
 import Material.Card as Card
 import Material.IconButton as IconButton
@@ -15,6 +14,7 @@ import Material.TextField as TextField
 import Material.Typography as Typography
 import TimeSlots.TimeSlots as TS
 import Utils exposing (getListItemAt)
+import WeeklyFreeTimes.MainMsg exposing (Msg(..), WithMdc)
 
 
 viewUserRequest : WithMdc (EC.WithEventCreation (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a))) -> Html Msg

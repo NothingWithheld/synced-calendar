@@ -1,17 +1,10 @@
 module Main exposing (main)
 
-import Browser
-import EventCreation.EventCreation as EC
-import EventCreation.Update as ECUpdate
-import EventCreation.View exposing (viewDiscardConfirmationModal, viewUserRequest)
-import Html exposing (Html, div)
-import MainMsg exposing (Msg(..))
-import Material
-import Material.Options exposing (css, styled)
-import TimeSlots.Commands exposing (requestTimeSlotPositions, requestTimeSlotsElement)
-import TimeSlots.TimeSlots as TS
-import TimeSlots.Update as TSUpdate
-import TimeSlots.View exposing (viewDayHeadings, viewScrollableTimeSlots)
+import Browser exposing (Document, UrlRequest(..))
+import Html
+import Url exposing (Url)
+import WeeklyFreeTimes.Main as WeeklyFreeTimes
+import WeeklyFreeTimes.MainMsg as WeeklyFreeTimesMsg
 
 
 
@@ -20,154 +13,77 @@ import TimeSlots.View exposing (viewDayHeadings, viewScrollableTimeSlots)
 
 main : Program () Model Msg
 main =
-    Browser.element { init = \_ -> init, update = update, view = view, subscriptions = subscriptions }
+    Browser.application
+        { init = \_ _ _ -> init
+        , update = update
+        , view = view
+        , subscriptions = subscriptions
+        , onUrlRequest = ClickedLink
+        , onUrlChange = ChangedUrl
+        }
 
 
 
 -- MODEL
 
 
-type alias Model =
-    { userId : String
-    , loadingTimeSlots : Bool
-    , timeSlotPositions : List TS.TimeSlotBoundaryPosition
-    , timeSlotsElement : Maybe TS.Element
-    , timeSlotSelection : TS.TimeSlotSelection
-    , eventCreation : EC.EventCreation
-    , selectedTimeSlots : List TS.SelectedTimeSlotDetails
-    , isDiscardConfirmationModalOpen : Bool
-    , mdc : Material.Model Msg
-    }
+type Model
+    = WeeklyFreeTimes WeeklyFreeTimes.Model
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( { userId = "25"
-      , loadingTimeSlots = True
-      , timeSlotPositions = []
-      , timeSlotsElement = Nothing
-      , timeSlotSelection = TS.NotSelecting
-      , eventCreation = EC.NotCreating
-      , selectedTimeSlots = []
-      , isDiscardConfirmationModalOpen = False
-      , mdc = Material.defaultModel
-      }
-    , Cmd.batch
-        [ Material.init Mdc
-        , requestTimeSlotPositions
-        , requestTimeSlotsElement
-        ]
-    )
+    updateWith WeeklyFreeTimes WeeklyFreeTimesMsg <| WeeklyFreeTimes.init
 
 
 
 -- UPDATE
 
 
+type Msg
+    = ChangedUrl Url
+    | ClickedLink UrlRequest
+    | WeeklyFreeTimesMsg WeeklyFreeTimesMsg.Msg
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
-        NoOp ->
+    case ( msg, model ) of
+        ( ChangedUrl _, _ ) ->
             ( model, Cmd.none )
 
-        Mdc msg_ ->
-            Material.update Mdc msg_ model
+        ( ClickedLink _, _ ) ->
+            ( model, Cmd.none )
 
-        -- TimeSlots
-        SetTimeSlotPositions result ->
-            TSUpdate.setTimeSlotPositions model result
+        ( WeeklyFreeTimesMsg subMsg, WeeklyFreeTimes weeklyFreeTimes ) ->
+            updateWith WeeklyFreeTimes WeeklyFreeTimesMsg <|
+                WeeklyFreeTimes.update subMsg weeklyFreeTimes
 
-        SetTimeSlotsElement result ->
-            TSUpdate.setTimeSlotsElement model result
 
-        SetSavedWeeklyTimeSlots result ->
-            TSUpdate.setSavedWeeklyTimeSlots model result
-
-        StartSelectingTimeSlot dayNum slotNum ->
-            TSUpdate.startSelectingTimeSlot model dayNum slotNum
-
-        HandleTimeSlotMouseMove pointerPosition ->
-            TSUpdate.handleTimeSlotMouseMove model pointerPosition
-
-        AdjustTimeSlotSelection pointerPosition result ->
-            TSUpdate.adjustTimeSlotSelection model pointerPosition result
-
-        SendSaveTimeSlotRequest ->
-            TSUpdate.sendSaveTimeSlotRequest model
-
-        SendUpdateTimeSlotRequest ->
-            TSUpdate.sendUpdateTimeSlotRequest model
-
-        SetSelectedTimeSlotAfterCreation result ->
-            TSUpdate.setSelectedTimeSlotAfterCreation model result
-
-        SetSelectedTimeSlotAfterEditing result ->
-            TSUpdate.setSelectedTimeSlotAfterEditing model result
-
-        HandleTimeSlotMouseUp ->
-            TSUpdate.handleTimeSlotMouseUp model
-
-        EditTimeSlotSelection selectedTimeslotDetails ->
-            TSUpdate.editTimeSlotSelection model selectedTimeslotDetails
-
-        SendDeleteTimeSlotRequest ->
-            TSUpdate.sendDeleteTimeSlotRequest model
-
-        DeleteTimeSlot result ->
-            TSUpdate.deleteTimeSlot model result
-
-        -- EventCreation
-        PromptUserForEventDetails result ->
-            ECUpdate.promptUserForEventDetails model result
-
-        AdjustEventTitle title ->
-            ECUpdate.adjustEventTitle model title
-
-        AdjustEventDescription description ->
-            ECUpdate.adjustEventDescription model description
-
-        ChangeSelectionDayNum dayNum ->
-            ECUpdate.changeSelectionDayNum model dayNum
-
-        ChangeSelectionStartSlot startSlot ->
-            ECUpdate.changeSelectionStartSlot model startSlot
-
-        ChangeSelectionEndSlot endSlot ->
-            ECUpdate.changeSelectionEndSlot model endSlot
-
-        HandleEditingCancel ->
-            ECUpdate.handleEditingCancel model
-
-        CloseUserPromptForEventDetails ->
-            ECUpdate.closeUserPromptForEventDetails model
-
-        CancelDiscardConfirmationModal ->
-            ECUpdate.cancelDiscardConfirmationModal model
-
-        SaveEditingTimeSlotWithoutChanges ->
-            ECUpdate.saveEditingTimeSlotWithoutChanges model
+updateWith : (subModel -> Model) -> (subMsg -> Msg) -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )
+updateWith toModel toMsg ( subModel, subCmd ) =
+    ( toModel subModel
+    , Cmd.map toMsg subCmd
+    )
 
 
 
 -- VIEW
 
 
-view : Model -> Html Msg
+view : Model -> Document Msg
 view model =
-    styled div
-        [ css "position" "relative"
-        , css "display" "flex"
-        , css "flex-direction" "column-reverse"
-        , css "height" "100vh"
-        ]
-        [ styled div
-            []
-            [ viewDayHeadings
-            , viewScrollableTimeSlots model
-            ]
-        , viewUserRequest model
-        , viewDiscardConfirmationModal model
-        ]
+    case model of
+        WeeklyFreeTimes weeklyFreeTimes ->
+            viewWith WeeklyFreeTimesMsg <|
+                WeeklyFreeTimes.view weeklyFreeTimes
+
+
+viewWith : (subMsg -> Msg) -> Document subMsg -> Document Msg
+viewWith toMsg { title, body } =
+    { title = title
+    , body = List.map (Html.map toMsg) body
+    }
 
 
 
@@ -176,4 +92,7 @@ view model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Material.subscriptions Mdc model
+    case model of
+        WeeklyFreeTimes weeklyFreeTimes ->
+            Sub.map WeeklyFreeTimesMsg <|
+                WeeklyFreeTimes.subscriptions weeklyFreeTimes

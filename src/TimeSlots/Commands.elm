@@ -9,10 +9,10 @@ module TimeSlots.Commands exposing
 
 import Browser.Dom as Dom
 import Http
-import MainMsg exposing (Msg(..))
 import Task
 import TimeSlots.Messaging as TSMessaging
 import TimeSlots.TimeSlots as TS
+import WeeklyFreeTimes.MainMsg exposing (Msg(..))
 
 
 requestTimeSlotPositions : Cmd Msg
