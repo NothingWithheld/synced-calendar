@@ -7,6 +7,7 @@ import Material.Card as Card
 import Material.Options as Options exposing (css, styled)
 import Material.TextField as TextField
 import Material.Typography as Typography
+import Session exposing (Session)
 
 
 
@@ -14,14 +15,14 @@ import Material.Typography as Typography
 
 
 type alias Model =
-    { userId : String
+    { session : Session
     , mdc : Material.Model Msg
     }
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( { userId = ""
+init : Session -> ( Model, Cmd Msg )
+init session =
+    ( { session = session
       , mdc = Material.defaultModel
       }
     , Material.init Mdc
@@ -41,7 +42,11 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         AdjustUserId userId ->
-            ( { model | userId = userId }, Cmd.none )
+            let
+                updatedSession =
+                    Session.setUserId model.session userId
+            in
+            ( { model | session = updatedSession }, Cmd.none )
 
         Mdc msg_ ->
             Material.update Mdc msg_ model
@@ -74,7 +79,7 @@ view model =
                     "user-id"
                     model.mdc
                     [ TextField.label "User ID"
-                    , TextField.value model.userId
+                    , TextField.value <| Session.getUserId model.session
                     , Options.onInput AdjustUserId
                     ]
                     []

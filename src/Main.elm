@@ -1,8 +1,10 @@
 module Main exposing (main)
 
 import Browser exposing (Document, UrlRequest(..))
+import Browser.Navigation as Nav
 import Html
 import Login.Main
+import Session
 import Url exposing (Url)
 import WeeklyFreeTimes.Main
 import WeeklyFreeTimes.MainMsg
@@ -15,7 +17,7 @@ import WeeklyFreeTimes.MainMsg
 main : Program () Model Msg
 main =
     Browser.application
-        { init = \_ _ _ -> init
+        { init = init
         , update = update
         , view = view
         , subscriptions = subscriptions
@@ -33,9 +35,9 @@ type Model
     | WeeklyFreeTimes WeeklyFreeTimes.Main.Model
 
 
-init : ( Model, Cmd Msg )
-init =
-    updateWith Login LoginMsg <| Login.Main.init
+init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
+init _ _ key =
+    updateWith Login LoginMsg <| Login.Main.init <| Session.init key
 
 
 

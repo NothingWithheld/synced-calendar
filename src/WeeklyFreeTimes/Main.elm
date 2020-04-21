@@ -1,4 +1,4 @@
-module WeeklyFreeTimes.Main exposing (Model, init, update, view, subscriptions)
+module WeeklyFreeTimes.Main exposing (Model, init, subscriptions, update, view)
 
 import Browser exposing (Document)
 import EventCreation.EventCreation as EC
