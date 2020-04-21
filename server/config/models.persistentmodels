@@ -2,10 +2,9 @@
 -- Syntax for this file here: https://github.com/yesodweb/persistent/blob/master/docs/Persistent-entity-syntax.md
 
 User
-    ident Text
-    password Text Maybe
-    UniqueUser ident
-    deriving Typeable
+    username Text
+    password Text
+    deriving Show
 AvailableTimeEntry json
     userId Text
     eventId Text
