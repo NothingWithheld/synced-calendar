@@ -34,4 +34,5 @@ ConfirmedEvent json
     date Day 
     fromTime TimeOfDay 
     toTime TimeOfDay 
+    UniqueProposedEventId proposedEventId
     deriving Show Eq
