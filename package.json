@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.html",
   "scripts": {
-    "start-frontend": "elm-live src/Main.elm --open -- --output=elm-main.js",
+    "start-frontend": "elm-live src/Main.elm --open --pushstate -- --output=elm-main.js",
     "start-server": "cd server && stack build && stack exec -- yesod devel && cd .."
   },
   "repository": {

@@ -7,6 +7,7 @@ import EventCreation.View exposing (viewDiscardConfirmationModal, viewUserReques
 import Html exposing (div)
 import Material
 import Material.Options exposing (css, styled)
+import Session exposing (Session)
 import TimeSlots.Commands exposing (requestTimeSlotPositions, requestTimeSlotsElement)
 import TimeSlots.TimeSlots as TS
 import TimeSlots.Update as TSUpdate
@@ -19,7 +20,7 @@ import WeeklyFreeTimes.MainMsg exposing (Msg(..))
 
 
 type alias Model =
-    { userId : String
+    { session : Session
     , loadingTimeSlots : Bool
     , timeSlotPositions : List TS.TimeSlotBoundaryPosition
     , timeSlotsElement : Maybe TS.Element
@@ -31,9 +32,9 @@ type alias Model =
     }
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( { userId = "25"
+init : Session -> ( Model, Cmd Msg )
+init session =
+    ( { session = session
       , loadingTimeSlots = True
       , timeSlotPositions = []
       , timeSlotsElement = Nothing

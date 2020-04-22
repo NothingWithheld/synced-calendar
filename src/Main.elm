@@ -4,7 +4,8 @@ import Browser exposing (Document, UrlRequest(..))
 import Browser.Navigation as Nav
 import Html
 import Login.Main
-import Session
+import Route exposing (Route)
+import Session exposing (Session)
 import Url exposing (Url)
 import WeeklyFreeTimes.Main
 import WeeklyFreeTimes.MainMsg
@@ -21,8 +22,8 @@ main =
         , update = update
         , view = view
         , subscriptions = subscriptions
-        , onUrlRequest = ClickedLink
-        , onUrlChange = ChangedUrl
+        , onUrlRequest = ClickLink
+        , onUrlChange = ChangeUrl
         }
 
 
@@ -36,8 +37,22 @@ type Model
 
 
 init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
-init _ _ key =
-    updateWith Login LoginMsg <| Login.Main.init <| Session.init key
+init _ url key =
+    handleUrlChange (Route.fromUrl url) <|
+        Tuple.first <|
+            updateWith Login LoginMsg <|
+                Login.Main.init <|
+                    Session.init key
+
+
+getSession : Model -> Session
+getSession model =
+    case model of
+        Login login ->
+            login.session
+
+        WeeklyFreeTimes weeklyFreeTimes ->
+            weeklyFreeTimes.session
 
 
 
@@ -45,20 +60,29 @@ init _ _ key =
 
 
 type Msg
-    = ChangedUrl Url
-    | ClickedLink UrlRequest
+    = ChangeUrl Url
+    | ClickLink UrlRequest
     | LoginMsg Login.Main.Msg
     | WeeklyFreeTimesMsg WeeklyFreeTimes.MainMsg.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        session =
+            getSession model
+    in
     case ( msg, model ) of
-        ( ChangedUrl _, _ ) ->
-            ( model, Cmd.none )
+        ( ChangeUrl url, _ ) ->
+            handleUrlChange (Route.fromUrl url) model
 
-        ( ClickedLink _, _ ) ->
-            ( model, Cmd.none )
+        ( ClickLink urlRequest, _ ) ->
+            case urlRequest of
+                Internal url ->
+                    ( model, Nav.pushUrl (Session.getKey session) <| Url.toString url )
+
+                External href ->
+                    ( model, Nav.load href )
 
         ( LoginMsg subMsg, Login login ) ->
             updateWith Login LoginMsg <|
@@ -77,6 +101,35 @@ updateWith toModel toMsg ( subModel, subCmd ) =
     ( toModel subModel
     , Cmd.map toMsg subCmd
     )
+
+
+handleUrlChange : Route -> Model -> ( Model, Cmd Msg )
+handleUrlChange route model =
+    let
+        session =
+            getSession model
+
+        hasUserId =
+            Session.hasUserId session
+    in
+    case ( route, hasUserId ) of
+        ( Route.NotFound, _ ) ->
+            ( model, Cmd.none )
+
+        ( Route.Login, False ) ->
+            ( model, Cmd.none )
+
+        ( _, False ) ->
+            ( model, Route.replaceUrl (Session.getKey session) Route.Login )
+
+        ( Route.Home, True ) ->
+            ( model, Cmd.none )
+
+        ( Route.Login, True ) ->
+            ( model, Cmd.none )
+
+        ( Route.WeeklyFreeTimes, True ) ->
+            ( model, Cmd.none )
 
 
 
