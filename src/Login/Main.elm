@@ -3,10 +3,12 @@ module Login.Main exposing (Model, Msg, init, subscriptions, update, view)
 import Browser exposing (Document)
 import Html exposing (div, text)
 import Material
+import Material.Button as Button
 import Material.Card as Card
 import Material.Options as Options exposing (css, styled)
 import Material.TextField as TextField
 import Material.Typography as Typography
+import Route
 import Session exposing (Session)
 
 
@@ -83,6 +85,24 @@ view model =
                     , Options.onInput AdjustUserId
                     ]
                     []
+                , Card.actions
+                    [ css "display" "flex"
+                    , css "flex-direction" "row-reverse"
+                    , css "margin-top" "8px"
+                    ]
+                    [ Card.actionButtons []
+                        [ Button.view Mdc
+                            "login-button"
+                            model.mdc
+                            [ Card.actionButton
+                            , Button.ripple
+                            , Button.unelevated
+                            , css "width" "100px"
+                            , Button.link <| Route.routeToString Route.WeeklyFreeTimes
+                            ]
+                            [ text "Log In" ]
+                        ]
+                    ]
                 ]
             ]
         ]

@@ -1,4 +1,4 @@
-module Route exposing (Route(..), fromUrl, replaceUrl)
+module Route exposing (Route(..), fromUrl, replaceUrl, routeToString)
 
 import Browser.Navigation as Nav
 import Url exposing (Url)

@@ -117,7 +117,8 @@ handleUrlChange route model =
             ( model, Cmd.none )
 
         ( Route.Login, False ) ->
-            ( model, Cmd.none )
+            updateWith Login LoginMsg <|
+                Login.Main.init session
 
         ( _, False ) ->
             ( model, Route.replaceUrl (Session.getKey session) Route.Login )
@@ -126,10 +127,12 @@ handleUrlChange route model =
             ( model, Cmd.none )
 
         ( Route.Login, True ) ->
-            ( model, Cmd.none )
+            updateWith Login LoginMsg <|
+                Login.Main.init session
 
         ( Route.WeeklyFreeTimes, True ) ->
-            ( model, Cmd.none )
+            updateWith WeeklyFreeTimes WeeklyFreeTimesMsg <|
+                WeeklyFreeTimes.Main.init session
 
 
 
