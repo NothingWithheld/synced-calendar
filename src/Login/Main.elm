@@ -5,6 +5,7 @@ import Html exposing (div, text)
 import Material
 import Material.Button as Button
 import Material.Card as Card
+import Material.Elevation as Elevation
 import Material.Options as Options exposing (css, styled)
 import Material.TextField as TextField
 import Material.Typography as Typography
@@ -69,7 +70,7 @@ view model =
             , css "min-height" "600px"
             , css "height" "100%"
             ]
-            [ Card.view [ css "width" "450px" ]
+            [ Card.view [ css "width" "450px", Elevation.z8 ]
                 [ styled div
                     [ css "padding" "4px 16px" ]
                     [ styled Html.h1
@@ -98,7 +99,7 @@ view model =
                             , Button.ripple
                             , Button.unelevated
                             , css "width" "100px"
-                            , Button.link <| Route.routeToString Route.WeeklyFreeTimes
+                            , Button.link <| Route.routeToString Route.Home
                             ]
                             [ text "Log In" ]
                         ]

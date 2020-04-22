@@ -3,6 +3,7 @@ module Main exposing (main)
 import Browser exposing (Document, UrlRequest(..))
 import Browser.Navigation as Nav
 import Error
+import Home.Main
 import Html
 import Login.Main
 import Route exposing (Route)
@@ -35,6 +36,7 @@ main =
 type Model
     = NotFound Session
     | Login Login.Main.Model
+    | Home Home.Main.Model
     | WeeklyFreeTimes WeeklyFreeTimes.Main.Model
 
 
@@ -56,6 +58,9 @@ getSession model =
         Login login ->
             login.session
 
+        Home home ->
+            home.session
+
         WeeklyFreeTimes weeklyFreeTimes ->
             weeklyFreeTimes.session
 
@@ -68,6 +73,7 @@ type Msg
     = ChangeUrl Url
     | ClickLink UrlRequest
     | LoginMsg Login.Main.Msg
+    | HomeMsg Home.Main.Msg
     | WeeklyFreeTimesMsg WeeklyFreeTimes.MainMsg.Msg
 
 
@@ -93,6 +99,10 @@ update msg model =
             updateWith Login LoginMsg <|
                 Login.Main.update subMsg login
 
+        ( HomeMsg subMsg, Home home ) ->
+            updateWith Home HomeMsg <|
+                Home.Main.update subMsg home
+
         ( WeeklyFreeTimesMsg subMsg, WeeklyFreeTimes weeklyFreeTimes ) ->
             updateWith WeeklyFreeTimes WeeklyFreeTimesMsg <|
                 WeeklyFreeTimes.Main.update subMsg weeklyFreeTimes
@@ -116,9 +126,6 @@ handleUrlChange route model =
 
         hasUserId =
             Session.hasUserId session
-
-        _ =
-            Debug.log "route" route
     in
     case ( route, hasUserId ) of
         ( Route.NotFound, _ ) ->
@@ -132,7 +139,8 @@ handleUrlChange route model =
             ( model, Route.replaceUrl (Session.getKey session) Route.Login )
 
         ( Route.Home, True ) ->
-            ( model, Cmd.none )
+            updateWith Home HomeMsg <|
+                Home.Main.init session
 
         ( Route.Login, True ) ->
             updateWith Login LoginMsg <|
@@ -155,6 +163,9 @@ view model =
 
         Login login ->
             viewWith LoginMsg <| Login.Main.view login
+
+        Home home ->
+            viewWith HomeMsg <| Home.Main.view home
 
         WeeklyFreeTimes weeklyFreeTimes ->
             viewWith WeeklyFreeTimesMsg <|
@@ -181,6 +192,10 @@ subscriptions model =
         Login login ->
             Sub.map LoginMsg <|
                 Login.Main.subscriptions login
+
+        Home home ->
+            Sub.map HomeMsg <|
+                Home.Main.subscriptions home
 
         WeeklyFreeTimes weeklyFreeTimes ->
             Sub.map WeeklyFreeTimesMsg <|
