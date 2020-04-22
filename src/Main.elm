@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Browser exposing (Document, UrlRequest(..))
 import Browser.Navigation as Nav
+import Error
 import Html
 import Login.Main
 import Route exposing (Route)
@@ -32,7 +33,8 @@ main =
 
 
 type Model
-    = Login Login.Main.Model
+    = NotFound Session
+    | Login Login.Main.Model
     | WeeklyFreeTimes WeeklyFreeTimes.Main.Model
 
 
@@ -48,6 +50,9 @@ init _ url key =
 getSession : Model -> Session
 getSession model =
     case model of
+        NotFound session ->
+            session
+
         Login login ->
             login.session
 
@@ -111,10 +116,13 @@ handleUrlChange route model =
 
         hasUserId =
             Session.hasUserId session
+
+        _ =
+            Debug.log "route" route
     in
     case ( route, hasUserId ) of
         ( Route.NotFound, _ ) ->
-            ( model, Cmd.none )
+            ( NotFound session, Cmd.none )
 
         ( Route.Login, False ) ->
             updateWith Login LoginMsg <|
@@ -142,6 +150,9 @@ handleUrlChange route model =
 view : Model -> Document Msg
 view model =
     case model of
+        NotFound _ ->
+            Error.view404
+
         Login login ->
             viewWith LoginMsg <| Login.Main.view login
 
@@ -164,6 +175,9 @@ viewWith toMsg { title, body } =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model of
+        NotFound _ ->
+            Sub.none
+
         Login login ->
             Sub.map LoginMsg <|
                 Login.Main.subscriptions login
