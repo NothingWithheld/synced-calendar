@@ -65,7 +65,7 @@ convertTextToBool (Just s) = do
 -- * offset: integer in between -12 to 14 to represent offset in hours of localtime from utctime
 convertLocalToUTC :: TimeOfDay -> Text -> Maybe (Integer, TimeOfDay)
 convertLocalToUTC time offsetText = do 
-    let eitherOffsetInt = decimal offsetText
+    let eitherOffsetInt = signed decimal offsetText
     case eitherOffsetInt of 
         Right (offsetInt, "") -> if offsetInt >= -12 && offsetInt <= 14 
             then let offsetMinInt = offsetInt * 60
@@ -79,7 +79,7 @@ convertLocalToUTC time offsetText = do
 -- * offset: integer in between -12 to 14 to represent offset in hours of localtime from utctime
 convertUTCToLocal :: TimeOfDay -> Text -> Maybe (Integer, TimeOfDay)
 convertUTCToLocal time offsetText = do 
-    let eitherOffsetInt = decimal offsetText
+    let eitherOffsetInt = signed decimal offsetText
     case eitherOffsetInt of 
         Right (offsetInt, "") -> if offsetInt >= -12 && offsetInt <= 14 
             then let offsetMinInt = offsetInt * 60 
