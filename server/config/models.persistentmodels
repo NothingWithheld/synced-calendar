@@ -9,7 +9,7 @@ User
     deriving Show
 AvailableTimeEntry json
     userId Text
-    eventId Text
+    eventId ProposedEventId
     date Day
     fromTime TimeOfDay
     toTime TimeOfDay

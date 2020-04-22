@@ -11,7 +11,7 @@ import Data.Text.Read
 import qualified Database
 
 data FreeTimeEntryData = FreeTimeEntryData FreeTimeEntryId Text Text TimeOfDay TimeOfDay
-data AvailableTimeEntryData = AvailableTimeEntryData AvailableTimeEntryId Text Text Day TimeOfDay TimeOfDay
+data AvailableTimeEntryData = AvailableTimeEntryData AvailableTimeEntryId Text ProposedEventId Day TimeOfDay TimeOfDay
 
 instance ToJSON FreeTimeEntryData where 
     toJSON (FreeTimeEntryData entryId userId day (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _)) =
@@ -19,19 +19,19 @@ instance ToJSON FreeTimeEntryData where
             "id" .= entryId,
             "userId" .= userId, 
             "day" .= day,
-            "fromTime" .= ((Database.showWithZeros fromHour) Prelude.++ ":" Prelude.++ (Database.showWithZeros fromMinutes)),
-            "toTime" .= ((Database.showWithZeros toHour) Prelude.++ ":" Prelude.++ (Database.showWithZeros toMinutes))
+            "fromTime" .= ((Database.showWithZeros fromHour) Import.++ ":" Import.++ (Database.showWithZeros fromMinutes)),
+            "toTime" .= ((Database.showWithZeros toHour) Import.++ ":" Import.++ (Database.showWithZeros toMinutes))
         ]
 
 instance ToJSON AvailableTimeEntryData where 
-    toJSON (AvailableTimeEntryData entryId userId eventId date (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _)) =
+    toJSON (AvailableTimeEntryData entryId eventId userId date (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _)) =
         object [
             "id" .= entryId,
             "userId" .= userId, 
             "eventId" .= eventId,
             "date" .= date,
-            "fromTime" .= ((Database.showWithZeros fromHour) Prelude.++ ":" Prelude.++ (Database.showWithZeros fromMinutes)),
-            "toTime" .= ((Database.showWithZeros toHour) Prelude.++ ":" Prelude.++ (Database.showWithZeros toMinutes))
+            "fromTime" .= ((Database.showWithZeros fromHour) Import.++ ":" Import.++ (Database.showWithZeros fromMinutes)),
+            "toTime" .= ((Database.showWithZeros toHour) Import.++ ":" Import.++ (Database.showWithZeros toMinutes))
         ]
 
 convertFreeTimeEntryToLocal :: Entity FreeTimeEntry -> Text -> Maybe FreeTimeEntryData
@@ -134,9 +134,17 @@ getAvailableTimeEntryR userId = do
     maybeEventId <- lookupGetParam "event_id"
     maybeTimeZone <- lookupGetParam "timezone"
     case (maybeEventId, maybeTimeZone) of 
-        (Just eventId, Just timezone) -> do 
-            allTimeEntries <- runDB $ selectList [AvailableTimeEntryUserId <-. [userId], AvailableTimeEntryEventId <-. [eventId]] []
-            returnJson $ catMaybes $ Import.map (\x -> convertAvailableTimeEntryToLocal x timezone) allTimeEntries
+        (Just eventIdText, Just timezone) -> do 
+            let eitherEventId = decimal eventIdText
+            case (eitherEventId) of 
+                Right (eventIdInt, "") -> do 
+                    allTimeEntries <- runDB $ 
+                        selectList [
+                            AvailableTimeEntryUserId <-. [userId], 
+                            AvailableTimeEntryEventId ==. toSqlKey (fromIntegral (eventIdInt::Integer))
+                        ] []
+                    returnJson $ catMaybes $ Import.map (\x -> convertAvailableTimeEntryToLocal x timezone) allTimeEntries
+                _ -> invalidArgs ["Failed to parse event_id params"]
         (_, _) -> invalidArgs ["Failed to parse event_id params"]
 
 postAvailableTimeEntryR :: Text -> Handler Value 
@@ -150,14 +158,26 @@ postAvailableTimeEntryR userId = do
     let maybeUTCFromTime = Database.convertTextToTime maybeFromTimeText maybeTimeZone
     let maybeUTCToTime = Database.convertTextToTime maybeToTimeText maybeTimeZone
     case (maybeDate, maybeEventId, maybeUTCFromTime, maybeUTCToTime) of
-        (Just date, Just eventId, Just (fromTimeDayOffset, fromTime), Just (_, toTime)) -> do
-            -- The database will hold in the date of fromTime if the event is staggered 
-            -- between to two days
-            let utcDate = addDays fromTimeDayOffset date
-            let timeEntry' = AvailableTimeEntry userId eventId utcDate fromTime toTime
-            (Entity entryId _) <- runDB $ insertEntity timeEntry'
-            returnJson $ AvailableTimeEntryData entryId userId eventId utcDate fromTime toTime
-        (_, _, _, _) -> invalidArgs ["Failed to parse date, from_time and/or to_time params"]
+        (Just date, Just eventIdText, Just (fromTimeDayOffset, fromTime), Just (_, toTime)) -> do
+            let eitherEventId = decimal eventIdText
+            case eitherEventId of     
+                Right (eventIdInt, "") -> do 
+                    allProposedEvents <- runDB $ 
+                        selectList [
+                            ProposedEventId ==. toSqlKey (fromIntegral (eventIdInt::Integer)),
+                            ProposedEventConfirmed <-. [False]
+                        ] []
+                    case allProposedEvents of 
+                        [Entity eventId _] -> do
+                            -- The database will hold in the date of fromTime if the event is staggered 
+                            -- between to two days
+                            let utcDate = addDays fromTimeDayOffset date
+                            let timeEntry' = AvailableTimeEntry userId eventId utcDate fromTime toTime
+                            (Entity entryId _) <- runDB $ insertEntity timeEntry'
+                            returnJson $ AvailableTimeEntryData entryId userId eventId utcDate fromTime toTime
+                        _ -> invalidArgs ["Failed to find corresponding ProposedEvent with id: " Import.++ eventIdText]
+                _ -> invalidArgs ["Please provide a valid integer for event_id"]
+        (_, _, _, _) -> invalidArgs ["Failed to parse API params"]
 
 putAvailableTimeEntryR :: Text -> Handler Value 
 putAvailableTimeEntryR entryIdText = do 

@@ -22,8 +22,8 @@ instance ToJSON ConfirmedEventData where
             "name" .= name,
             "description" .= description,
             "date" .= date,
-            "fromTime" .= ((Database.showWithZeros fromHour) Prelude.++ ":" Prelude.++ (Database.showWithZeros fromMinutes)),
-            "toTime" .= ((Database.showWithZeros toHour) Prelude.++ ":" Prelude.++ (Database.showWithZeros toMinutes))
+            "fromTime" .= ((Database.showWithZeros fromHour) Import.++ ":" Import.++ (Database.showWithZeros fromMinutes)),
+            "toTime" .= ((Database.showWithZeros toHour) Import.++ ":" Import.++ (Database.showWithZeros toMinutes))
         ]
 
 convertConfirmedEventToLocal :: ConfirmedEventData -> Text -> Maybe (ConfirmedEventData)
