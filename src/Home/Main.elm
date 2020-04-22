@@ -51,7 +51,7 @@ update msg model =
 
 view : Model -> Document Msg
 view model =
-    { title = "Synced Calendar - Log In"
+    { title = "Synced Calendar - Home"
     , body =
         [ styled div
             [ css "display" "flex"
@@ -79,6 +79,28 @@ view model =
                     "create-event-button"
                   <|
                     Route.routeToString Route.WeeklyFreeTimes
+                , styled Html.hr
+                    [ css "margin" "0" ]
+                    []
+                , styled div
+                    [ css "padding" "4px 16px"
+                    , css "display" "flex"
+                    , css "justify-content" "space-between"
+                    , css "align-items" "center"
+                    ]
+                    [ styled Html.p
+                        [ Typography.body1
+                        ]
+                        [ text "Log Out" ]
+                    , Button.view Mdc
+                        "log-out-button"
+                        model.mdc
+                        [ Button.ripple
+                        , Button.link <| Route.routeToString Route.Logout
+                        , Button.icon "arrow_back"
+                        ]
+                        [ text "Ok" ]
+                    ]
                 ]
             ]
         ]

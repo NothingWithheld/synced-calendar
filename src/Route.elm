@@ -10,6 +10,7 @@ type Route
     | Home
     | Login
     | WeeklyFreeTimes
+    | Logout
 
 
 parser : Parser (Route -> a) a
@@ -18,6 +19,7 @@ parser =
         [ Parser.map Home Parser.top
         , Parser.map Login <| Parser.s loginString
         , Parser.map WeeklyFreeTimes <| Parser.s weeklyFreeTimesString
+        , Parser.map Logout <| Parser.s logoutString
         ]
 
 
@@ -51,6 +53,9 @@ routeToPieces route =
         WeeklyFreeTimes ->
             [ weeklyFreeTimesString ]
 
+        Logout ->
+            [ logoutString ]
+
 
 loginString : String
 loginString =
@@ -60,3 +65,8 @@ loginString =
 weeklyFreeTimesString : String
 weeklyFreeTimesString =
     "weekly-free-times"
+
+
+logoutString : String
+logoutString =
+    "logout"

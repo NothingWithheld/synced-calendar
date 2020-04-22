@@ -35,6 +35,7 @@ main =
 
 type Model
     = NotFound Session
+    | Redirect Session
     | Login Login.Main.Model
     | Home Home.Main.Model
     | WeeklyFreeTimes WeeklyFreeTimes.Main.Model
@@ -43,16 +44,17 @@ type Model
 init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init _ url key =
     handleUrlChange (Route.fromUrl url) <|
-        Tuple.first <|
-            updateWith Login LoginMsg <|
-                Login.Main.init <|
-                    Session.init key
+        Redirect <|
+            Session.init key
 
 
 getSession : Model -> Session
 getSession model =
     case model of
         NotFound session ->
+            session
+
+        Redirect session ->
             session
 
         Login login ->
@@ -124,6 +126,9 @@ handleUrlChange route model =
         session =
             getSession model
 
+        key =
+            Session.getKey session
+
         hasUserId =
             Session.hasUserId session
     in
@@ -136,7 +141,7 @@ handleUrlChange route model =
                 Login.Main.init session
 
         ( _, False ) ->
-            ( model, Route.replaceUrl (Session.getKey session) Route.Login )
+            ( model, Route.replaceUrl key Route.Login )
 
         ( Route.Home, True ) ->
             updateWith Home HomeMsg <|
@@ -150,6 +155,9 @@ handleUrlChange route model =
             updateWith WeeklyFreeTimes WeeklyFreeTimesMsg <|
                 WeeklyFreeTimes.Main.init session
 
+        ( Route.Logout, True ) ->
+            ( Redirect <| Session.signOut session, Route.replaceUrl key Route.Login )
+
 
 
 -- VIEW
@@ -160,6 +168,9 @@ view model =
     case model of
         NotFound _ ->
             Error.view404
+
+        Redirect _ ->
+            { title = "", body = [] }
 
         Login login ->
             viewWith LoginMsg <| Login.Main.view login
@@ -187,6 +198,9 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     case model of
         NotFound _ ->
+            Sub.none
+
+        Redirect _ ->
             Sub.none
 
         Login login ->
