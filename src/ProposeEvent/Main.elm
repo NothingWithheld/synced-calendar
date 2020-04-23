@@ -52,6 +52,8 @@ type Msg
     = AdjustTitle String
     | AdjustDescription String
     | AdjustRecipiecntToBeAdded String
+    | AddRecipient
+    | RemoveRecipient String
     | Mdc (Material.Msg Msg)
 
 
@@ -65,7 +67,41 @@ update msg model =
             ( { model | description = description }, Cmd.none )
 
         AdjustRecipiecntToBeAdded userId ->
-            ( { model | recipientToBeAdded = userId }, Cmd.none )
+            ( { model
+                | recipientToBeAdded = userId
+                , invalidRecipient = False
+              }
+            , Cmd.none
+            )
+
+        AddRecipient ->
+            let
+                recipientId =
+                    model.recipientToBeAdded
+
+                alreadyIncluded =
+                    List.member recipientId model.recipientIds
+            in
+            if alreadyIncluded || recipientId == "" then
+                ( { model | invalidRecipient = True }, Cmd.none )
+
+            else
+                ( { model
+                    | recipientIds = recipientId :: model.recipientIds
+                    , recipientToBeAdded = ""
+                  }
+                , Cmd.none
+                )
+
+        RemoveRecipient recipientIdToRemove ->
+            ( { model
+                | recipientIds =
+                    List.filter
+                        ((/=) recipientIdToRemove)
+                        model.recipientIds
+              }
+            , Cmd.none
+            )
 
         Mdc msg_ ->
             Material.update Mdc msg_ model
@@ -95,7 +131,7 @@ view model =
                 ]
                 [ styled Html.h1
                     [ Typography.headline6
-                    , css "margin-left" "12px"
+                    , css "margin-left" "16px"
                     ]
                     [ text "Create Event"
                     ]
@@ -105,6 +141,20 @@ view model =
                     ]
                     [ viewLeftOfFold model
                     , viewRightOfFold model
+                    ]
+                , styled div
+                    [ css "display" "flex"
+                    , css "justify-content" "flex-end"
+                    , css "margin" "12px"
+                    ]
+                    [ Button.view
+                        Mdc
+                        "submit-proposed-event-button"
+                        model.mdc
+                        [ Button.ripple
+                        , Button.unelevated
+                        ]
+                        [ text "Submit" ]
                     ]
                 ]
             ]
@@ -117,7 +167,8 @@ viewLeftOfFold model =
     styled div
         [ css "display" "flex"
         , css "flex-direction" "column"
-        , css "flex-grow" "3"
+        , css "flex" "3"
+        , css "margin-left" "8px"
         , css "margin-right" "12px"
         ]
         [ TextField.view Mdc
@@ -147,7 +198,7 @@ viewLeftOfFold model =
 viewRightOfFold : Model -> Html Msg
 viewRightOfFold model =
     styled div
-        [ css "flex-grow" "2"
+        [ css "flex" "2"
         , css "display" "flex"
         , css "flex-direction" "column"
         ]
@@ -159,7 +210,7 @@ viewRightOfFold model =
             [ styled div
                 [ css "display" "flex"
                 , css "flex-direction" "column"
-                , css "flex-grow" "8"
+                , css "flex" "8"
                 ]
                 [ TextField.view Mdc
                     "adding-recipient-text-field"
@@ -174,14 +225,28 @@ viewRightOfFold model =
             , Button.view Mdc
                 "add-recipient-button"
                 model.mdc
-                [ css "flex-grow" "1"
+                [ css "flex" "1"
                 , css "margin" "4px"
                 , Button.ripple
+                , Options.onClick AddRecipient
                 ]
                 [ text "Add" ]
             ]
-        , Chip.chipset [ Chip.input ] []
+        , Chip.chipset [ Chip.input ] <|
+            List.map (viewRecipientChip model)
+                model.recipientIds
         ]
+
+
+viewRecipientChip : Model -> String -> Html Msg
+viewRecipientChip model userId =
+    Chip.view Mdc
+        ("recipient--" ++ userId)
+        model.mdc
+        [ Chip.trailingIcon "close"
+        , Chip.onClick <| RemoveRecipient userId
+        ]
+        [ text userId ]
 
 
 
