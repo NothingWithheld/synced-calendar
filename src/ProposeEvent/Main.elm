@@ -123,38 +123,50 @@ view model =
             , css "height" "100%"
             ]
             [ styled div
-                [ css "width" "800px"
-                , Elevation.z8
-                , css "border-radius" "8px"
-                , css "display" "flex"
-                , css "flex-direction" "column"
-                ]
-                [ styled Html.h1
-                    [ Typography.headline6
-                    , css "margin-left" "16px"
+                []
+                [ Button.view Mdc
+                    "back-button"
+                    model.mdc
+                    [ Button.ripple
+                    , Button.icon "arrow_back"
+                    , css "margin-bottom" "8px"
+                    , Button.link <| Route.routeToString Route.Home
                     ]
-                    [ text "Create Event"
-                    ]
+                    [ text "Back" ]
                 , styled div
-                    [ css "display" "flex"
-                    , css "justify-content" "space-between"
+                    [ css "width" "800px"
+                    , Elevation.z8
+                    , css "border-radius" "8px"
+                    , css "display" "flex"
+                    , css "flex-direction" "column"
                     ]
-                    [ viewLeftOfFold model
-                    , viewRightOfFold model
-                    ]
-                , styled div
-                    [ css "display" "flex"
-                    , css "justify-content" "flex-end"
-                    , css "margin" "12px"
-                    ]
-                    [ Button.view
-                        Mdc
-                        "submit-proposed-event-button"
-                        model.mdc
-                        [ Button.ripple
-                        , Button.unelevated
+                    [ styled Html.h1
+                        [ Typography.headline6
+                        , css "margin-left" "16px"
                         ]
-                        [ text "Submit" ]
+                        [ text "Create Event"
+                        ]
+                    , styled div
+                        [ css "display" "flex"
+                        , css "justify-content" "space-between"
+                        ]
+                        [ viewLeftOfFold model
+                        , viewRightOfFold model
+                        ]
+                    , styled div
+                        [ css "display" "flex"
+                        , css "justify-content" "flex-end"
+                        , css "margin" "12px"
+                        ]
+                        [ Button.view
+                            Mdc
+                            "submit-proposed-event-button"
+                            model.mdc
+                            [ Button.ripple
+                            , Button.unelevated
+                            ]
+                            [ text "Submit" ]
+                        ]
                     ]
                 ]
             ]
