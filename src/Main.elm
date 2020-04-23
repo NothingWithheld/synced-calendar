@@ -6,6 +6,7 @@ import Error
 import Home.Main
 import Html
 import Login.Main
+import ProposeEvent.Main
 import Route exposing (Route)
 import Session exposing (Session)
 import Url exposing (Url)
@@ -39,6 +40,7 @@ type Model
     | Login Login.Main.Model
     | Home Home.Main.Model
     | WeeklyFreeTimes WeeklyFreeTimes.Main.Model
+    | ProposeEvent ProposeEvent.Main.Model
 
 
 init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -66,6 +68,9 @@ getSession model =
         WeeklyFreeTimes weeklyFreeTimes ->
             weeklyFreeTimes.session
 
+        ProposeEvent proposeEvent ->
+            proposeEvent.session
+
 
 
 -- UPDATE
@@ -77,6 +82,7 @@ type Msg
     | LoginMsg Login.Main.Msg
     | HomeMsg Home.Main.Msg
     | WeeklyFreeTimesMsg WeeklyFreeTimes.MainMsg.Msg
+    | ProposeEventMsg ProposeEvent.Main.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -108,6 +114,10 @@ update msg model =
         ( WeeklyFreeTimesMsg subMsg, WeeklyFreeTimes weeklyFreeTimes ) ->
             updateWith WeeklyFreeTimes WeeklyFreeTimesMsg <|
                 WeeklyFreeTimes.Main.update subMsg weeklyFreeTimes
+
+        ( ProposeEventMsg subMsg, ProposeEvent proposeEvent ) ->
+            updateWith ProposeEvent ProposeEventMsg <|
+                ProposeEvent.Main.update subMsg proposeEvent
 
         ( _, _ ) ->
             ( model, Cmd.none )
@@ -155,6 +165,10 @@ handleUrlChange route model =
             updateWith WeeklyFreeTimes WeeklyFreeTimesMsg <|
                 WeeklyFreeTimes.Main.init session
 
+        ( Route.ProposeEvent, True ) ->
+            updateWith ProposeEvent ProposeEventMsg <|
+                ProposeEvent.Main.init session
+
         ( Route.Logout, True ) ->
             ( Redirect <| Session.signOut session, Route.replaceUrl key Route.Login )
 
@@ -181,6 +195,10 @@ view model =
         WeeklyFreeTimes weeklyFreeTimes ->
             viewWith WeeklyFreeTimesMsg <|
                 WeeklyFreeTimes.Main.view weeklyFreeTimes
+
+        ProposeEvent proposeEvent ->
+            viewWith ProposeEventMsg <|
+                ProposeEvent.Main.view proposeEvent
 
 
 viewWith : (subMsg -> Msg) -> Document subMsg -> Document Msg
@@ -214,3 +232,7 @@ subscriptions model =
         WeeklyFreeTimes weeklyFreeTimes ->
             Sub.map WeeklyFreeTimesMsg <|
                 WeeklyFreeTimes.Main.subscriptions weeklyFreeTimes
+
+        ProposeEvent proposeEvent ->
+            Sub.map ProposeEventMsg <|
+                ProposeEvent.Main.subscriptions proposeEvent

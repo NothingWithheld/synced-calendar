@@ -78,7 +78,7 @@ view model =
                     "Create and invite people to an event"
                     "create-event-button"
                   <|
-                    Route.routeToString Route.WeeklyFreeTimes
+                    Route.routeToString Route.ProposeEvent
                 , styled Html.hr
                     [ css "margin" "0" ]
                     []
