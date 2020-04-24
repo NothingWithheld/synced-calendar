@@ -29,8 +29,8 @@ type alias Model =
     , recipientIds : List String
     , recipientToBeAdded : String
     , invalidRecipient : Bool
-    , fromDate : String
-    , toDate : String
+    , fromDate : Maybe String
+    , toDate : Maybe String
     , mdc : Material.Model Msg
     }
 
@@ -44,8 +44,8 @@ init session =
       , recipientIds = []
       , recipientToBeAdded = ""
       , invalidRecipient = False
-      , fromDate = "01/01/2020"
-      , toDate = "02/02/2020"
+      , fromDate = Nothing
+      , toDate = Nothing
       , mdc = Material.defaultModel
       }
     , Material.init Mdc
@@ -113,7 +113,12 @@ update msg model =
             )
 
         UpdateDates { startDate, endDate } ->
-            ( model, Cmd.none )
+            ( { model
+                | fromDate = startDate
+                , toDate = endDate
+              }
+            , Cmd.none
+            )
 
         Mdc msg_ ->
             Material.update Mdc msg_ model
@@ -202,6 +207,7 @@ viewLeftOfFold model =
             , TextField.value model.title
             , when model.invalidTitle TextField.invalid
             , Options.onInput AdjustTitle
+            , css "margin-bottom" "12px"
             ]
             []
         , viewDatePicker "propose-event-datepicker"
@@ -224,8 +230,8 @@ viewLeftOfFold model =
 
 
 type alias DateDetails =
-    { startDate : String
-    , endDate : String
+    { startDate : Maybe String
+    , endDate : Maybe String
     }
 
 
@@ -233,16 +239,25 @@ dateDetailsDecoder : Decoder DateDetails
 dateDetailsDecoder =
     Decode.field "detail" <|
         Decode.map2 DateDetails
-            (Decode.field "startDate" Decode.string)
-            (Decode.field "endDate" Decode.string)
+            (Decode.field "startDate" <| Decode.nullable Decode.string)
+            (Decode.field "endDate" <| Decode.nullable Decode.string)
 
 
-viewDatePicker : String -> String -> String -> (DateDetails -> Msg) -> Html Msg
+viewDatePicker : String -> Maybe String -> Maybe String -> (DateDetails -> Msg) -> Html Msg
 viewDatePicker id startDate endDate onDateChange =
+    let
+        dateEncoder date =
+            case date of
+                Just dateString ->
+                    Encode.string dateString
+
+                Nothing ->
+                    Encode.null
+    in
     Html.node "custom-datepicker"
         [ Attributes.property "id" <| Encode.string id
         , Attributes.property "dates" <|
-            Encode.list Encode.string [ startDate, endDate ]
+            Encode.list dateEncoder [ startDate, endDate ]
         , Events.on "onDateChange" <| Decode.map onDateChange dateDetailsDecoder
         ]
         []

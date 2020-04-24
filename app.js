@@ -5,9 +5,21 @@ import "react-dates/lib/css/_datepicker.css";
 import ReactDOM from "react-dom";
 import moment from "moment";
 
-const momentToString = (date) => date.calendar();
+const momentToString = (date) => {
+  if (date === null) return date;
 
-const stringToMoment = (dateString) => moment(dateString);
+  return date.format("L");
+};
+
+const stringToMoment = (date) => {
+  if (date === null) return date;
+  return moment(date);
+};
+
+const areDatesDifferent = (prevDate, nextString) => {
+  if (prevDate === null) return nextString !== null;
+  return momentToString(prevDate) !== nextString;
+};
 
 class CustomDatepicker extends HTMLElement {
   constructor() {
@@ -20,6 +32,12 @@ class CustomDatepicker extends HTMLElement {
   }
 
   set dates([startDate, endDate]) {
+    if (
+      !areDatesDifferent(this._startDate, startDate) &&
+      !areDatesDifferent(this._endDate, endDate)
+    )
+      return;
+
     this._startDate = stringToMoment(startDate);
     this._endDate = stringToMoment(endDate);
 
@@ -31,15 +49,11 @@ class CustomDatepicker extends HTMLElement {
   }
 
   render() {
-    console.log(this);
-    console.log(this._startDate);
-    console.log(this._endDate);
-    console.log(this._id);
     ReactDOM.render(
       <DateRangePicker
-        startDate={this._startDate || moment()}
+        startDate={this._startDate}
         startDateId={"start-id--" + this._id}
-        endDate={this._endDate || moment()}
+        endDate={this._endDate}
         endDateId={"end-id--" + this._id}
         onDatesChange={this.onDatesChange.bind(this)}
         focusedInput={this.focusedInput}
@@ -50,7 +64,6 @@ class CustomDatepicker extends HTMLElement {
   }
 
   onDatesChange({ startDate, endDate }) {
-    console.log({ startDate, endDate });
     this.dispatchEvent(
       new CustomEvent("onDateChange", {
         detail: {
@@ -62,8 +75,8 @@ class CustomDatepicker extends HTMLElement {
   }
 
   onFocusChange(focusedInput) {
-    console.log({ focusedInput });
     this.focusedInput = focusedInput;
+    this.render();
   }
 
   connectedCallback() {
