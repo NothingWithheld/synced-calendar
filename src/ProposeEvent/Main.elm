@@ -2,6 +2,10 @@ module ProposeEvent.Main exposing (Model, Msg, init, subscriptions, update, view
 
 import Browser exposing (Document)
 import Html exposing (Html, div, text)
+import Html.Attributes as Attributes
+import Html.Events as Events
+import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 import Material
 import Material.Button as Button
 import Material.Chip as Chip
@@ -25,6 +29,8 @@ type alias Model =
     , recipientIds : List String
     , recipientToBeAdded : String
     , invalidRecipient : Bool
+    , fromDate : String
+    , toDate : String
     , mdc : Material.Model Msg
     }
 
@@ -38,6 +44,8 @@ init session =
       , recipientIds = []
       , recipientToBeAdded = ""
       , invalidRecipient = False
+      , fromDate = "01/01/2020"
+      , toDate = "02/02/2020"
       , mdc = Material.defaultModel
       }
     , Material.init Mdc
@@ -54,6 +62,7 @@ type Msg
     | AdjustRecipiecntToBeAdded String
     | AddRecipient
     | RemoveRecipient String
+    | UpdateDates DateDetails
     | Mdc (Material.Msg Msg)
 
 
@@ -102,6 +111,9 @@ update msg model =
               }
             , Cmd.none
             )
+
+        UpdateDates { startDate, endDate } ->
+            ( model, Cmd.none )
 
         Mdc msg_ ->
             Material.update Mdc msg_ model
@@ -192,6 +204,10 @@ viewLeftOfFold model =
             , Options.onInput AdjustTitle
             ]
             []
+        , viewDatePicker "propose-event-datepicker"
+            model.fromDate
+            model.toDate
+            UpdateDates
         , TextField.view
             Mdc
             "description-text-field"
@@ -205,6 +221,31 @@ viewLeftOfFold model =
             ]
             []
         ]
+
+
+type alias DateDetails =
+    { startDate : String
+    , endDate : String
+    }
+
+
+dateDetailsDecoder : Decoder DateDetails
+dateDetailsDecoder =
+    Decode.field "detail" <|
+        Decode.map2 DateDetails
+            (Decode.field "startDate" Decode.string)
+            (Decode.field "endDate" Decode.string)
+
+
+viewDatePicker : String -> String -> String -> (DateDetails -> Msg) -> Html Msg
+viewDatePicker id startDate endDate onDateChange =
+    Html.node "custom-datepicker"
+        [ Attributes.property "id" <| Encode.string id
+        , Attributes.property "dates" <|
+            Encode.list Encode.string [ startDate, endDate ]
+        , Events.on "onDateChange" <| Decode.map onDateChange dateDetailsDecoder
+        ]
+        []
 
 
 viewRightOfFold : Model -> Html Msg
