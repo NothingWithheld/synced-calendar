@@ -31,6 +31,7 @@ type alias Model =
     , invalidRecipient : Bool
     , fromDate : Maybe String
     , toDate : Maybe String
+    , eventProposalSuccess : Bool
     , mdc : Material.Model Msg
     }
 
@@ -46,6 +47,7 @@ init session =
       , invalidRecipient = False
       , fromDate = Nothing
       , toDate = Nothing
+      , eventProposalSuccess = False
       , mdc = Material.defaultModel
       }
     , Material.init Mdc
@@ -160,38 +162,59 @@ view model =
                     , css "display" "flex"
                     , css "flex-direction" "column"
                     ]
-                    [ styled Html.h1
-                        [ Typography.headline6
-                        , css "margin-left" "16px"
-                        ]
-                        [ text "Create Event"
-                        ]
-                    , styled div
-                        [ css "display" "flex"
-                        , css "justify-content" "space-between"
-                        ]
-                        [ viewLeftOfFold model
-                        , viewRightOfFold model
-                        ]
-                    , styled div
-                        [ css "display" "flex"
-                        , css "justify-content" "flex-end"
-                        , css "margin" "12px"
-                        ]
-                        [ Button.view
-                            Mdc
-                            "submit-proposed-event-button"
-                            model.mdc
-                            [ Button.ripple
-                            , Button.unelevated
-                            ]
-                            [ text "Submit" ]
-                        ]
-                    ]
+                    (if model.eventProposalSuccess then
+                        viewProposalSuccessDialog
+
+                     else
+                        viewEventProposalForm model
+                    )
                 ]
             ]
         ]
     }
+
+
+viewProposalSuccessDialog : List (Html Msg)
+viewProposalSuccessDialog =
+    [ styled Html.h1
+        [ Typography.headline5
+        , css "margin-left" "16px"
+        ]
+        [ text "Successfully sent out requests to all recipients"
+        ]
+    ]
+
+
+viewEventProposalForm : Model -> List (Html Msg)
+viewEventProposalForm model =
+    [ styled Html.h1
+        [ Typography.headline6
+        , css "margin-left" "16px"
+        ]
+        [ text "Create Event"
+        ]
+    , styled div
+        [ css "display" "flex"
+        , css "justify-content" "space-between"
+        ]
+        [ viewLeftOfFold model
+        , viewRightOfFold model
+        ]
+    , styled div
+        [ css "display" "flex"
+        , css "justify-content" "flex-end"
+        , css "margin" "12px"
+        ]
+        [ Button.view
+            Mdc
+            "submit-proposed-event-button"
+            model.mdc
+            [ Button.ripple
+            , Button.unelevated
+            ]
+            [ text "Submit" ]
+        ]
+    ]
 
 
 viewLeftOfFold : Model -> Html Msg
