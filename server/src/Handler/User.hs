@@ -20,4 +20,16 @@ postUserR = do
                     insertedUser <- runDB $ insertEntity user' 
                     returnJson insertedUser
         (_, _) -> invalidArgs ["Failed to provide email and/or hashed_pass values"]
+
+loginUserR :: Handler Value 
+loginUserR = do 
+    maybeEmail <- lookupPostParam "email"
+    maybeHashedPass <- lookupPostParam "hashed_pass"
+    case (maybeEmail, maybeHashedPass) of 
+        (Just email, Just hashedPass) -> do 
+            potentialUsers <- runDB $ selectList [UserEmail ==. email, UserHashedPass ==. hashedPass] []
+            case potentialUsers of 
+                [user] -> returnJson user
+                _ -> invalidArgs ["Failed to login user sucessfully"]
+        (_, _) -> invalidArgs ["Failed to login user sucessfully"]
         
