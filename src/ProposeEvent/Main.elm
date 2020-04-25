@@ -4,6 +4,7 @@ import Browser exposing (Document)
 import Html exposing (Html, div, text)
 import Html.Attributes as Attributes
 import Html.Events as Events
+import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
 import Material
@@ -13,8 +14,10 @@ import Material.Elevation as Elevation
 import Material.Options as Options exposing (css, styled, when)
 import Material.TextField as TextField
 import Material.Typography as Typography
+import ProposeEvent.Commands exposing (submitEventProposal)
 import Route
 import Session exposing (Session)
+import Utils exposing (NoData)
 
 
 
@@ -29,8 +32,10 @@ type alias Model =
     , recipientIds : List String
     , recipientToBeAdded : String
     , invalidRecipient : Bool
+    , noRecipientAfterSubmission : Bool
     , fromDate : Maybe String
     , toDate : Maybe String
+    , invalidDates : Bool
     , eventProposalSuccess : Bool
     , mdc : Material.Model Msg
     }
@@ -45,8 +50,10 @@ init session =
       , recipientIds = []
       , recipientToBeAdded = ""
       , invalidRecipient = False
+      , noRecipientAfterSubmission = False
       , fromDate = Nothing
       , toDate = Nothing
+      , invalidDates = False
       , eventProposalSuccess = False
       , mdc = Material.defaultModel
       }
@@ -65,6 +72,8 @@ type Msg
     | AddRecipient
     | RemoveRecipient String
     | UpdateDates DateDetails
+    | AttemptProposalSubmit
+    | OnSubmitResult (Result Http.Error NoData)
     | Mdc (Material.Msg Msg)
 
 
@@ -72,7 +81,12 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         AdjustTitle title ->
-            ( { model | title = title }, Cmd.none )
+            ( { model
+                | title = title
+                , invalidTitle = False
+              }
+            , Cmd.none
+            )
 
         AdjustDescription description ->
             ( { model | description = description }, Cmd.none )
@@ -81,6 +95,7 @@ update msg model =
             ( { model
                 | recipientToBeAdded = userId
                 , invalidRecipient = False
+                , noRecipientAfterSubmission = False
               }
             , Cmd.none
             )
@@ -103,6 +118,7 @@ update msg model =
                 ( { model
                     | recipientIds = recipientId :: model.recipientIds
                     , recipientToBeAdded = ""
+                    , noRecipientAfterSubmission = False
                   }
                 , Cmd.none
                 )
@@ -121,9 +137,60 @@ update msg model =
             ( { model
                 | fromDate = startDate
                 , toDate = endDate
+                , invalidDates = False
               }
             , Cmd.none
             )
+
+        AttemptProposalSubmit ->
+            let
+                invalidTitle =
+                    model.title == ""
+
+                invalidDates =
+                    Maybe.withDefault True <|
+                        Maybe.map2 (\_ _ -> False) model.fromDate model.toDate
+
+                userId =
+                    Session.getUserId model.session
+            in
+            case model.recipientIds of
+                firstRecipientId :: _ ->
+                    if not invalidTitle && not invalidDates then
+                        ( model
+                        , submitEventProposal OnSubmitResult
+                            userId
+                            firstRecipientId
+                            model.fromDate
+                            model.toDate
+                            model.title
+                            model.description
+                        )
+
+                    else
+                        ( { model
+                            | invalidTitle = invalidTitle
+                            , invalidDates = invalidDates
+                          }
+                        , Cmd.none
+                        )
+
+                _ ->
+                    ( { model
+                        | invalidTitle = invalidTitle
+                        , invalidDates = invalidDates
+                        , noRecipientAfterSubmission = True
+                      }
+                    , Cmd.none
+                    )
+
+        OnSubmitResult result ->
+            case result of
+                Ok _ ->
+                    ( { model | eventProposalSuccess = True }, Cmd.none )
+
+                Err _ ->
+                    ( model, Cmd.none )
 
         Mdc msg_ ->
             Material.update Mdc msg_ model
@@ -211,6 +278,7 @@ viewEventProposalForm model =
             model.mdc
             [ Button.ripple
             , Button.unelevated
+            , Options.onClick AttemptProposalSubmit
             ]
             [ text "Submit" ]
         ]
@@ -236,10 +304,7 @@ viewLeftOfFold model =
             , css "margin-bottom" "12px"
             ]
             []
-        , viewDatePicker "propose-event-datepicker"
-            model.fromDate
-            model.toDate
-            UpdateDates
+        , viewDatePicker model
         , TextField.view
             Mdc
             "description-text-field"
@@ -269,8 +334,8 @@ dateDetailsDecoder =
             (Decode.field "endDate" <| Decode.nullable Decode.string)
 
 
-viewDatePicker : String -> Maybe String -> Maybe String -> (DateDetails -> Msg) -> Html Msg
-viewDatePicker id startDate endDate onDateChange =
+viewDatePicker : Model -> Html Msg
+viewDatePicker model =
     let
         dateEncoder date =
             case date of
@@ -280,13 +345,16 @@ viewDatePicker id startDate endDate onDateChange =
                 Nothing ->
                     Encode.null
     in
-    Html.node "custom-datepicker"
-        [ Attributes.property "id" <| Encode.string id
-        , Attributes.property "dates" <|
-            Encode.list dateEncoder [ startDate, endDate ]
-        , Events.on "onDateChange" <| Decode.map onDateChange dateDetailsDecoder
+    styled div
+        [ when model.invalidDates <| css "border" "solid 1px #D64545" ]
+        [ Html.node "custom-datepicker"
+            [ Attributes.property "id" <| Encode.string "propose-event-datepicker"
+            , Attributes.property "dates" <|
+                Encode.list dateEncoder [ model.fromDate, model.toDate ]
+            , Events.on "onDateChange" <| Decode.map UpdateDates dateDetailsDecoder
+            ]
+            []
         ]
-        []
 
 
 viewRightOfFold : Model -> Html Msg
@@ -300,6 +368,8 @@ viewRightOfFold model =
             [ css "display" "flex"
             , css "justify-content" "space-between"
             , css "align-items" "center"
+            , when model.noRecipientAfterSubmission <|
+                css "border" "solid 1px #D64545"
             ]
             [ styled div
                 [ css "display" "flex"
