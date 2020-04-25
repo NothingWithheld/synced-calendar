@@ -90,8 +90,11 @@ update msg model =
 
                 alreadyIncluded =
                     List.member recipientId model.recipientIds
+
+                isSelf =
+                    recipientId == Session.getUserId model.session
             in
-            if alreadyIncluded || recipientId == "" then
+            if alreadyIncluded || isSelf || recipientId == "" then
                 ( { model | invalidRecipient = True }, Cmd.none )
 
             else
