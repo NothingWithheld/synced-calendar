@@ -3,26 +3,26 @@
 
 User json
     email Text
-    hashed_pass Text
+    hashedPass Text
     registered Bool
     UniqueEmail email
     deriving Show
 AvailableTimeEntry json
-    userId Text
+    userId UserId
     eventId ProposedEventId
     date Day
     fromTime TimeOfDay
     toTime TimeOfDay
     deriving Show Eq
 FreeTimeEntry json
-    userId Text
+    userId UserId
     day Text
     fromTime TimeOfDay
     toTime TimeOfDay
     deriving Show Eq
 ProposedEvent json 
-    creatorId Text
-    recipientId Text 
+    creatorId UserId
+    recipientId UserId 
     name Text Maybe 
     description Text Maybe
     fromDate Day 

@@ -4,6 +4,7 @@
 module Database where 
 
 import Import
+import Database.Persist.Sql (toSqlKey)
 import Data.List 
 import Data.Time.LocalTime
 import Data.Dates
@@ -96,3 +97,15 @@ updateDayString dayString dayOffset = do
             let nextIndexOfDay = (indexOfDay + (fromInteger dayOffset)) `mod` (Import.length days)
             return $ days !! nextIndexOfDay
         _ -> Nothing
+
+fetchUserId :: Maybe Text -> Handler (Maybe UserId)
+fetchUserId (Just userIdText) = do 
+    let eitherUserId = decimal userIdText
+    case eitherUserId of
+        Right (userIdInt, "") -> do
+            potentialUsers <- runDB $ selectList [UserId ==. toSqlKey (fromIntegral (userIdInt::Integer))] []
+            case potentialUsers of
+                [Entity userId _] -> return $ Just userId 
+                _ -> return Nothing 
+        _ -> return Nothing 
+fetchUserId Nothing = do return $ Nothing

@@ -10,8 +10,8 @@ import Data.Time.LocalTime
 import Data.Text.Read
 import qualified Database
 
-data FreeTimeEntryData = FreeTimeEntryData FreeTimeEntryId Text Text TimeOfDay TimeOfDay
-data AvailableTimeEntryData = AvailableTimeEntryData AvailableTimeEntryId Text ProposedEventId Day TimeOfDay TimeOfDay
+data FreeTimeEntryData = FreeTimeEntryData FreeTimeEntryId UserId Text TimeOfDay TimeOfDay
+data AvailableTimeEntryData = AvailableTimeEntryData AvailableTimeEntryId UserId ProposedEventId Day TimeOfDay TimeOfDay
 
 instance ToJSON FreeTimeEntryData where 
     toJSON (FreeTimeEntryData entryId userId day (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _)) =
@@ -61,24 +61,29 @@ convertAvailableTimeEntryToLocal (Entity entryId (AvailableTimeEntry userId even
         (_, _) -> Nothing
 
 getFreeTimeEntryR :: Text -> Handler Value 
-getFreeTimeEntryR userId = do 
-    allTimeEntries <- runDB $ selectList [FreeTimeEntryUserId <-. [userId]] []
-    maybeTimeZone <- lookupGetParam "timezone"
-    case maybeTimeZone of 
-        Just timezone -> returnJson $ catMaybes $ 
-            Import.map (\x -> convertFreeTimeEntryToLocal x timezone) allTimeEntries
-        _ -> invalidArgs ["Failed to parse timezone"]
+getFreeTimeEntryR userIdText = do
+    maybeUserId <- Database.fetchUserId (Just userIdText)
+    case maybeUserId of 
+        Just userId -> do
+            allTimeEntries <- runDB $ selectList [FreeTimeEntryUserId <-. [userId]] []
+            maybeTimeZone <- lookupGetParam "timezone"
+            case maybeTimeZone of 
+                Just timezone -> returnJson $ catMaybes $ 
+                    Import.map (\x -> convertFreeTimeEntryToLocal x timezone) allTimeEntries
+                _ -> invalidArgs ["Failed to parse timezone"]
+        _ -> invalidArgs ["Failed to find user with id: " Import.++ userIdText]
 
 postFreeTimeEntryR :: Text -> Handler Value 
-postFreeTimeEntryR userId = do 
+postFreeTimeEntryR userIdText = do 
     maybeDay <- lookupPostParam "day"
     maybeTimeZone <- lookupPostParam "timezone"
     maybeFromTimeText <- lookupPostParam "from_time"
     maybeToTimeText <- lookupPostParam "to_time"
+    maybeUserId <- Database.fetchUserId (Just userIdText)
     let maybeUTCFromTime = Database.convertTextToTime maybeFromTimeText maybeTimeZone
     let maybeUTCToTime = Database.convertTextToTime maybeToTimeText maybeTimeZone
-    case (maybeDay, maybeUTCFromTime, maybeUTCToTime) of
-        (Just day, Just (fromTimeDayOffset, fromTime), Just (_, toTime)) -> do
+    case (maybeUserId, maybeDay, maybeUTCFromTime, maybeUTCToTime) of
+        (Just userId, Just day, Just (fromTimeDayOffset, fromTime), Just (_, toTime)) -> do
             -- The database will hold in the day of fromTime if the event is staggered 
             -- between to two days 
             let maybeUtcDay = Database.updateDayString day fromTimeDayOffset
@@ -88,7 +93,7 @@ postFreeTimeEntryR userId = do
                     (Entity entryId _) <- runDB $ insertEntity timeEntry'
                     returnJson $ FreeTimeEntryData entryId userId (toLower utcDay) fromTime toTime
                 _ -> invalidArgs ["Failed to parse day, from_time and/or to_time params"]
-        (_, _, _) -> invalidArgs ["Failed to parse day, from_time and/or to_time params"]
+        (_, _, _, _) -> invalidArgs ["Failed to parse day, from_time and/or to_time params"]
 
 putFreeTimeEntryR :: Text -> Handler Value 
 putFreeTimeEntryR entryIdText = do
@@ -130,11 +135,12 @@ deleteFreeTimeEntryR entryIdText = do
         _ -> badMethod
 
 getAvailableTimeEntryR :: Text -> Handler Value 
-getAvailableTimeEntryR userId = do 
+getAvailableTimeEntryR userIdText = do 
     maybeEventId <- lookupGetParam "event_id"
     maybeTimeZone <- lookupGetParam "timezone"
-    case (maybeEventId, maybeTimeZone) of 
-        (Just eventIdText, Just timezone) -> do 
+    maybeUserId <- Database.fetchUserId (Just userIdText)
+    case (maybeUserId, maybeEventId, maybeTimeZone) of 
+        (Just userId, Just eventIdText, Just timezone) -> do 
             let eitherEventId = decimal eventIdText
             case (eitherEventId) of 
                 Right (eventIdInt, "") -> do 
@@ -145,20 +151,21 @@ getAvailableTimeEntryR userId = do
                         ] []
                     returnJson $ catMaybes $ Import.map (\x -> convertAvailableTimeEntryToLocal x timezone) allTimeEntries
                 _ -> invalidArgs ["Failed to parse event_id params"]
-        (_, _) -> invalidArgs ["Failed to parse event_id params"]
+        (_, _, _) -> invalidArgs ["Failed to parse event_id params"]
 
 postAvailableTimeEntryR :: Text -> Handler Value 
-postAvailableTimeEntryR userId = do 
+postAvailableTimeEntryR userIdText = do 
     maybeEventId <- lookupPostParam "event_id"
     maybeDateText <- lookupPostParam "date"
     maybeTimeZone <- lookupPostParam "timezone"
     maybeFromTimeText <- lookupPostParam "from_time"
     maybeToTimeText <- lookupPostParam "to_time"
+    maybeUserId <- Database.fetchUserId (Just userIdText)
     let maybeDate = Database.convertTextToDate maybeDateText
     let maybeUTCFromTime = Database.convertTextToTime maybeFromTimeText maybeTimeZone
     let maybeUTCToTime = Database.convertTextToTime maybeToTimeText maybeTimeZone
-    case (maybeDate, maybeEventId, maybeUTCFromTime, maybeUTCToTime) of
-        (Just date, Just eventIdText, Just (fromTimeDayOffset, fromTime), Just (_, toTime)) -> do
+    case (maybeUserId, maybeDate, maybeEventId, maybeUTCFromTime, maybeUTCToTime) of
+        (Just userId, Just date, Just eventIdText, Just (fromTimeDayOffset, fromTime), Just (_, toTime)) -> do
             let eitherEventId = decimal eventIdText
             case eitherEventId of     
                 Right (eventIdInt, "") -> do 
@@ -177,7 +184,7 @@ postAvailableTimeEntryR userId = do
                             returnJson $ AvailableTimeEntryData entryId userId eventId utcDate fromTime toTime
                         _ -> invalidArgs ["Failed to find corresponding ProposedEvent with id: " Import.++ eventIdText]
                 _ -> invalidArgs ["Please provide a valid integer for event_id"]
-        (_, _, _, _) -> invalidArgs ["Failed to parse API params"]
+        (_, _, _, _, _) -> invalidArgs ["Failed to parse API params"]
 
 putAvailableTimeEntryR :: Text -> Handler Value 
 putAvailableTimeEntryR entryIdText = do 

@@ -10,7 +10,7 @@ import Data.Time.LocalTime
 import Data.Text.Read
 import qualified Database
 
-data ConfirmedEventData = ConfirmedEventData ConfirmedEventId ProposedEventId Text Text (Maybe Text) (Maybe Text) Day TimeOfDay TimeOfDay
+data ConfirmedEventData = ConfirmedEventData ConfirmedEventId ProposedEventId UserId UserId (Maybe Text) (Maybe Text) Day TimeOfDay TimeOfDay
 
 instance ToJSON ConfirmedEventData where 
     toJSON (ConfirmedEventData confirmedEventId eventId creatorId recipientId name description date (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _)) =
@@ -49,39 +49,46 @@ getConfirmedEventFromProposedEvent
             _ -> return $ Nothing
 
 getProposedEventCreatorR :: Text -> Handler Value
-getProposedEventCreatorR creatorId = do 
-    allEventEntries <- runDB $ 
-        selectList [
-            ProposedEventCreatorId <-. [creatorId],
-            ProposedEventConfirmed <-. [False]
-        ] []
-    returnJson allEventEntries
+getProposedEventCreatorR creatorIdText = do 
+    maybeCreatorId <- Database.fetchUserId (Just creatorIdText)
+    case maybeCreatorId of
+        Just creatorId -> do 
+            allEventEntries <- runDB $ 
+                selectList [
+                    ProposedEventCreatorId <-. [creatorId],
+                    ProposedEventConfirmed <-. [False]
+                ] []
+            returnJson allEventEntries
+        _ -> invalidArgs ["Failed to find user with creatorId: " Import.++ creatorIdText]
 
 postProposedEventCreatorR :: Text -> Handler Value 
-postProposedEventCreatorR creatorId = do 
-    maybeRecipientId <- lookupPostParam "recipient_id"
+postProposedEventCreatorR creatorIdText = do 
+    maybeRecipientIdText <- lookupPostParam "recipient_id"
     maybeName <- lookupPostParam "name"
     maybeDescription <- lookupPostParam "description"
     maybeFromDateText <- lookupPostParam "from_date"
     maybeToDateText <- lookupPostParam "to_date"
     let confirmed = False
+    maybeCreatorId <- Database.fetchUserId (Just creatorIdText)
+    maybeRecipientId <- Database.fetchUserId maybeRecipientIdText
     let maybeFromDate = Database.convertTextToDate maybeFromDateText
     let maybeToDate = Database.convertTextToDate maybeToDateText
-    case (maybeRecipientId, maybeFromDate, maybeToDate) of
-        (Just recipientId, Just fromDate, Just toDate) -> do
+    case (maybeCreatorId, maybeRecipientId, maybeFromDate, maybeToDate) of
+        (Just creatorId, Just recipientId, Just fromDate, Just toDate) -> do
             let event' = ProposedEvent creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
             insertedEvent <- runDB $ insertEntity event'
             returnJson insertedEvent
-        (_, _, _) -> invalidArgs ["Failed to parse arguments. Check API documentation for valid formatting"]
+        (_, _, _, _) -> invalidArgs ["Failed to parse arguments. Check API documentation for valid formatting"]
 
 putProposedEventCreatorR :: Text -> Handler Value 
 putProposedEventCreatorR eventIdText = do 
-    maybeRecipientId <- lookupPostParam "recipient_id"
+    maybeRecipientIdText <- lookupPostParam "recipient_id"
     maybeNameText <- lookupPostParam "name"
     maybeDescriptionText <- lookupPostParam "description"
     maybeFromDateText <- lookupPostParam "from_date"
     maybeToDateText <- lookupPostParam "to_date"
     maybeConfirmedText <- lookupPostParam "confirmed"
+    maybeRecipientId <- Database.fetchUserId maybeRecipientIdText
     let maybeFromDate = Database.convertTextToDate maybeFromDateText
     let maybeToDate = Database.convertTextToDate maybeToDateText
     let confirmed = Database.convertTextToBool maybeConfirmedText
@@ -114,19 +121,24 @@ deleteProposedEventCreatorR eventIdText = do
         _ -> badMethod
 
 getProposedEventRecipientR :: Text -> Handler Value 
-getProposedEventRecipientR recipientId = do 
-    allProposedEvents <- runDB $ 
-        selectList [
-            ProposedEventRecipientId <-. [recipientId],
-            ProposedEventConfirmed <-. [False]
-        ] []
-    returnJson allProposedEvents
+getProposedEventRecipientR recipientIdText = do
+    maybeRecipientId <- Database.fetchUserId (Just recipientIdText)
+    case maybeRecipientId of 
+        Just recipientId -> do
+            allProposedEvents <- runDB $ 
+                selectList [
+                    ProposedEventRecipientId <-. [recipientId],
+                    ProposedEventConfirmed <-. [False]
+                ] []
+            returnJson allProposedEvents
+        _ -> invalidArgs ["Failed to find user with id: " Import.++ recipientIdText]
 
 getConfirmedEventCreatorR :: Text -> Handler Value
-getConfirmedEventCreatorR creatorId = do 
+getConfirmedEventCreatorR creatorIdText = do 
     maybeTimeZone <- lookupGetParam "timezone"
-    case maybeTimeZone of
-        Just timezone -> do 
+    maybeCreatorId <- Database.fetchUserId (Just creatorIdText)
+    case (maybeCreatorId, maybeTimeZone) of
+        (Just creatorId, Just timezone) -> do 
             allProposedEventEntries <- runDB $ 
                 selectList [
                     ProposedEventCreatorId <-. [creatorId],
@@ -134,7 +146,7 @@ getConfirmedEventCreatorR creatorId = do
                 ] []
             confirmedEvents <- Import.mapM getConfirmedEventFromProposedEvent allProposedEventEntries
             returnJson $ catMaybes $ Import.map (\x -> convertConfirmedEventToLocal x timezone) (catMaybes confirmedEvents)
-        _ -> invalidArgs ["Failed to parse timezone"]
+        (_, _) -> invalidArgs ["Failed to parse timezone"]
 
 postConfirmedEventCreatorR :: Text -> Handler Value 
 postConfirmedEventCreatorR eventIdText = do 
@@ -207,15 +219,16 @@ deleteConfirmedEventCreatorR eventIdText = do
         _ -> badMethod
 
 getConfirmedEventRecipientR :: Text -> Handler Value
-getConfirmedEventRecipientR recipientId = do 
+getConfirmedEventRecipientR recipientIdText = do 
     maybeTimeZone <- lookupGetParam "timezone"
-    case maybeTimeZone of
-        Just timezone -> do 
+    maybeRecipientId <- Database.fetchUserId (Just recipientIdText)
+    case (maybeRecipientId, maybeTimeZone) of
+        (Just recipientId, Just timezone) -> do 
             allProposedEventEntries <- runDB $ 
                 selectList [
-                    ProposedEventCreatorId <-. [recipientId],
+                    ProposedEventRecipientId <-. [recipientId],
                     ProposedEventConfirmed <-. [True]
                 ] []
             confirmedEvents <- Import.mapM getConfirmedEventFromProposedEvent allProposedEventEntries
             returnJson $ catMaybes $ Import.map (\x -> convertConfirmedEventToLocal x timezone) (catMaybes confirmedEvents)
-        _ -> invalidArgs ["Failed to parse timezone"]
+        (_, _) -> invalidArgs ["Failed to parse timezone"]

@@ -21,8 +21,8 @@ postUserR = do
                     returnJson insertedUser
         (_, _) -> invalidArgs ["Failed to provide email and/or hashed_pass values"]
 
-loginUserR :: Handler Value 
-loginUserR = do 
+getUserR :: Handler Value 
+getUserR = do 
     maybeEmail <- lookupPostParam "email"
     maybeHashedPass <- lookupPostParam "hashed_pass"
     case (maybeEmail, maybeHashedPass) of 
