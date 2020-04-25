@@ -6,7 +6,7 @@
   "scripts": {
     "start-frontend": "npm run build-js && elm-live src/Main.elm --open --pushstate -- --output=elm-main.js",
     "start-server": "cd server && stack build && stack exec -- yesod devel && cd ..",
-    "build-js": "webpack --mode development"
+    "build-js": "webpack --mode production"
   },
   "repository": {
     "type": "git",

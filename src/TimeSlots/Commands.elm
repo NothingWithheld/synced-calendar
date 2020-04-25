@@ -32,7 +32,7 @@ requestTimeSlotsElement =
 requestSavedWeeklyTimeSlots : String -> Cmd Msg
 requestSavedWeeklyTimeSlots userId =
     Http.get
-        { url = "http://localhost:3000/api/" ++ userId ++ "/free-times"
+        { url = "http://localhost:3000/api/" ++ userId ++ "/free-times?timezone=-6"
         , expect = Http.expectJson SetSavedWeeklyTimeSlots TSMessaging.serverTimeSlotListDecoder
         }
 

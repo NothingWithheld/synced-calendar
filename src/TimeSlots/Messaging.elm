@@ -69,6 +69,7 @@ getFreeTimesQueryString dayNum startSlotNum endSlotNum =
                     [ Builder.string "day" day
                     , Builder.string "from_time" <| slotNumToMilitary startSlotNum False
                     , Builder.string "to_time" <| slotNumToMilitary endSlotNum True
+                    , Builder.string "timezone" "-6"
                     ]
     in
     Maybe.map mapFunc <| dayNumToDay dayNum
@@ -104,7 +105,7 @@ militaryToSlotNum isEndSlot militaryTime =
             String.split ":" militaryTime
     in
     case splitTime of
-        [ hourString, minuteString, _ ] ->
+        [ hourString, minuteString ] ->
             let
                 hours =
                     String.toInt hourString
