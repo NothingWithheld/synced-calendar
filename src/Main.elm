@@ -5,6 +5,7 @@ import Browser.Navigation as Nav
 import Error
 import Home.Main
 import Html
+import Json.Decode as Decode
 import Login.Main
 import ProposeEvent.Main
 import Route exposing (Route)
@@ -18,7 +19,7 @@ import WeeklyFreeTimes.MainMsg
 -- MAIN
 
 
-main : Program () Model Msg
+main : Program Decode.Value Model Msg
 main =
     Browser.application
         { init = init
@@ -43,11 +44,11 @@ type Model
     | ProposeEvent ProposeEvent.Main.Model
 
 
-init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
-init _ url key =
+init : Decode.Value -> Url -> Nav.Key -> ( Model, Cmd Msg )
+init offsetFlag url key =
     handleUrlChange (Route.fromUrl url) <|
         Redirect <|
-            Session.init key
+            Session.init key offsetFlag
 
 
 getSession : Model -> Session
