@@ -46,8 +46,8 @@ init session =
       }
     , Cmd.batch
         [ Material.init Mdc
-        , requestTimeSlotPositions
-        , requestTimeSlotsElement
+        , requestTimeSlotPositions SetTimeSlotPositions
+        , requestTimeSlotsElement SetTimeSlotsElement
         ]
     )
 
@@ -67,7 +67,7 @@ update msg model =
 
         -- TimeSlots
         SetTimeSlotPositions result ->
-            TSUpdate.setTimeSlotPositions model result
+            TSUpdate.setTimeSlotPositions model SetSavedWeeklyTimeSlots result
 
         UpdateTimeZone timeZoneLabel ->
             TSUpdate.updateTimeZone model SetSavedWeeklyTimeSlots timeZoneLabel
@@ -82,16 +82,16 @@ update msg model =
             TSUpdate.startSelectingTimeSlot model dayNum slotNum
 
         HandleTimeSlotMouseMove pointerPosition ->
-            TSUpdate.handleTimeSlotMouseMove model pointerPosition
+            TSUpdate.handleTimeSlotMouseMove model AdjustTimeSlotSelection pointerPosition
 
         AdjustTimeSlotSelection pointerPosition result ->
             TSUpdate.adjustTimeSlotSelection model pointerPosition result
 
         SendSaveTimeSlotRequest ->
-            TSUpdate.sendSaveTimeSlotRequest model
+            TSUpdate.sendSaveTimeSlotRequest model SetSelectedTimeSlotAfterCreation
 
         SendUpdateTimeSlotRequest ->
-            TSUpdate.sendUpdateTimeSlotRequest model
+            TSUpdate.sendUpdateTimeSlotRequest model SetSelectedTimeSlotAfterEditing
 
         SetSelectedTimeSlotAfterCreation result ->
             TSUpdate.setSelectedTimeSlotAfterCreation model result
@@ -100,13 +100,13 @@ update msg model =
             TSUpdate.setSelectedTimeSlotAfterEditing model result
 
         HandleTimeSlotMouseUp ->
-            TSUpdate.handleTimeSlotMouseUp model
+            TSUpdate.handleTimeSlotMouseUp model PromptUserForEventDetails
 
         EditTimeSlotSelection selectedTimeslotDetails ->
-            TSUpdate.editTimeSlotSelection model selectedTimeslotDetails
+            TSUpdate.editTimeSlotSelection model PromptUserForEventDetails selectedTimeslotDetails
 
         SendDeleteTimeSlotRequest ->
-            TSUpdate.sendDeleteTimeSlotRequest model
+            TSUpdate.sendDeleteTimeSlotRequest model DeleteTimeSlot
 
         DeleteTimeSlot result ->
             TSUpdate.deleteTimeSlot model result
@@ -122,10 +122,10 @@ update msg model =
             ECUpdate.adjustEventDescription model description
 
         ChangeSelectionDayNum dayNum ->
-            ECUpdate.changeSelectionDayNum model dayNum
+            ECUpdate.changeSelectionDayNum model PromptUserForEventDetails dayNum
 
         ChangeSelectionStartSlot startSlot ->
-            ECUpdate.changeSelectionStartSlot model startSlot
+            ECUpdate.changeSelectionStartSlot model PromptUserForEventDetails startSlot
 
         ChangeSelectionEndSlot endSlot ->
             ECUpdate.changeSelectionEndSlot model endSlot

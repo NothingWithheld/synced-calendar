@@ -41,21 +41,21 @@ import Utils
         , getListItemAt
         , useWithoutCmdMsg
         )
-import WeeklyFreeTimes.MainMsg exposing (Msg(..))
 
 
 setTimeSlotPositions :
     TS.WithTimeSlotPositions (WithSession a)
+    -> (Result Http.Error (List TSMessaging.ServerTimeSlot) -> msg)
     -> Result Dom.Error (List Dom.Element)
-    -> ( TS.WithTimeSlotPositions (WithSession a), Cmd Msg )
-setTimeSlotPositions model result =
+    -> ( TS.WithTimeSlotPositions (WithSession a), Cmd msg )
+setTimeSlotPositions model setSavedWeeklyTS result =
     let
         updateModelWithTSPositions elementList =
             ( { model
                 | timeSlotPositions = TS.setTimeSlotPositions TS.startingSlotNum 0 elementList
               }
             , requestSavedWeeklyTimeSlots
-                SetSavedWeeklyTimeSlots
+                setSavedWeeklyTS
                 (Session.getUserId model.session)
                 (Session.getOffset model.session)
             )
@@ -82,7 +82,10 @@ updateTimeZone model onGetUpdatedTimeSlots timeZoneLabel =
             ( model, Cmd.none )
 
 
-setTimeSlotsElement : TS.WithTimeSlotsElement a -> Result Dom.Error Dom.Element -> ( TS.WithTimeSlotsElement a, Cmd Msg )
+setTimeSlotsElement :
+    TS.WithTimeSlotsElement a
+    -> Result Dom.Error Dom.Element
+    -> ( TS.WithTimeSlotsElement a, Cmd msg )
 setTimeSlotsElement model result =
     case result of
         Ok { element } ->
@@ -95,7 +98,7 @@ setTimeSlotsElement model result =
 setSavedWeeklyTimeSlots :
     TS.WithLoadingTimeSlots (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a))
     -> Result Http.Error (List TSMessaging.ServerTimeSlot)
-    -> ( TS.WithLoadingTimeSlots (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a)), Cmd Msg )
+    -> ( TS.WithLoadingTimeSlots (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a)), Cmd msg )
 setSavedWeeklyTimeSlots model result =
     let
         updateWithTimeSlot { dayNum, startSlot, endSlot, id } model_ =
@@ -137,7 +140,7 @@ startSelectingTimeSlot :
     TS.WithSelectedTimeSlots (TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a))
     -> TS.DayNum
     -> TS.SlotNum
-    -> ( TS.WithSelectedTimeSlots (TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a)), Cmd Msg )
+    -> ( TS.WithSelectedTimeSlots (TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a)), Cmd msg )
 startSelectingTimeSlot model dayNum slotNum =
     let
         noUpdateIfIntersectsSelectedTS dayNum_ startBound endBound updatedModel =
@@ -156,11 +159,15 @@ startSelectingTimeSlot model dayNum slotNum =
                 << TS.useTSPositionForInitialSelection model dayNum
 
 
-handleTimeSlotMouseMove : TS.WithTimeSlotSelection a -> TS.PointerPosition -> ( TS.WithTimeSlotSelection a, Cmd Msg )
-handleTimeSlotMouseMove model pointerPosition =
+handleTimeSlotMouseMove :
+    TS.WithTimeSlotSelection a
+    -> (TS.PointerPosition -> Result Dom.Error Dom.Viewport -> msg)
+    -> TS.PointerPosition
+    -> ( TS.WithTimeSlotSelection a, Cmd msg )
+handleTimeSlotMouseMove model adjustTSSelection pointerPosition =
     let
         adjustTSSelectionMsg =
-            Task.attempt (AdjustTimeSlotSelection pointerPosition) (Dom.getViewportOf TS.scrollableTimeSlotsId)
+            Task.attempt (adjustTSSelection pointerPosition) (Dom.getViewportOf TS.scrollableTimeSlotsId)
     in
     case model.timeSlotSelection of
         TS.InitialPressNoMove { dayNum, startBound } ->
@@ -174,7 +181,7 @@ adjustTimeSlotSelection :
     TS.WithTimeSlotsElement (TS.WithSelectedTimeSlots (TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a)))
     -> TS.PointerPosition
     -> Result Dom.Error Dom.Viewport
-    -> ( TS.WithTimeSlotsElement (TS.WithSelectedTimeSlots (TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a))), Cmd Msg )
+    -> ( TS.WithTimeSlotsElement (TS.WithSelectedTimeSlots (TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a))), Cmd msg )
 adjustTimeSlotSelection model { pageY } result =
     let
         noUpdateIfIntersectsSelectedTS dayNum startBound endBound updatedModel =
@@ -212,8 +219,11 @@ adjustTimeSlotSelection model { pageY } result =
             ( model, Cmd.none )
 
 
-sendSaveTimeSlotRequest : TS.WithTimeSlotSelection (WithSession a) -> ( TS.WithTimeSlotSelection (WithSession a), Cmd Msg )
-sendSaveTimeSlotRequest model =
+sendSaveTimeSlotRequest :
+    TS.WithTimeSlotSelection (WithSession a)
+    -> (Result Http.Error Int -> msg)
+    -> ( TS.WithTimeSlotSelection (WithSession a), Cmd msg )
+sendSaveTimeSlotRequest model setTSAfterSave =
     case model.timeSlotSelection of
         TS.CurrentlySelecting selectionBounds ->
             let
@@ -221,7 +231,9 @@ sendSaveTimeSlotRequest model =
                     TS.getOrderedTimeSlot selectionBounds
             in
             ( model
-            , saveWeeklyTimeSlot (Session.getUserId model.session)
+            , saveWeeklyTimeSlot setTSAfterSave
+                (Session.getUserId model.session)
+                (Session.getOffset model.session)
                 dayNum
                 startBound.slotNum
                 endBound.slotNum
@@ -231,8 +243,11 @@ sendSaveTimeSlotRequest model =
             ( model, Cmd.none )
 
 
-sendUpdateTimeSlotRequest : TS.WithTimeSlotSelection a -> ( TS.WithTimeSlotSelection a, Cmd Msg )
-sendUpdateTimeSlotRequest model =
+sendUpdateTimeSlotRequest :
+    TS.WithTimeSlotSelection (WithSession a)
+    -> (Result Http.Error NoData -> msg)
+    -> ( TS.WithTimeSlotSelection (WithSession a), Cmd msg )
+sendUpdateTimeSlotRequest model setTSAfterEdit =
     case model.timeSlotSelection of
         TS.EditingSelection selectionBounds prevSelection ->
             let
@@ -243,7 +258,9 @@ sendUpdateTimeSlotRequest model =
                     .id <| TS.getTimeSlotFromDetails prevSelection
             in
             ( model
-            , updateWeeklyTimeSlot timeSlotId
+            , updateWeeklyTimeSlot setTSAfterEdit
+                timeSlotId
+                (Session.getOffset model.session)
                 dayNum
                 startBound.slotNum
                 endBound.slotNum
@@ -256,7 +273,7 @@ sendUpdateTimeSlotRequest model =
 setSelectedTimeSlotAfterCreation :
     EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a))
     -> Result Http.Error Int
-    -> ( EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)), Cmd Msg )
+    -> ( EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)), Cmd msg )
 setSelectedTimeSlotAfterCreation model result =
     case ( model.eventCreation, model.timeSlotSelection, result ) of
         ( EC.CurrentlyCreatingEvent eventDetails _, TS.CurrentlySelecting selectionBounds, Ok timeSlotId ) ->
@@ -293,7 +310,7 @@ setSelectedTimeSlotAfterCreation model result =
 setSelectedTimeSlotAfterEditing :
     EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a))
     -> Result Http.Error NoData
-    -> ( EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)), Cmd Msg )
+    -> ( EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)), Cmd msg )
 setSelectedTimeSlotAfterEditing model result =
     case ( model.eventCreation, model.timeSlotSelection, result ) of
         ( EC.CurrentlyCreatingEvent eventDetails _, TS.EditingSelection selectionBounds prevSelection, Ok _ ) ->
@@ -332,10 +349,11 @@ setSelectedTimeSlotAfterEditing model result =
 
 setOneHourSelection :
     TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a))
+    -> (Result Dom.Error Dom.Element -> msg)
     -> TS.DayNum
     -> TS.SlotNum
-    -> ( TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a)), Cmd Msg )
-setOneHourSelection model dayNum slotNum =
+    -> ( TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a)), Cmd msg )
+setOneHourSelection model promptEventDetails dayNum slotNum =
     let
         halfHourAdjustedSlotNum =
             2 * (slotNum // 2)
@@ -373,6 +391,7 @@ setOneHourSelection model dayNum slotNum =
                                     , endBound = endBound
                                     }
                         }
+                        promptEventDetails
 
                 ( _, _ ) ->
                     ( model, Cmd.none )
@@ -383,14 +402,15 @@ setOneHourSelection model dayNum slotNum =
 
 handleTimeSlotMouseUp :
     TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a))
-    -> ( TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a)), Cmd Msg )
-handleTimeSlotMouseUp model =
+    -> (Result Dom.Error Dom.Element -> msg)
+    -> ( TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a)), Cmd msg )
+handleTimeSlotMouseUp model promptEventDetails =
     case model.timeSlotSelection of
         TS.InitialPressNoMove { dayNum, startBound } ->
-            setOneHourSelection model dayNum startBound.slotNum
+            setOneHourSelection model promptEventDetails dayNum startBound.slotNum
 
         TS.CurrentlySelecting _ ->
-            ECUpdate.initiateUserPromptForEventDetails model
+            ECUpdate.initiateUserPromptForEventDetails model promptEventDetails
 
         _ ->
             ( model, Cmd.none )
@@ -398,9 +418,10 @@ handleTimeSlotMouseUp model =
 
 editTimeSlotSelection :
     TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a)
+    -> (Result Dom.Error Dom.Element -> msg)
     -> TS.SelectedTimeSlotDetails
-    -> ( TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a), Cmd Msg )
-editTimeSlotSelection model selectedTimeSlotDetails =
+    -> ( TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a), Cmd msg )
+editTimeSlotSelection model promptEventDetails selectedTimeSlotDetails =
     let
         (TS.SelectedTimeSlotDetails selectedTimeSlot _) =
             selectedTimeSlotDetails
@@ -414,10 +435,14 @@ editTimeSlotSelection model selectedTimeSlotDetails =
                 TS.EditingSelection (TS.selectedToSelectingTimeSlot selectedTimeSlot) selectedTimeSlotDetails
             , selectedTimeSlots = selectedTimeSlotsWithoutChosen
         }
+        promptEventDetails
 
 
-sendDeleteTimeSlotRequest : TS.WithTimeSlotSelection a -> ( TS.WithTimeSlotSelection a, Cmd Msg )
-sendDeleteTimeSlotRequest model =
+sendDeleteTimeSlotRequest :
+    TS.WithTimeSlotSelection a
+    -> (Result Http.Error NoData -> msg)
+    -> ( TS.WithTimeSlotSelection a, Cmd msg )
+sendDeleteTimeSlotRequest model onDelete =
     case model.timeSlotSelection of
         TS.EditingSelection _ prevSelection ->
             let
@@ -425,7 +450,7 @@ sendDeleteTimeSlotRequest model =
                     .id <| TS.getTimeSlotFromDetails prevSelection
             in
             ( model
-            , deleteWeeklyTimeSlot timeSlotId
+            , deleteWeeklyTimeSlot onDelete timeSlotId
             )
 
         _ ->
@@ -435,7 +460,7 @@ sendDeleteTimeSlotRequest model =
 deleteTimeSlot :
     EC.WithDiscardConfirmationModal (EC.WithEventCreation (TS.WithTimeSlotSelection a))
     -> Result Http.Error NoData
-    -> ( EC.WithDiscardConfirmationModal (EC.WithEventCreation (TS.WithTimeSlotSelection a)), Cmd Msg )
+    -> ( EC.WithDiscardConfirmationModal (EC.WithEventCreation (TS.WithTimeSlotSelection a)), Cmd msg )
 deleteTimeSlot model result =
     case result of
         Ok _ ->

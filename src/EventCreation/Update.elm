@@ -14,14 +14,17 @@ module EventCreation.Update exposing
 
 import Browser.Dom as Dom
 import EventCreation.EventCreation as EC
+import Flip
 import Task
 import TimeSlots.TimeSlots as TS
-import Utils exposing (applicative, getListItemAt)
-import WeeklyFreeTimes.MainMsg exposing (Msg(..))
+import Utils exposing (getListItemAt)
 
 
-initiateUserPromptForEventDetails : TS.WithTimeSlotSelection a -> ( TS.WithTimeSlotSelection a, Cmd Msg )
-initiateUserPromptForEventDetails model =
+initiateUserPromptForEventDetails :
+    TS.WithTimeSlotSelection a
+    -> (Result Dom.Error Dom.Element -> msg)
+    -> ( TS.WithTimeSlotSelection a, Cmd msg )
+initiateUserPromptForEventDetails model promptEventDetails =
     case model.timeSlotSelection of
         TS.CurrentlySelecting { dayNum, startBound, endBound } ->
             let
@@ -30,7 +33,7 @@ initiateUserPromptForEventDetails model =
             in
             ( model
             , Task.attempt
-                PromptUserForEventDetails
+                promptEventDetails
                 (Dom.getElement (TS.getTimeSlotId dayNum minSlotNum))
             )
 
@@ -41,7 +44,7 @@ initiateUserPromptForEventDetails model =
             in
             ( model
             , Task.attempt
-                PromptUserForEventDetails
+                promptEventDetails
                 (Dom.getElement (TS.getTimeSlotId dayNum minSlotNum))
             )
 
@@ -49,7 +52,7 @@ initiateUserPromptForEventDetails model =
             ( model, Cmd.none )
 
 
-promptUserForEventDetails : EC.WithEventCreation a -> Result Dom.Error Dom.Element -> ( EC.WithEventCreation a, Cmd Msg )
+promptUserForEventDetails : EC.WithEventCreation a -> Result Dom.Error Dom.Element -> ( EC.WithEventCreation a, Cmd msg )
 promptUserForEventDetails model result =
     case result of
         Ok { viewport, element } ->
@@ -81,7 +84,7 @@ promptUserForEventDetails model result =
             ( model, Cmd.none )
 
 
-adjustEventTitle : EC.WithEventCreation a -> String -> ( EC.WithEventCreation a, Cmd Msg )
+adjustEventTitle : EC.WithEventCreation a -> String -> ( EC.WithEventCreation a, Cmd msg )
 adjustEventTitle model title =
     case model.eventCreation of
         EC.CurrentlyCreatingEvent eventCreationDetails eventPosition ->
@@ -107,7 +110,7 @@ adjustEventTitle model title =
             ( model, Cmd.none )
 
 
-adjustEventDescription : EC.WithEventCreation a -> String -> ( EC.WithEventCreation a, Cmd Msg )
+adjustEventDescription : EC.WithEventCreation a -> String -> ( EC.WithEventCreation a, Cmd msg )
 adjustEventDescription model description =
     case model.eventCreation of
         EC.CurrentlyCreatingEvent eventCreationDetails eventPosition ->
@@ -133,8 +136,12 @@ adjustEventDescription model description =
             ( model, Cmd.none )
 
 
-changeSelectionDayNum : TS.WithTimeSlotSelection a -> String -> ( TS.WithTimeSlotSelection a, Cmd Msg )
-changeSelectionDayNum model dayNumStr =
+changeSelectionDayNum :
+    TS.WithTimeSlotSelection a
+    -> (Result Dom.Error Dom.Element -> msg)
+    -> String
+    -> ( TS.WithTimeSlotSelection a, Cmd msg )
+changeSelectionDayNum model promptEventDetails dayNumStr =
     let
         maybeDayNum =
             String.toInt dayNumStr
@@ -149,6 +156,7 @@ changeSelectionDayNum model dayNumStr =
                                 | dayNum = dayNum
                             }
                 }
+                promptEventDetails
 
         ( TS.EditingSelection selectionBounds previousDetails, Just dayNum ) ->
             initiateUserPromptForEventDetails
@@ -160,6 +168,7 @@ changeSelectionDayNum model dayNumStr =
                             }
                             previousDetails
                 }
+                promptEventDetails
 
         ( _, _ ) ->
             ( model, Cmd.none )
@@ -167,9 +176,10 @@ changeSelectionDayNum model dayNumStr =
 
 changeSelectionStartSlot :
     TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a)
+    -> (Result Dom.Error Dom.Element -> msg)
     -> String
-    -> ( TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a), Cmd Msg )
-changeSelectionStartSlot model startSlotStr =
+    -> ( TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a), Cmd msg )
+changeSelectionStartSlot model promptEventDetails startSlotStr =
     let
         maybeStartSlotNum =
             String.toInt startSlotStr
@@ -189,10 +199,8 @@ changeSelectionStartSlot model startSlotStr =
                     getListItemAt shiftedEndSlot model.timeSlotPositions
             in
             Maybe.withDefault ( model, Cmd.none ) <|
-                Maybe.map initiateUserPromptForEventDetails <|
-                    applicative
-                        (Maybe.map (TS.useTSPositionsForSelectionBounds model dayNum) newStartBound)
-                        newEndBound
+                Maybe.map (Flip.flip initiateUserPromptForEventDetails promptEventDetails) <|
+                    Maybe.map2 (TS.useTSPositionsForSelectionBounds model dayNum) newStartBound newEndBound
     in
     case model.timeSlotSelection of
         TS.CurrentlySelecting selectionBounds ->
@@ -210,7 +218,7 @@ changeSelectionStartSlot model startSlotStr =
 changeSelectionEndSlot :
     TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a)
     -> String
-    -> ( TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a), Cmd Msg )
+    -> ( TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a), Cmd msg )
 changeSelectionEndSlot model endSlotStr =
     let
         maybeEndSlotNum =
@@ -243,7 +251,7 @@ changeSelectionEndSlot model endSlotStr =
 
 handleEditingCancel :
     TS.WithSelectedTimeSlots (EC.WithDiscardConfirmationModal (EC.WithEventCreation (TS.WithTimeSlotSelection a)))
-    -> ( TS.WithSelectedTimeSlots (EC.WithDiscardConfirmationModal (EC.WithEventCreation (TS.WithTimeSlotSelection a))), Cmd Msg )
+    -> ( TS.WithSelectedTimeSlots (EC.WithDiscardConfirmationModal (EC.WithEventCreation (TS.WithTimeSlotSelection a))), Cmd msg )
 handleEditingCancel model =
     case ( model.eventCreation, model.timeSlotSelection ) of
         ( EC.CurrentlyCreatingEvent eventCreationDetails _, TS.EditingSelection selectionBounds prevDetails ) ->
@@ -269,7 +277,7 @@ handleEditingCancel model =
 
 closeUserPromptForEventDetails :
     EC.WithDiscardConfirmationModal (EC.WithEventCreation (TS.WithTimeSlotSelection a))
-    -> ( EC.WithDiscardConfirmationModal (EC.WithEventCreation (TS.WithTimeSlotSelection a)), Cmd Msg )
+    -> ( EC.WithDiscardConfirmationModal (EC.WithEventCreation (TS.WithTimeSlotSelection a)), Cmd msg )
 closeUserPromptForEventDetails model =
     ( { model
         | timeSlotSelection = TS.NotSelecting
@@ -280,14 +288,14 @@ closeUserPromptForEventDetails model =
     )
 
 
-cancelDiscardConfirmationModal : EC.WithDiscardConfirmationModal a -> ( EC.WithDiscardConfirmationModal a, Cmd Msg )
+cancelDiscardConfirmationModal : EC.WithDiscardConfirmationModal a -> ( EC.WithDiscardConfirmationModal a, Cmd msg )
 cancelDiscardConfirmationModal model =
     ( { model | isDiscardConfirmationModalOpen = False }, Cmd.none )
 
 
 saveEditingTimeSlotWithoutChanges :
     TS.WithSelectedTimeSlots (EC.WithDiscardConfirmationModal (EC.WithEventCreation (TS.WithTimeSlotSelection a)))
-    -> ( TS.WithSelectedTimeSlots (EC.WithDiscardConfirmationModal (EC.WithEventCreation (TS.WithTimeSlotSelection a))), Cmd Msg )
+    -> ( TS.WithSelectedTimeSlots (EC.WithDiscardConfirmationModal (EC.WithEventCreation (TS.WithTimeSlotSelection a))), Cmd msg )
 saveEditingTimeSlotWithoutChanges model =
     case model.timeSlotSelection of
         TS.EditingSelection _ prevDetails ->

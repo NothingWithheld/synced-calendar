@@ -60,8 +60,8 @@ getPostFreeTimesJson dayNum startSlotNum endSlotNum =
     Maybe.map mapFunc <| dayNumToDay dayNum
 
 
-getFreeTimesQueryString : TS.DayNum -> TS.SlotNum -> TS.SlotNum -> Maybe String
-getFreeTimesQueryString dayNum startSlotNum endSlotNum =
+getFreeTimesQueryString : Int -> TS.DayNum -> TS.SlotNum -> TS.SlotNum -> Maybe String
+getFreeTimesQueryString timeZoneOffset dayNum startSlotNum endSlotNum =
     let
         mapFunc day =
             String.dropLeft 1 <|
@@ -69,7 +69,7 @@ getFreeTimesQueryString dayNum startSlotNum endSlotNum =
                     [ Builder.string "day" day
                     , Builder.string "from_time" <| slotNumToMilitary startSlotNum False
                     , Builder.string "to_time" <| slotNumToMilitary endSlotNum True
-                    , Builder.string "timezone" "-6"
+                    , Builder.int "timezone" timeZoneOffset
                     ]
     in
     Maybe.map mapFunc <| dayNumToDay dayNum

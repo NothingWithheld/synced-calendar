@@ -13,21 +13,21 @@ import Task
 import TimeSlots.Messaging as TSMessaging
 import TimeSlots.TimeSlots as TS
 import Url.Builder as Builder
-import WeeklyFreeTimes.MainMsg exposing (Msg(..))
+import Utils exposing (NoData)
 
 
-requestTimeSlotPositions : Cmd Msg
-requestTimeSlotPositions =
+requestTimeSlotPositions : (Result Dom.Error (List Dom.Element) -> msg) -> Cmd msg
+requestTimeSlotPositions setTimeSlotPositions =
     let
         getTimeSlotPosition slotNum =
             Dom.getElement (TS.getTimeSlotId 1 slotNum)
     in
-    Task.attempt SetTimeSlotPositions (Task.sequence (List.map getTimeSlotPosition TS.slotNumRange))
+    Task.attempt setTimeSlotPositions (Task.sequence (List.map getTimeSlotPosition TS.slotNumRange))
 
 
-requestTimeSlotsElement : Cmd Msg
-requestTimeSlotsElement =
-    Task.attempt SetTimeSlotsElement (Dom.getElement TS.scrollableTimeSlotsId)
+requestTimeSlotsElement : (Result Dom.Error Dom.Element -> msg) -> Cmd msg
+requestTimeSlotsElement setTimeSlotsElement =
+    Task.attempt setTimeSlotsElement (Dom.getElement TS.scrollableTimeSlotsId)
 
 
 requestSavedWeeklyTimeSlots :
@@ -48,30 +48,44 @@ requestSavedWeeklyTimeSlots onResult userId timeZoneOffset =
         }
 
 
-saveWeeklyTimeSlot : String -> TS.DayNum -> TS.SlotNum -> TS.SlotNum -> Cmd Msg
-saveWeeklyTimeSlot userId dayNum startSlot endSlot =
-    case TSMessaging.getFreeTimesQueryString dayNum startSlot endSlot of
+saveWeeklyTimeSlot :
+    (Result Http.Error Int -> msg)
+    -> String
+    -> Int
+    -> TS.DayNum
+    -> TS.SlotNum
+    -> TS.SlotNum
+    -> Cmd msg
+saveWeeklyTimeSlot onSave userId timeZoneOffset dayNum startSlot endSlot =
+    case TSMessaging.getFreeTimesQueryString timeZoneOffset dayNum startSlot endSlot of
         Just queryString ->
             Http.post
                 { url = "http://localhost:3000/api/" ++ userId ++ "/free-times"
                 , body = Http.stringBody "application/x-www-form-urlencoded" queryString
-                , expect = Http.expectJson SetSelectedTimeSlotAfterCreation TSMessaging.idDecoder
+                , expect = Http.expectJson onSave TSMessaging.idDecoder
                 }
 
         Nothing ->
             Cmd.none
 
 
-updateWeeklyTimeSlot : Int -> TS.DayNum -> TS.SlotNum -> TS.SlotNum -> Cmd Msg
-updateWeeklyTimeSlot timeSlotId dayNum startSlot endSlot =
-    case TSMessaging.getFreeTimesQueryString dayNum startSlot endSlot of
+updateWeeklyTimeSlot :
+    (Result Http.Error NoData -> msg)
+    -> Int
+    -> Int
+    -> TS.DayNum
+    -> TS.SlotNum
+    -> TS.SlotNum
+    -> Cmd msg
+updateWeeklyTimeSlot onUpdate timeSlotId timeZoneOffset dayNum startSlot endSlot =
+    case TSMessaging.getFreeTimesQueryString timeZoneOffset dayNum startSlot endSlot of
         Just queryString ->
             Http.request
                 { method = "PUT"
                 , headers = []
                 , url = "http://localhost:3000/api/" ++ String.fromInt timeSlotId ++ "/free-times"
                 , body = Http.stringBody "application/x-www-form-urlencoded" queryString
-                , expect = Http.expectJson SetSelectedTimeSlotAfterEditing TSMessaging.noDataDecoder
+                , expect = Http.expectJson onUpdate TSMessaging.noDataDecoder
                 , timeout = Nothing
                 , tracker = Nothing
                 }
@@ -80,14 +94,14 @@ updateWeeklyTimeSlot timeSlotId dayNum startSlot endSlot =
             Cmd.none
 
 
-deleteWeeklyTimeSlot : Int -> Cmd Msg
-deleteWeeklyTimeSlot timeSlotId =
+deleteWeeklyTimeSlot : (Result Http.Error NoData -> msg) -> Int -> Cmd msg
+deleteWeeklyTimeSlot onDelete timeSlotId =
     Http.request
         { method = "DELETE"
         , headers = []
         , url = "http://localhost:3000/api/" ++ String.fromInt timeSlotId ++ "/free-times"
         , body = Http.emptyBody
-        , expect = Http.expectJson DeleteTimeSlot TSMessaging.noDataDecoder
+        , expect = Http.expectJson onDelete TSMessaging.noDataDecoder
         , timeout = Nothing
         , tracker = Nothing
         }
