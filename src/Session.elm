@@ -7,12 +7,17 @@ module Session exposing
     , getUserId
     , hasUserId
     , init
+    , setOffset
     , setUserId
     , signOut
     )
 
 import Browser.Navigation as Nav
 import Json.Decode as Decode exposing (Decoder)
+
+
+
+-- TimeZone is only a proof of concept, not a viable solution
 
 
 type Session
@@ -92,6 +97,23 @@ getKey (Session key _ _) =
 getOffset : Session -> Int
 getOffset (Session _ { offset } _) =
     offset
+
+
+setOffset : Session -> Int -> Maybe Session
+setOffset (Session key { isDST } userId) toOffset =
+    let
+        daylightSavingsChange =
+            if isDST then
+                1
+
+            else
+                0
+    in
+    if toOffset >= -8 + daylightSavingsChange && toOffset <= -5 + daylightSavingsChange then
+        Just <| Session key { offset = toOffset, isDST = isDST } userId
+
+    else
+        Nothing
 
 
 getIsDST : Session -> Bool
