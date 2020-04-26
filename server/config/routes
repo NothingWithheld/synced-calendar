@@ -1,7 +1,7 @@
 -- By default this file is used by `parseRoutesFile` in Foundation.hs
 -- Syntax for this file here: https://www.yesodweb.com/book/routing-and-handlers
 
-/api/user UserR POST GET
+/api/user UserR GET POST
 
 /api/#Text/free-times FreeTimeEntryR GET POST PUT DELETE
 /api/#Text/available-times AvailableTimeEntryR GET POST PUT DELETE
