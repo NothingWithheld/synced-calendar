@@ -28,8 +28,15 @@ onTimeSlotMouseMove =
         )
 
 
-viewCalendarHeading : WithMdc msg (WithSession a) -> (Material.Msg msg -> msg) -> Html msg
-viewCalendarHeading model onMdc =
+
+-- Calendar Heading
+
+
+viewCalendarHeading :
+    WithMdc msg (WithSession (TS.WithLoadingTimeSlots a))
+    -> { onMdc : Material.Msg msg -> msg, onTimeZoneSelect : String -> msg }
+    -> Html msg
+viewCalendarHeading model ({ onMdc } as updates) =
     styled div
         [ css "height" "10vh"
         , css "display" "flex"
@@ -39,12 +46,15 @@ viewCalendarHeading model onMdc =
         [ Route.viewHomeButton model onMdc
         , styled div
             [ css "margin-left" "12px" ]
-            [ viewTimeZoneSelect model onMdc ]
+            [ viewTimeZoneSelect model updates ]
         ]
 
 
-viewTimeZoneSelect : WithMdc msg (WithSession a) -> (Material.Msg msg -> msg) -> Html msg
-viewTimeZoneSelect model onMdc =
+viewTimeZoneSelect :
+    WithMdc msg (WithSession (TS.WithLoadingTimeSlots a))
+    -> { onMdc : Material.Msg msg -> msg, onTimeZoneSelect : String -> msg }
+    -> Html msg
+viewTimeZoneSelect model { onMdc, onTimeZoneSelect } =
     let
         selectedTimeZone =
             Session.labelForTimeZone model.session
@@ -53,8 +63,10 @@ viewTimeZoneSelect model onMdc =
         "time-zone-select"
         model.mdc
         [ Select.required
+        , when model.loadingTimeSlots Select.disabled
         , Select.label "Time Zone"
         , Select.selectedText selectedTimeZone
+        , Select.onSelect onTimeZoneSelect
         ]
         (List.map
             (\timeZoneLabel ->
@@ -100,6 +112,10 @@ viewDayHeadings =
         )
 
 
+
+-- Day Heading
+
+
 viewDayHeading : String -> Html Msg
 viewDayHeading dayAbbreviation =
     styled div
@@ -134,40 +150,8 @@ viewTimeSlotTimes =
         )
 
 
-viewTimeSlotTime : Int -> Html Msg
-viewTimeSlotTime hour =
-    let
-        dayPeriod =
-            if hour < 12 then
-                "AM"
 
-            else
-                "PM"
-
-        adjustedHour =
-            if hour > 12 then
-                hour - 12
-
-            else
-                hour
-    in
-    styled
-        div
-        [ css "height" "65px"
-        , css "display" "flex"
-        , css "flex-direction" "row-reverse"
-        , css "align-items" "center"
-        , Typography.caption
-        ]
-        [ styled div
-            [ css "width" "8px"
-            , css "border-bottom" "1px solid #829AB1"
-            , css "margin-left" "6px"
-            ]
-            []
-        , text
-            (String.fromInt adjustedHour ++ " " ++ dayPeriod)
-        ]
+-- Time Slots
 
 
 viewScrollableTimeSlots : TS.WithLoadingTimeSlots (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)) -> Html Msg
@@ -206,6 +190,42 @@ viewScrollableTimeSlots model =
                     (viewSingleDayTimeSlots model)
                     TS.dayNumRange
             )
+        ]
+
+
+viewTimeSlotTime : Int -> Html Msg
+viewTimeSlotTime hour =
+    let
+        dayPeriod =
+            if hour < 12 then
+                "AM"
+
+            else
+                "PM"
+
+        adjustedHour =
+            if hour > 12 then
+                hour - 12
+
+            else
+                hour
+    in
+    styled
+        div
+        [ css "height" "65px"
+        , css "display" "flex"
+        , css "flex-direction" "row-reverse"
+        , css "align-items" "center"
+        , Typography.caption
+        ]
+        [ styled div
+            [ css "width" "8px"
+            , css "border-bottom" "1px solid #829AB1"
+            , css "margin-left" "6px"
+            ]
+            []
+        , text
+            (String.fromInt adjustedHour ++ " " ++ dayPeriod)
         ]
 
 

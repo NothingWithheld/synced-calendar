@@ -69,6 +69,9 @@ update msg model =
         SetTimeSlotPositions result ->
             TSUpdate.setTimeSlotPositions model result
 
+        UpdateTimeZone timeZoneLabel ->
+            TSUpdate.updateTimeZone model SetSavedWeeklyTimeSlots timeZoneLabel
+
         SetTimeSlotsElement result ->
             TSUpdate.setTimeSlotsElement model result
 
@@ -156,7 +159,10 @@ view model =
             ]
             [ styled div
                 []
-                [ viewCalendarHeading model Mdc
+                [ viewCalendarHeading model
+                    { onMdc = Mdc
+                    , onTimeZoneSelect = UpdateTimeZone
+                    }
                 , viewDayHeadings
                 , viewScrollableTimeSlots model
                 ]

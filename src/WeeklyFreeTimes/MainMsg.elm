@@ -12,6 +12,7 @@ type Msg
     = NoOp
       -- TimeSlots
     | SetTimeSlotPositions (Result Dom.Error (List Dom.Element))
+    | UpdateTimeZone String
     | SetTimeSlotsElement (Result Dom.Error Dom.Element)
     | SetSavedWeeklyTimeSlots (Result Http.Error (List TSMessaging.ServerTimeSlot))
     | StartSelectingTimeSlot TS.DayNum TS.SlotNum

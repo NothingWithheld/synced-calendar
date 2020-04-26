@@ -136,21 +136,35 @@ getOffset (Session _ { offset } _) =
     offset
 
 
-setOffset : Session -> Int -> Maybe Session
-setOffset (Session key { isDST } userId) toOffset =
+setOffset : Session -> String -> Maybe Session
+setOffset (Session key { isDST } userId) toTimeZoneLabel =
     let
-        daylightSavingsChange =
-            if isDST then
-                1
+        newOffset =
+            findFirst
+                ((==) toTimeZoneLabel << Tuple.first)
+                (nonDSTLabels ++ isDSTLabels)
+                |> Maybe.map Tuple.second
 
-            else
-                0
+        mapFunc offset =
+            Session key { offset = offset, isDST = isDST } userId
     in
-    if toOffset >= -8 + daylightSavingsChange && toOffset <= -5 + daylightSavingsChange then
-        Just <| Session key { offset = toOffset, isDST = isDST } userId
+    Maybe.map mapFunc newOffset
 
-    else
-        Nothing
+
+
+-- setOffset : Session -> Int -> Maybe Session
+-- setOffset (Session key { isDST } userId) toOffset =
+--     let
+--         daylightSavingsChange =
+--             if isDST then
+--                 1
+--             else
+--                 0
+--     in
+--     if toOffset >= -8 + daylightSavingsChange && toOffset <= -5 + daylightSavingsChange then
+--         Just <| Session key { offset = toOffset, isDST = isDST } userId
+--     else
+--         Nothing
 
 
 getIsDST : Session -> Bool

@@ -12,6 +12,7 @@ import Http
 import Task
 import TimeSlots.Messaging as TSMessaging
 import TimeSlots.TimeSlots as TS
+import Url.Builder as Builder
 import WeeklyFreeTimes.MainMsg exposing (Msg(..))
 
 
@@ -29,11 +30,21 @@ requestTimeSlotsElement =
     Task.attempt SetTimeSlotsElement (Dom.getElement TS.scrollableTimeSlotsId)
 
 
-requestSavedWeeklyTimeSlots : String -> Cmd Msg
-requestSavedWeeklyTimeSlots userId =
+requestSavedWeeklyTimeSlots :
+    (Result Http.Error (List TSMessaging.ServerTimeSlot) -> msg)
+    -> String
+    -> Int
+    -> Cmd msg
+requestSavedWeeklyTimeSlots onResult userId timeZoneOffset =
+    let
+        queryString =
+            Builder.toQuery
+                [ Builder.int "timezone" timeZoneOffset
+                ]
+    in
     Http.get
-        { url = "http://localhost:3000/api/" ++ userId ++ "/free-times?timezone=-6"
-        , expect = Http.expectJson SetSavedWeeklyTimeSlots TSMessaging.serverTimeSlotListDecoder
+        { url = "http://localhost:3000/api/" ++ userId ++ "/free-times" ++ queryString
+        , expect = Http.expectJson onResult TSMessaging.serverTimeSlotListDecoder
         }
 
 

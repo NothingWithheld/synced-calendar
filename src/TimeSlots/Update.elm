@@ -13,6 +13,7 @@ module TimeSlots.Update exposing
     , setTimeSlotPositions
     , setTimeSlotsElement
     , startSelectingTimeSlot
+    , updateTimeZone
     )
 
 import Browser.Dom as Dom
@@ -53,10 +54,32 @@ setTimeSlotPositions model result =
             ( { model
                 | timeSlotPositions = TS.setTimeSlotPositions TS.startingSlotNum 0 elementList
               }
-            , requestSavedWeeklyTimeSlots (Session.getUserId model.session)
+            , requestSavedWeeklyTimeSlots
+                SetSavedWeeklyTimeSlots
+                (Session.getUserId model.session)
+                (Session.getOffset model.session)
             )
     in
     defaultOnError ( model, Cmd.none ) result updateModelWithTSPositions
+
+
+updateTimeZone :
+    TS.WithLoadingTimeSlots (WithSession a)
+    -> (Result Http.Error (List TSMessaging.ServerTimeSlot) -> msg)
+    -> String
+    -> ( TS.WithLoadingTimeSlots (WithSession a), Cmd msg )
+updateTimeZone model onGetUpdatedTimeSlots timeZoneLabel =
+    case Session.setOffset model.session timeZoneLabel of
+        Just newSession ->
+            ( { model | session = newSession, loadingTimeSlots = True }
+            , requestSavedWeeklyTimeSlots
+                onGetUpdatedTimeSlots
+                (Session.getUserId newSession)
+                (Session.getOffset newSession)
+            )
+
+        Nothing ->
+            ( model, Cmd.none )
 
 
 setTimeSlotsElement : TS.WithTimeSlotsElement a -> Result Dom.Error Dom.Element -> ( TS.WithTimeSlotsElement a, Cmd Msg )
@@ -98,7 +121,10 @@ setSavedWeeklyTimeSlots model result =
         Ok timeSlotList ->
             ( List.foldl
                 updateWithTimeSlot
-                { model | loadingTimeSlots = False }
+                { model
+                    | loadingTimeSlots = False
+                    , selectedTimeSlots = []
+                }
                 timeSlotList
             , Cmd.none
             )
