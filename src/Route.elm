@@ -1,8 +1,12 @@
-module Route exposing (Route(..), fromUrl, replaceUrl, routeToString)
+module Route exposing (Route(..), fromUrl, replaceUrl, routeToString, viewHomeButton)
 
 import Browser.Navigation as Nav
+import Html exposing (Html, text)
+import Material
+import Material.Button as Button
 import Url exposing (Url)
 import Url.Parser as Parser exposing (Parser)
+import Utils exposing (WithMdc)
 
 
 type Route
@@ -12,6 +16,18 @@ type Route
     | WeeklyFreeTimes
     | ProposeEvent
     | Logout
+
+
+viewHomeButton : WithMdc msg a -> (Material.Msg msg -> msg) -> Html msg
+viewHomeButton model onMdc =
+    Button.view onMdc
+        "back-button"
+        model.mdc
+        [ Button.ripple
+        , Button.icon "arrow_back"
+        , Button.link <| routeToString Home
+        ]
+        [ text "Home" ]
 
 
 parser : Parser (Route -> a) a

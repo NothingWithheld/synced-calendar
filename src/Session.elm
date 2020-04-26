@@ -1,6 +1,7 @@
 module Session exposing
     ( Session
     , WithSession
+    , getIsDST
     , getKey
     , getOffset
     , getUserId

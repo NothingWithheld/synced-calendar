@@ -213,21 +213,14 @@ view model =
             ]
             [ styled div
                 []
-                [ Button.view Mdc
-                    "back-button"
-                    model.mdc
-                    [ Button.ripple
-                    , Button.icon "arrow_back"
-                    , css "margin-bottom" "8px"
-                    , Button.link <| Route.routeToString Route.Home
-                    ]
-                    [ text "Back" ]
+                [ Route.viewHomeButton model Mdc
                 , styled div
                     [ css "width" "800px"
                     , Elevation.z8
                     , css "border-radius" "8px"
                     , css "display" "flex"
                     , css "flex-direction" "column"
+                    , css "margin-top" "8px"
                     ]
                     (if model.eventProposalSuccess then
                         viewProposalSuccessDialog

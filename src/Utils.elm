@@ -1,10 +1,17 @@
 module Utils exposing (..)
 
 import Flip
+import Material
 
 
 type NoData
     = NoData
+
+
+type alias WithMdc msg a =
+    { a
+        | mdc : Material.Model msg
+    }
 
 
 applicative : Maybe (a -> b) -> Maybe a -> Maybe b

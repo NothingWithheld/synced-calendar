@@ -1,12 +1,15 @@
-module TimeSlots.View exposing (viewDayHeadings, viewScrollableTimeSlots)
+module TimeSlots.View exposing (viewCalendarHeading, viewDayHeadings, viewScrollableTimeSlots)
 
 import Html exposing (Html, div, text)
 import Html.Entity as Entity
 import Json.Decode as Decode exposing (field, float)
+import Material
 import Material.Card as Card
 import Material.Options as Options exposing (css, styled, when)
 import Material.Typography as Typography
+import Route
 import TimeSlots.TimeSlots as TS
+import Utils exposing (WithMdc)
 import WeeklyFreeTimes.MainMsg exposing (Msg(..))
 
 
@@ -20,6 +23,18 @@ onTimeSlotMouseMove =
                 (field "pageY" float)
             )
         )
+
+
+viewCalendarHeading : WithMdc msg a -> (Material.Msg msg -> msg) -> Html msg
+viewCalendarHeading model onMdc =
+    styled div
+        [ css "height" "10vh"
+        , css "display" "flex"
+        , css "padding-left" "12px"
+        , css "align-items" "center"
+        ]
+        [ Route.viewHomeButton model onMdc
+        ]
 
 
 viewDayHeadings : Html Msg

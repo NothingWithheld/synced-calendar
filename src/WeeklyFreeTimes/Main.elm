@@ -11,7 +11,7 @@ import Session exposing (Session)
 import TimeSlots.Commands exposing (requestTimeSlotPositions, requestTimeSlotsElement)
 import TimeSlots.TimeSlots as TS
 import TimeSlots.Update as TSUpdate
-import TimeSlots.View exposing (viewDayHeadings, viewScrollableTimeSlots)
+import TimeSlots.View exposing (viewCalendarHeading, viewDayHeadings, viewScrollableTimeSlots)
 import WeeklyFreeTimes.MainMsg exposing (Msg(..))
 
 
@@ -156,7 +156,8 @@ view model =
             ]
             [ styled div
                 []
-                [ viewDayHeadings
+                [ viewCalendarHeading model Mdc
+                , viewDayHeadings
                 , viewScrollableTimeSlots model
                 ]
             ]
