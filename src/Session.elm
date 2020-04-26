@@ -11,11 +11,11 @@ module Session exposing
     )
 
 import Browser.Navigation as Nav
-import Json.Decode as Decode
+import Json.Decode as Decode exposing (Decoder)
 
 
 type Session
-    = Session Nav.Key Int String
+    = Session Nav.Key TimeZoneOffset String
 
 
 type alias WithSession a =
@@ -24,29 +24,53 @@ type alias WithSession a =
     }
 
 
+type alias TimeZoneOffset =
+    { offset : Int
+    , isDST : Bool
+    }
+
+
+offsetFlagDecoder : Decoder TimeZoneOffset
+offsetFlagDecoder =
+    Decode.map2 TimeZoneOffset
+        (Decode.field "offset" Decode.int)
+        (Decode.field "isDST" Decode.bool)
+
+
 init : Nav.Key -> Decode.Value -> Session
 init key offsetFlag =
-    case Decode.decodeValue Decode.int offsetFlag of
-        Ok offset ->
+    case Decode.decodeValue offsetFlagDecoder offsetFlag of
+        Ok { offset, isDST } ->
             let
                 hourOffset =
                     offset * -1 // 60
+
+                daylightSavingsChange =
+                    if isDST then
+                        1
+
+                    else
+                        0
             in
             -- limit to PST through EST
-            if hourOffset >= -8 && hourOffset <= -5 then
-                Session key hourOffset ""
+            if hourOffset >= -8 + daylightSavingsChange && hourOffset <= -5 + daylightSavingsChange then
+                Session key { offset = hourOffset, isDST = isDST } ""
 
             else
-                Session key -6 ""
+                Session key
+                    { offset = -6 + daylightSavingsChange
+                    , isDST = isDST
+                    }
+                    ""
 
         Err _ ->
             -- default to CST
-            Session key -6 ""
+            Session key { offset = -6, isDST = False } ""
 
 
 signOut : Session -> Session
-signOut session =
-    Session (getKey session) (getOffset session) ""
+signOut (Session key timeZone _) =
+    Session key timeZone ""
 
 
 getUserId : Session -> String
@@ -65,8 +89,13 @@ getKey (Session key _ _) =
 
 
 getOffset : Session -> Int
-getOffset (Session _ offset _) =
+getOffset (Session _ { offset } _) =
     offset
+
+
+getIsDST : Session -> Bool
+getIsDST (Session _ { isDST } _) =
+    isDST
 
 
 hasUserId : Session -> Bool

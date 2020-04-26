@@ -28,9 +28,23 @@
     <script src="elm-mdc/elm-mdc.js"></script>
     <script src="elm-main.js"></script>
     <script>
+      function stdTimezoneOffset() {
+        var date = new Date();
+        var jan = new Date(date.getFullYear(), 0, 1);
+        var jul = new Date(date.getFullYear(), 6, 1);
+        return Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset());
+      }
+
+      function isDaylightSavingsTime() {
+        return new Date().getTimezoneOffset() < stdTimezoneOffset();
+      }
+
       var app = Elm.Main.init({
         node: document.getElementById("elm"),
-        flags: new Date().getTimezoneOffset(),
+        flags: {
+          offset: new Date().getTimezoneOffset(),
+          isDST: isDaylightSavingsTime(),
+        },
       });
     </script>
   </body>
