@@ -9,10 +9,10 @@ module TimeSlots.Commands exposing
 
 import Browser.Dom as Dom
 import Http
-import MainMsg exposing (Msg(..))
 import Task
 import TimeSlots.Messaging as TSMessaging
 import TimeSlots.TimeSlots as TS
+import WeeklyFreeTimes.MainMsg exposing (Msg(..))
 
 
 requestTimeSlotPositions : Cmd Msg
@@ -32,7 +32,7 @@ requestTimeSlotsElement =
 requestSavedWeeklyTimeSlots : String -> Cmd Msg
 requestSavedWeeklyTimeSlots userId =
     Http.get
-        { url = "http://localhost:3000/api/" ++ userId ++ "/free-times"
+        { url = "http://localhost:3000/api/" ++ userId ++ "/free-times?timezone=-6"
         , expect = Http.expectJson SetSavedWeeklyTimeSlots TSMessaging.serverTimeSlotListDecoder
         }
 

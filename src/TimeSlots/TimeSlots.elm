@@ -24,10 +24,6 @@ type alias SlotNum =
     Int
 
 
-type alias WithUserId a =
-    { a | userId : String }
-
-
 type alias TimeSlotBoundaryPosition =
     { slotNum : SlotNum
     , y : Float

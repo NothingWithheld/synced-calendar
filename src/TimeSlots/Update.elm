@@ -20,7 +20,7 @@ import EventCreation.EventCreation as EC
 import EventCreation.Update as ECUpdate
 import Flip
 import Http
-import MainMsg exposing (Msg(..))
+import Session exposing (WithSession)
 import Task
 import TimeSlots.Commands
     exposing
@@ -40,19 +40,20 @@ import Utils
         , getListItemAt
         , useWithoutCmdMsg
         )
+import WeeklyFreeTimes.MainMsg exposing (Msg(..))
 
 
 setTimeSlotPositions :
-    TS.WithTimeSlotPositions (TS.WithUserId a)
+    TS.WithTimeSlotPositions (WithSession a)
     -> Result Dom.Error (List Dom.Element)
-    -> ( TS.WithTimeSlotPositions (TS.WithUserId a), Cmd Msg )
+    -> ( TS.WithTimeSlotPositions (WithSession a), Cmd Msg )
 setTimeSlotPositions model result =
     let
         updateModelWithTSPositions elementList =
             ( { model
                 | timeSlotPositions = TS.setTimeSlotPositions TS.startingSlotNum 0 elementList
               }
-            , requestSavedWeeklyTimeSlots model.userId
+            , requestSavedWeeklyTimeSlots (Session.getUserId model.session)
             )
     in
     defaultOnError ( model, Cmd.none ) result updateModelWithTSPositions
@@ -185,7 +186,7 @@ adjustTimeSlotSelection model { pageY } result =
             ( model, Cmd.none )
 
 
-sendSaveTimeSlotRequest : TS.WithTimeSlotSelection (TS.WithUserId a) -> ( TS.WithTimeSlotSelection (TS.WithUserId a), Cmd Msg )
+sendSaveTimeSlotRequest : TS.WithTimeSlotSelection (WithSession a) -> ( TS.WithTimeSlotSelection (WithSession a), Cmd Msg )
 sendSaveTimeSlotRequest model =
     case model.timeSlotSelection of
         TS.CurrentlySelecting selectionBounds ->
@@ -194,7 +195,7 @@ sendSaveTimeSlotRequest model =
                     TS.getOrderedTimeSlot selectionBounds
             in
             ( model
-            , saveWeeklyTimeSlot model.userId
+            , saveWeeklyTimeSlot (Session.getUserId model.session)
                 dayNum
                 startBound.slotNum
                 endBound.slotNum

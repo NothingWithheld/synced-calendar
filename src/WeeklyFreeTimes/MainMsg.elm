@@ -1,4 +1,4 @@
-module MainMsg exposing (Msg(..), WithMdc)
+module WeeklyFreeTimes.MainMsg exposing (Msg(..), WithMdc)
 
 import Browser.Dom as Dom
 import Http

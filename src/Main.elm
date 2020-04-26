@@ -1,17 +1,17 @@
 module Main exposing (main)
 
-import Browser
-import EventCreation.EventCreation as EC
-import EventCreation.Update as ECUpdate
-import EventCreation.View exposing (viewDiscardConfirmationModal, viewUserRequest)
-import Html exposing (Html, div)
-import MainMsg exposing (Msg(..))
-import Material
-import Material.Options exposing (css, styled)
-import TimeSlots.Commands exposing (requestTimeSlotPositions, requestTimeSlotsElement)
-import TimeSlots.TimeSlots as TS
-import TimeSlots.Update as TSUpdate
-import TimeSlots.View exposing (viewDayHeadings, viewScrollableTimeSlots)
+import Browser exposing (Document, UrlRequest(..))
+import Browser.Navigation as Nav
+import Error
+import Home.Main
+import Html
+import Login.Main
+import ProposeEvent.Main
+import Route exposing (Route)
+import Session exposing (Session)
+import Url exposing (Url)
+import WeeklyFreeTimes.Main
+import WeeklyFreeTimes.MainMsg
 
 
 
@@ -20,154 +20,192 @@ import TimeSlots.View exposing (viewDayHeadings, viewScrollableTimeSlots)
 
 main : Program () Model Msg
 main =
-    Browser.element { init = \_ -> init, update = update, view = view, subscriptions = subscriptions }
+    Browser.application
+        { init = init
+        , update = update
+        , view = view
+        , subscriptions = subscriptions
+        , onUrlRequest = ClickLink
+        , onUrlChange = ChangeUrl
+        }
 
 
 
 -- MODEL
 
 
-type alias Model =
-    { userId : String
-    , loadingTimeSlots : Bool
-    , timeSlotPositions : List TS.TimeSlotBoundaryPosition
-    , timeSlotsElement : Maybe TS.Element
-    , timeSlotSelection : TS.TimeSlotSelection
-    , eventCreation : EC.EventCreation
-    , selectedTimeSlots : List TS.SelectedTimeSlotDetails
-    , isDiscardConfirmationModalOpen : Bool
-    , mdc : Material.Model Msg
-    }
+type Model
+    = NotFound Session
+    | Redirect Session
+    | Login Login.Main.Model
+    | Home Home.Main.Model
+    | WeeklyFreeTimes WeeklyFreeTimes.Main.Model
+    | ProposeEvent ProposeEvent.Main.Model
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( { userId = "25"
-      , loadingTimeSlots = True
-      , timeSlotPositions = []
-      , timeSlotsElement = Nothing
-      , timeSlotSelection = TS.NotSelecting
-      , eventCreation = EC.NotCreating
-      , selectedTimeSlots = []
-      , isDiscardConfirmationModalOpen = False
-      , mdc = Material.defaultModel
-      }
-    , Cmd.batch
-        [ Material.init Mdc
-        , requestTimeSlotPositions
-        , requestTimeSlotsElement
-        ]
-    )
+init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
+init _ url key =
+    handleUrlChange (Route.fromUrl url) <|
+        Redirect <|
+            Session.init key
+
+
+getSession : Model -> Session
+getSession model =
+    case model of
+        NotFound session ->
+            session
+
+        Redirect session ->
+            session
+
+        Login login ->
+            login.session
+
+        Home home ->
+            home.session
+
+        WeeklyFreeTimes weeklyFreeTimes ->
+            weeklyFreeTimes.session
+
+        ProposeEvent proposeEvent ->
+            proposeEvent.session
 
 
 
 -- UPDATE
 
 
+type Msg
+    = ChangeUrl Url
+    | ClickLink UrlRequest
+    | LoginMsg Login.Main.Msg
+    | HomeMsg Home.Main.Msg
+    | WeeklyFreeTimesMsg WeeklyFreeTimes.MainMsg.Msg
+    | ProposeEventMsg ProposeEvent.Main.Msg
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
-        NoOp ->
+    let
+        session =
+            getSession model
+    in
+    case ( msg, model ) of
+        ( ChangeUrl url, _ ) ->
+            handleUrlChange (Route.fromUrl url) model
+
+        ( ClickLink urlRequest, _ ) ->
+            case urlRequest of
+                Internal url ->
+                    ( model, Nav.pushUrl (Session.getKey session) <| Url.toString url )
+
+                External href ->
+                    ( model, Nav.load href )
+
+        ( LoginMsg subMsg, Login login ) ->
+            updateWith Login LoginMsg <|
+                Login.Main.update subMsg login
+
+        ( HomeMsg subMsg, Home home ) ->
+            updateWith Home HomeMsg <|
+                Home.Main.update subMsg home
+
+        ( WeeklyFreeTimesMsg subMsg, WeeklyFreeTimes weeklyFreeTimes ) ->
+            updateWith WeeklyFreeTimes WeeklyFreeTimesMsg <|
+                WeeklyFreeTimes.Main.update subMsg weeklyFreeTimes
+
+        ( ProposeEventMsg subMsg, ProposeEvent proposeEvent ) ->
+            updateWith ProposeEvent ProposeEventMsg <|
+                ProposeEvent.Main.update subMsg proposeEvent
+
+        ( _, _ ) ->
             ( model, Cmd.none )
 
-        Mdc msg_ ->
-            Material.update Mdc msg_ model
 
-        -- TimeSlots
-        SetTimeSlotPositions result ->
-            TSUpdate.setTimeSlotPositions model result
+updateWith : (subModel -> Model) -> (subMsg -> Msg) -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )
+updateWith toModel toMsg ( subModel, subCmd ) =
+    ( toModel subModel
+    , Cmd.map toMsg subCmd
+    )
 
-        SetTimeSlotsElement result ->
-            TSUpdate.setTimeSlotsElement model result
 
-        SetSavedWeeklyTimeSlots result ->
-            TSUpdate.setSavedWeeklyTimeSlots model result
+handleUrlChange : Route -> Model -> ( Model, Cmd Msg )
+handleUrlChange route model =
+    let
+        session =
+            getSession model
 
-        StartSelectingTimeSlot dayNum slotNum ->
-            TSUpdate.startSelectingTimeSlot model dayNum slotNum
+        key =
+            Session.getKey session
 
-        HandleTimeSlotMouseMove pointerPosition ->
-            TSUpdate.handleTimeSlotMouseMove model pointerPosition
+        hasUserId =
+            Session.hasUserId session
+    in
+    case ( route, hasUserId ) of
+        ( Route.NotFound, _ ) ->
+            ( NotFound session, Cmd.none )
 
-        AdjustTimeSlotSelection pointerPosition result ->
-            TSUpdate.adjustTimeSlotSelection model pointerPosition result
+        ( Route.Login, False ) ->
+            updateWith Login LoginMsg <|
+                Login.Main.init session
 
-        SendSaveTimeSlotRequest ->
-            TSUpdate.sendSaveTimeSlotRequest model
+        ( _, False ) ->
+            ( model, Route.replaceUrl key Route.Login )
 
-        SendUpdateTimeSlotRequest ->
-            TSUpdate.sendUpdateTimeSlotRequest model
+        ( Route.Home, True ) ->
+            updateWith Home HomeMsg <|
+                Home.Main.init session
 
-        SetSelectedTimeSlotAfterCreation result ->
-            TSUpdate.setSelectedTimeSlotAfterCreation model result
+        ( Route.Login, True ) ->
+            updateWith Login LoginMsg <|
+                Login.Main.init session
 
-        SetSelectedTimeSlotAfterEditing result ->
-            TSUpdate.setSelectedTimeSlotAfterEditing model result
+        ( Route.WeeklyFreeTimes, True ) ->
+            updateWith WeeklyFreeTimes WeeklyFreeTimesMsg <|
+                WeeklyFreeTimes.Main.init session
 
-        HandleTimeSlotMouseUp ->
-            TSUpdate.handleTimeSlotMouseUp model
+        ( Route.ProposeEvent, True ) ->
+            updateWith ProposeEvent ProposeEventMsg <|
+                ProposeEvent.Main.init session
 
-        EditTimeSlotSelection selectedTimeslotDetails ->
-            TSUpdate.editTimeSlotSelection model selectedTimeslotDetails
-
-        SendDeleteTimeSlotRequest ->
-            TSUpdate.sendDeleteTimeSlotRequest model
-
-        DeleteTimeSlot result ->
-            TSUpdate.deleteTimeSlot model result
-
-        -- EventCreation
-        PromptUserForEventDetails result ->
-            ECUpdate.promptUserForEventDetails model result
-
-        AdjustEventTitle title ->
-            ECUpdate.adjustEventTitle model title
-
-        AdjustEventDescription description ->
-            ECUpdate.adjustEventDescription model description
-
-        ChangeSelectionDayNum dayNum ->
-            ECUpdate.changeSelectionDayNum model dayNum
-
-        ChangeSelectionStartSlot startSlot ->
-            ECUpdate.changeSelectionStartSlot model startSlot
-
-        ChangeSelectionEndSlot endSlot ->
-            ECUpdate.changeSelectionEndSlot model endSlot
-
-        HandleEditingCancel ->
-            ECUpdate.handleEditingCancel model
-
-        CloseUserPromptForEventDetails ->
-            ECUpdate.closeUserPromptForEventDetails model
-
-        CancelDiscardConfirmationModal ->
-            ECUpdate.cancelDiscardConfirmationModal model
-
-        SaveEditingTimeSlotWithoutChanges ->
-            ECUpdate.saveEditingTimeSlotWithoutChanges model
+        ( Route.Logout, True ) ->
+            ( Redirect <| Session.signOut session, Route.replaceUrl key Route.Login )
 
 
 
 -- VIEW
 
 
-view : Model -> Html Msg
+view : Model -> Document Msg
 view model =
-    styled div
-        [ css "position" "relative"
-        , css "display" "flex"
-        , css "flex-direction" "column-reverse"
-        , css "height" "100vh"
-        ]
-        [ styled div
-            []
-            [ viewDayHeadings
-            , viewScrollableTimeSlots model
-            ]
-        , viewUserRequest model
-        , viewDiscardConfirmationModal model
-        ]
+    case model of
+        NotFound _ ->
+            Error.view404
+
+        Redirect _ ->
+            { title = "", body = [] }
+
+        Login login ->
+            viewWith LoginMsg <| Login.Main.view login
+
+        Home home ->
+            viewWith HomeMsg <| Home.Main.view home
+
+        WeeklyFreeTimes weeklyFreeTimes ->
+            viewWith WeeklyFreeTimesMsg <|
+                WeeklyFreeTimes.Main.view weeklyFreeTimes
+
+        ProposeEvent proposeEvent ->
+            viewWith ProposeEventMsg <|
+                ProposeEvent.Main.view proposeEvent
+
+
+viewWith : (subMsg -> Msg) -> Document subMsg -> Document Msg
+viewWith toMsg { title, body } =
+    { title = title
+    , body = List.map (Html.map toMsg) body
+    }
 
 
 
@@ -176,4 +214,25 @@ view model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Material.subscriptions Mdc model
+    case model of
+        NotFound _ ->
+            Sub.none
+
+        Redirect _ ->
+            Sub.none
+
+        Login login ->
+            Sub.map LoginMsg <|
+                Login.Main.subscriptions login
+
+        Home home ->
+            Sub.map HomeMsg <|
+                Home.Main.subscriptions home
+
+        WeeklyFreeTimes weeklyFreeTimes ->
+            Sub.map WeeklyFreeTimesMsg <|
+                WeeklyFreeTimes.Main.subscriptions weeklyFreeTimes
+
+        ProposeEvent proposeEvent ->
+            Sub.map ProposeEventMsg <|
+                ProposeEvent.Main.subscriptions proposeEvent

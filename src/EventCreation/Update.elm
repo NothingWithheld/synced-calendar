@@ -14,10 +14,10 @@ module EventCreation.Update exposing
 
 import Browser.Dom as Dom
 import EventCreation.EventCreation as EC
-import MainMsg exposing (Msg(..))
 import Task
 import TimeSlots.TimeSlots as TS
 import Utils exposing (applicative, getListItemAt)
+import WeeklyFreeTimes.MainMsg exposing (Msg(..))
 
 
 initiateUserPromptForEventDetails : TS.WithTimeSlotSelection a -> ( TS.WithTimeSlotSelection a, Cmd Msg )

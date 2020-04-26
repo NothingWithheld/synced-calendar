@@ -3,11 +3,11 @@ module TimeSlots.View exposing (viewDayHeadings, viewScrollableTimeSlots)
 import Html exposing (Html, div, text)
 import Html.Entity as Entity
 import Json.Decode as Decode exposing (field, float)
-import MainMsg exposing (Msg(..))
 import Material.Card as Card
 import Material.Options as Options exposing (css, styled, when)
 import Material.Typography as Typography
 import TimeSlots.TimeSlots as TS
+import WeeklyFreeTimes.MainMsg exposing (Msg(..))
 
 
 onTimeSlotMouseMove : Options.Property c Msg
