@@ -5,9 +5,12 @@ import Html.Entity as Entity
 import Json.Decode as Decode exposing (field, float)
 import Material
 import Material.Card as Card
+import Material.Menu
 import Material.Options as Options exposing (css, styled, when)
+import Material.Select as Select
 import Material.Typography as Typography
 import Route
+import Session exposing (WithSession)
 import TimeSlots.TimeSlots as TS
 import Utils exposing (WithMdc)
 import WeeklyFreeTimes.MainMsg exposing (Msg(..))
@@ -25,7 +28,7 @@ onTimeSlotMouseMove =
         )
 
 
-viewCalendarHeading : WithMdc msg a -> (Material.Msg msg -> msg) -> Html msg
+viewCalendarHeading : WithMdc msg (WithSession a) -> (Material.Msg msg -> msg) -> Html msg
 viewCalendarHeading model onMdc =
     styled div
         [ css "height" "10vh"
@@ -34,7 +37,43 @@ viewCalendarHeading model onMdc =
         , css "align-items" "center"
         ]
         [ Route.viewHomeButton model onMdc
+        , styled div
+            [ css "margin-left" "12px" ]
+            [ viewTimeZoneSelect model onMdc ]
         ]
+
+
+viewTimeZoneSelect : WithMdc msg (WithSession a) -> (Material.Msg msg -> msg) -> Html msg
+viewTimeZoneSelect model onMdc =
+    let
+        selectedTimeZone =
+            Session.labelForTimeZone model.session
+    in
+    Select.view onMdc
+        "time-zone-select"
+        model.mdc
+        [ Select.required
+        , Select.label "Time Zone"
+        , Select.selectedText selectedTimeZone
+        ]
+        (List.map
+            (\timeZoneLabel ->
+                viewTimeZoneSelectOption
+                    timeZoneLabel
+                    (timeZoneLabel == selectedTimeZone)
+            )
+         <|
+            Session.getTimeZoneLabels model.session
+        )
+
+
+viewTimeZoneSelectOption : String -> Bool -> Material.Menu.Item m
+viewTimeZoneSelectOption timeZoneLabel isSelected =
+    Select.option
+        [ Select.value timeZoneLabel
+        , when isSelected Select.selected
+        ]
+        [ text timeZoneLabel ]
 
 
 viewDayHeadings : Html Msg

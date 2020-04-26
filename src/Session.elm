@@ -4,9 +4,13 @@ module Session exposing
     , getIsDST
     , getKey
     , getOffset
+    , getTimeZoneLabels
     , getUserId
     , hasUserId
     , init
+    , isDSTLabels
+    , labelForTimeZone
+    , nonDSTLabels
     , setOffset
     , setUserId
     , signOut
@@ -14,6 +18,7 @@ module Session exposing
 
 import Browser.Navigation as Nav
 import Json.Decode as Decode exposing (Decoder)
+import Utils exposing (findFirst)
 
 
 
@@ -72,6 +77,38 @@ init key offsetFlag =
         Err _ ->
             -- default to CST
             Session key { offset = -6, isDST = False } ""
+
+
+nonDSTLabels : List ( String, Int )
+nonDSTLabels =
+    [ ( "PST", -8 ), ( "MST", -7 ), ( "CST", -6 ), ( "EST", -5 ) ]
+
+
+isDSTLabels : List ( String, Int )
+isDSTLabels =
+    [ ( "PDT", -7 ), ( "MDT", -6 ), ( "CDT", -5 ), ( "EDT", -4 ) ]
+
+
+labelForTimeZone : Session -> String
+labelForTimeZone (Session _ { offset, isDST } _) =
+    if isDST then
+        findFirst ((==) offset << Tuple.second) isDSTLabels
+            |> Maybe.map Tuple.first
+            |> Maybe.withDefault "CDT"
+
+    else
+        findFirst ((==) offset << Tuple.second) nonDSTLabels
+            |> Maybe.map Tuple.first
+            |> Maybe.withDefault "CST"
+
+
+getTimeZoneLabels : Session -> List String
+getTimeZoneLabels (Session _ { isDST } _) =
+    if isDST then
+        List.map Tuple.first isDSTLabels
+
+    else
+        List.map Tuple.first nonDSTLabels
 
 
 signOut : Session -> Session

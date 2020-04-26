@@ -14,6 +14,11 @@ type alias WithMdc msg a =
     }
 
 
+findFirst : (a -> Bool) -> List a -> Maybe a
+findFirst predicate list =
+    List.head <| List.filter predicate list
+
+
 applicative : Maybe (a -> b) -> Maybe a -> Maybe b
 applicative =
     Maybe.map2 (<|)
