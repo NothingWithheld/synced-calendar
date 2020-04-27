@@ -4,6 +4,8 @@ module TimeSlots.Update exposing
     , editTimeSlotSelection
     , handleTimeSlotMouseMove
     , handleTimeSlotMouseUp
+    , moveWeekBackward
+    , moveWeekForward
     , sendDeleteTimeSlotRequest
     , sendSaveTimeSlotRequest
     , sendUpdateTimeSlotRequest
@@ -61,6 +63,38 @@ setInitialTime model result =
             )
 
         Err _ ->
+            ( model, Cmd.none )
+
+
+moveWeekForward : TSTime.WithTimeDetails a -> ( TSTime.WithTimeDetails a, Cmd msg )
+moveWeekForward model =
+    case model.timeDetails of
+        WithTime timeDetails ->
+            ( { model
+                | timeDetails =
+                    WithTime
+                        { timeDetails | weekOffset = timeDetails.weekOffset + 1 }
+              }
+            , Cmd.none
+            )
+
+        WithoutTime ->
+            ( model, Cmd.none )
+
+
+moveWeekBackward : TSTime.WithTimeDetails a -> ( TSTime.WithTimeDetails a, Cmd msg )
+moveWeekBackward model =
+    case model.timeDetails of
+        WithTime timeDetails ->
+            ( { model
+                | timeDetails =
+                    WithTime
+                        { timeDetails | weekOffset = timeDetails.weekOffset - 1 }
+              }
+            , Cmd.none
+            )
+
+        WithoutTime ->
             ( model, Cmd.none )
 
 

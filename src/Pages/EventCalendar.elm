@@ -73,6 +73,8 @@ type Msg
     = NoOp
       -- TimeSlots
     | SetInitialTime (Result Never Posix)
+    | MoveWeekForward
+    | MoveWeekBackward
     | SetTimeSlotPositions (Result Dom.Error (List Dom.Element))
     | UpdateTimeZone String
     | SetTimeSlotsElement (Result Dom.Error Dom.Element)
@@ -114,6 +116,12 @@ update msg model =
         -- TimeSlots
         SetInitialTime result ->
             TSUpdate.setInitialTime model result
+
+        MoveWeekForward ->
+            TSUpdate.moveWeekForward model
+
+        MoveWeekBackward ->
+            TSUpdate.moveWeekBackward model
 
         SetTimeSlotPositions result ->
             TSUpdate.setTimeSlotPositions model SetSavedWeeklyTimeSlots result
@@ -212,6 +220,8 @@ view model =
                     (Events
                         { onMdc = Mdc
                         , onTimeZoneSelect = UpdateTimeZone
+                        , moveWeekBackward = MoveWeekBackward
+                        , moveWeekForward = MoveWeekForward
                         }
                     )
                 , viewDayHeadings

@@ -45,6 +45,8 @@ viewCalendarHeading :
             { c
                 | onMdc : Material.Msg msg -> msg
                 , onTimeZoneSelect : String -> msg
+                , moveWeekForward : msg
+                , moveWeekBackward : msg
             }
     -> Html msg
 viewCalendarHeading model updates =
@@ -72,15 +74,7 @@ viewCalendarHeading model updates =
                 [ Route.viewHomeButton model onMdc
                 , styled div [ css "width" "12px" ] []
                 , viewTimeZoneSelect model updates_
-                , styled div [ css "width" "12px" ] []
-                , viewWeekControls model updates_
-                , styled div [ css "width" "12px" ] []
-                , case model.timeDetails of
-                    WithTime { currentDay, weekOffset } ->
-                        viewMonthHeading model currentDay weekOffset
-
-                    WithoutTime ->
-                        text ""
+                , viewWeekHeadingItems model updates_
                 ]
 
 
@@ -122,8 +116,42 @@ viewTimeZoneSelectOption timeZoneLabel isSelected =
         [ text timeZoneLabel ]
 
 
-viewWeekControls : WithMdc msg a -> { b | onMdc : Material.Msg msg -> msg } -> Html msg
-viewWeekControls model { onMdc } =
+viewWeekHeadingItems :
+    WithMdc msg (WithSession (TSTime.WithTimeDetails a))
+    ->
+        { b
+            | onMdc : Material.Msg msg -> msg
+            , moveWeekForward : msg
+            , moveWeekBackward : msg
+        }
+    -> Html msg
+viewWeekHeadingItems model updates =
+    case model.timeDetails of
+        WithTime { currentDay, weekOffset } ->
+            styled div
+                [ css "margin-left" "12px"
+                , css "display" "flex"
+                , css "align-items" "center"
+                ]
+                [ viewWeekControls model updates
+                , styled div [ css "width" "12px" ] []
+                , viewMonthHeading model currentDay weekOffset
+                ]
+
+        WithoutTime ->
+            text ""
+
+
+viewWeekControls :
+    WithMdc msg a
+    ->
+        { b
+            | onMdc : Material.Msg msg -> msg
+            , moveWeekForward : msg
+            , moveWeekBackward : msg
+        }
+    -> Html msg
+viewWeekControls model { onMdc, moveWeekForward, moveWeekBackward } =
     styled div
         [ css "display" "flex" ]
         [ IconButton.view onMdc
@@ -131,6 +159,7 @@ viewWeekControls model { onMdc } =
             model.mdc
             [ IconButton.icon1 "chevron_left"
             , IconButton.label1 "Go back one week"
+            , Options.onClick moveWeekBackward
             ]
             []
         , IconButton.view onMdc
@@ -138,6 +167,7 @@ viewWeekControls model { onMdc } =
             model.mdc
             [ IconButton.icon1 "chevron_right"
             , IconButton.label1 "Go forward one week"
+            , Options.onClick moveWeekForward
             ]
             []
         ]
