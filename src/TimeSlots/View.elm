@@ -5,12 +5,15 @@ import Html.Entity as Entity
 import Json.Decode as Decode exposing (field, float)
 import Material
 import Material.Card as Card
+import Material.IconButton as IconButton
 import Material.Menu
 import Material.Options as Options exposing (css, nop, styled, when)
 import Material.Select as Select
 import Material.Typography as Typography
 import Route
 import Session exposing (WithSession)
+import Time exposing (Posix)
+import TimeSlots.Time as TSTime exposing (TimeDetails(..))
 import TimeSlots.TimeSlots as TS exposing (Calendar(..))
 import Utils exposing (WithMdc)
 
@@ -32,7 +35,7 @@ onTimeSlotMouseMove handleTimeSlotMouseMove =
 
 
 viewCalendarHeading :
-    WithMdc msg (WithSession (TS.WithLoadingTimeSlots a))
+    WithMdc msg (WithSession (TS.WithLoadingTimeSlots (TSTime.WithTimeDetails a)))
     ->
         Calendar
             { b
@@ -67,9 +70,17 @@ viewCalendarHeading model updates =
                 , css "align-items" "center"
                 ]
                 [ Route.viewHomeButton model onMdc
-                , styled div
-                    [ css "margin-left" "12px" ]
-                    [ viewTimeZoneSelect model updates_ ]
+                , styled div [ css "width" "12px" ] []
+                , viewTimeZoneSelect model updates_
+                , styled div [ css "width" "12px" ] []
+                , viewWeekControls model updates_
+                , styled div [ css "width" "12px" ] []
+                , case model.timeDetails of
+                    WithTime { currentDay, weekOffset } ->
+                        viewMonthHeading model currentDay weekOffset
+
+                    WithoutTime ->
+                        text ""
                 ]
 
 
@@ -109,6 +120,83 @@ viewTimeZoneSelectOption timeZoneLabel isSelected =
         , when isSelected Select.selected
         ]
         [ text timeZoneLabel ]
+
+
+viewWeekControls : WithMdc msg a -> { b | onMdc : Material.Msg msg -> msg } -> Html msg
+viewWeekControls model { onMdc } =
+    styled div
+        [ css "display" "flex" ]
+        [ IconButton.view onMdc
+            "back-one-week-button"
+            model.mdc
+            [ IconButton.icon1 "chevron_left"
+            , IconButton.label1 "Go back one week"
+            ]
+            []
+        , IconButton.view onMdc
+            "forward-one-week-button"
+            model.mdc
+            [ IconButton.icon1 "chevron_right"
+            , IconButton.label1 "Go forward one week"
+            ]
+            []
+        ]
+
+
+viewMonthHeading : WithSession a -> Posix -> Int -> Html msg
+viewMonthHeading model currentDay weekOffset =
+    let
+        daysInThatWeek =
+            TSTime.getDaysInThatWeek model currentDay weekOffset
+    in
+    case daysInThatWeek of
+        [ firstDay, _, _, _, _, _, lastDay ] ->
+            let
+                timeZone =
+                    Session.getZone model.session
+
+                firstDayMonth =
+                    Time.toMonth timeZone firstDay
+
+                firstDayYear =
+                    Time.toYear timeZone firstDay
+
+                lastDayMonth =
+                    Time.toMonth timeZone lastDay
+
+                lastDayYear =
+                    Time.toYear timeZone lastDay
+
+                headingText =
+                    if firstDayMonth /= lastDayMonth then
+                        if firstDayYear /= lastDayYear then
+                            TSTime.monthToShortString firstDayMonth
+                                ++ " "
+                                ++ String.fromInt firstDayYear
+                                ++ " - "
+                                ++ TSTime.monthToShortString lastDayMonth
+                                ++ " "
+                                ++ String.fromInt lastDayYear
+
+                        else
+                            TSTime.monthToShortString firstDayMonth
+                                ++ " - "
+                                ++ TSTime.monthToShortString lastDayMonth
+                                ++ " "
+                                ++ String.fromInt lastDayYear
+
+                    else
+                        TSTime.monthToLongString firstDayMonth
+                            ++ " "
+                            ++ String.fromInt firstDayYear
+            in
+            styled Html.h4
+                [ Typography.headline5
+                ]
+                [ text headingText ]
+
+        _ ->
+            text ""
 
 
 viewDayHeadings : Html msg

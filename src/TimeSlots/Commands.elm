@@ -1,5 +1,6 @@
 module TimeSlots.Commands exposing
     ( deleteWeeklyTimeSlot
+    , requestCurrentDay
     , requestSavedWeeklyTimeSlots
     , requestTimeSlotPositions
     , requestTimeSlotsElement
@@ -10,10 +11,16 @@ module TimeSlots.Commands exposing
 import Browser.Dom as Dom
 import Http
 import Task
+import Time exposing (Posix)
 import TimeSlots.Messaging as TSMessaging
 import TimeSlots.TimeSlots as TS
 import Url.Builder as Builder
 import Utils exposing (NoData)
+
+
+requestCurrentDay : (Result Never Posix -> msg) -> Cmd msg
+requestCurrentDay setInitialTime =
+    Task.attempt setInitialTime Time.now
 
 
 requestTimeSlotPositions : (Result Dom.Error (List Dom.Element) -> msg) -> Cmd msg

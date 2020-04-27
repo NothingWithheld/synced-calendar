@@ -7,6 +7,7 @@ module TimeSlots.Update exposing
     , sendDeleteTimeSlotRequest
     , sendSaveTimeSlotRequest
     , sendUpdateTimeSlotRequest
+    , setInitialTime
     , setSavedWeeklyTimeSlots
     , setSelectedTimeSlotAfterCreation
     , setSelectedTimeSlotAfterEditing
@@ -23,6 +24,7 @@ import Flip
 import Http
 import Session exposing (WithSession)
 import Task
+import Time exposing (Posix)
 import TimeSlots.Commands
     exposing
         ( deleteWeeklyTimeSlot
@@ -31,6 +33,7 @@ import TimeSlots.Commands
         , updateWeeklyTimeSlot
         )
 import TimeSlots.Messaging as TSMessaging
+import TimeSlots.Time as TSTime exposing (TimeDetails(..))
 import TimeSlots.TimeSlots as TS
 import Utils
     exposing
@@ -41,6 +44,24 @@ import Utils
         , getListItemAt
         , useWithoutCmdMsg
         )
+
+
+setInitialTime :
+    TSTime.WithTimeDetails a
+    -> Result Never Posix
+    -> ( TSTime.WithTimeDetails a, Cmd msg )
+setInitialTime model result =
+    case result of
+        Ok currentDay ->
+            ( { model
+                | timeDetails =
+                    WithTime { currentDay = currentDay, weekOffset = 0 }
+              }
+            , Cmd.none
+            )
+
+        Err _ ->
+            ( model, Cmd.none )
 
 
 setTimeSlotPositions :

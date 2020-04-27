@@ -10,8 +10,15 @@ import Http
 import Material
 import Material.Options exposing (css, styled)
 import Session exposing (Session)
-import TimeSlots.Commands exposing (requestTimeSlotPositions, requestTimeSlotsElement)
+import Time exposing (Posix)
+import TimeSlots.Commands
+    exposing
+        ( requestCurrentDay
+        , requestTimeSlotPositions
+        , requestTimeSlotsElement
+        )
 import TimeSlots.Messaging as TSMessaging
+import TimeSlots.Time exposing (TimeDetails(..))
 import TimeSlots.TimeSlots as TS exposing (Calendar(..))
 import TimeSlots.Update as TSUpdate
 import TimeSlots.View exposing (viewCalendarHeading, viewDayHeadings, viewScrollableTimeSlots)
@@ -24,6 +31,7 @@ import Utils exposing (NoData)
 
 type alias Model =
     { session : Session
+    , timeDetails : TimeDetails
     , loadingTimeSlots : Bool
     , timeSlotPositions : List TS.TimeSlotBoundaryPosition
     , timeSlotsElement : Maybe TS.Element
@@ -38,6 +46,7 @@ type alias Model =
 init : Session -> ( Model, Cmd Msg )
 init session =
     ( { session = session
+      , timeDetails = WithoutTime
       , loadingTimeSlots = True
       , timeSlotPositions = []
       , timeSlotsElement = Nothing
@@ -51,6 +60,7 @@ init session =
         [ Material.init Mdc
         , requestTimeSlotPositions SetTimeSlotPositions
         , requestTimeSlotsElement SetTimeSlotsElement
+        , requestCurrentDay SetInitialTime
         ]
     )
 
@@ -62,6 +72,7 @@ init session =
 type Msg
     = NoOp
       -- TimeSlots
+    | SetInitialTime (Result Never Posix)
     | SetTimeSlotPositions (Result Dom.Error (List Dom.Element))
     | UpdateTimeZone String
     | SetTimeSlotsElement (Result Dom.Error Dom.Element)
@@ -101,6 +112,9 @@ update msg model =
             Material.update Mdc msg_ model
 
         -- TimeSlots
+        SetInitialTime result ->
+            TSUpdate.setInitialTime model result
+
         SetTimeSlotPositions result ->
             TSUpdate.setTimeSlotPositions model SetSavedWeeklyTimeSlots result
 
@@ -195,7 +209,7 @@ view model =
             [ styled div
                 []
                 [ viewCalendarHeading model
-                    (WeeklyFreeTimes
+                    (Events
                         { onMdc = Mdc
                         , onTimeZoneSelect = UpdateTimeZone
                         }

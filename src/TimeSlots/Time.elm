@@ -1,5 +1,6 @@
 module TimeSlots.Time exposing
-    ( WithCurrentDay
+    ( TimeDetails(..)
+    , WithTimeDetails
     , getDaysInThatWeek
     , monthToLongString
     , monthToShortString
@@ -12,20 +13,28 @@ import Session exposing (WithSession)
 import Time exposing (Month(..), Posix, Weekday(..))
 
 
-type alias WithCurrentDay a =
+type TimeDetails
+    = WithTime
+        { currentDay : Posix
+        , weekOffset : Int
+        }
+    | WithoutTime
+
+
+type alias WithTimeDetails a =
     { a
-        | currentDay : Posix
+        | timeDetails : TimeDetails
     }
 
 
-getDaysInThatWeek : WithCurrentDay (WithSession a) -> Int -> List Posix
-getDaysInThatWeek model weeksOffset =
+getDaysInThatWeek : WithSession a -> Posix -> Int -> List Posix
+getDaysInThatWeek model currentDay weeksOffset =
     let
         weekdayNumOfNow =
-            getWeekdayNum <| Time.toWeekday (Session.getZone model.session) model.currentDay
+            getWeekdayNum <| Time.toWeekday (Session.getZone model.session) currentDay
 
         thisDayMillisWithWeekOffset =
-            Time.posixToMillis model.currentDay + millisInWeek * weeksOffset
+            Time.posixToMillis currentDay + millisInWeek * weeksOffset
 
         mapFunc weekDayNum =
             Time.millisToPosix <|
