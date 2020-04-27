@@ -5,6 +5,7 @@ import Browser.Navigation as Nav
 import Error
 import Html
 import Json.Decode as Decode
+import Pages.EventCalendar
 import Pages.Home
 import Pages.Login
 import Pages.ProposeEvent
@@ -40,6 +41,7 @@ type Model
     | Login Pages.Login.Model
     | Home Pages.Home.Model
     | WeeklyFreeTimes Pages.WeeklyFreeTimes.Model
+    | EventCalendar Pages.EventCalendar.Model
     | ProposeEvent Pages.ProposeEvent.Model
 
 
@@ -68,6 +70,9 @@ getSession model =
         WeeklyFreeTimes weeklyFreeTimes ->
             weeklyFreeTimes.session
 
+        EventCalendar eventCalendar ->
+            eventCalendar.session
+
         ProposeEvent proposeEvent ->
             proposeEvent.session
 
@@ -82,6 +87,7 @@ type Msg
     | LoginMsg Pages.Login.Msg
     | HomeMsg Pages.Home.Msg
     | WeeklyFreeTimesMsg Pages.WeeklyFreeTimes.Msg
+    | EventCalendarMsg Pages.EventCalendar.Msg
     | ProposeEventMsg Pages.ProposeEvent.Msg
 
 
@@ -114,6 +120,10 @@ update msg model =
         ( WeeklyFreeTimesMsg subMsg, WeeklyFreeTimes weeklyFreeTimes ) ->
             updateWith WeeklyFreeTimes WeeklyFreeTimesMsg <|
                 Pages.WeeklyFreeTimes.update subMsg weeklyFreeTimes
+
+        ( EventCalendarMsg subMsg, EventCalendar eventCalendar ) ->
+            updateWith EventCalendar EventCalendarMsg <|
+                Pages.EventCalendar.update subMsg eventCalendar
 
         ( ProposeEventMsg subMsg, ProposeEvent proposeEvent ) ->
             updateWith ProposeEvent ProposeEventMsg <|
@@ -165,6 +175,10 @@ handleUrlChange route model =
             updateWith WeeklyFreeTimes WeeklyFreeTimesMsg <|
                 Pages.WeeklyFreeTimes.init session
 
+        ( Route.EventCalendar, True ) ->
+            updateWith EventCalendar EventCalendarMsg <|
+                Pages.EventCalendar.init session
+
         ( Route.ProposeEvent, True ) ->
             updateWith ProposeEvent ProposeEventMsg <|
                 Pages.ProposeEvent.init session
@@ -195,6 +209,10 @@ view model =
         WeeklyFreeTimes weeklyFreeTimes ->
             viewWith WeeklyFreeTimesMsg <|
                 Pages.WeeklyFreeTimes.view weeklyFreeTimes
+
+        EventCalendar eventCalendar ->
+            viewWith EventCalendarMsg <|
+                Pages.EventCalendar.view eventCalendar
 
         ProposeEvent proposeEvent ->
             viewWith ProposeEventMsg <|
@@ -232,6 +250,10 @@ subscriptions model =
         WeeklyFreeTimes weeklyFreeTimes ->
             Sub.map WeeklyFreeTimesMsg <|
                 Pages.WeeklyFreeTimes.subscriptions weeklyFreeTimes
+
+        EventCalendar eventCalendar ->
+            Sub.map EventCalendarMsg <|
+                Pages.EventCalendar.subscriptions eventCalendar
 
         ProposeEvent proposeEvent ->
             Sub.map ProposeEventMsg <|

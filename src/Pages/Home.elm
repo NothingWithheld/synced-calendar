@@ -82,6 +82,15 @@ view model =
                 , styled Html.hr
                     [ css "margin" "0" ]
                     []
+                , viewLineEntry
+                    model
+                    "View events you're scheduled for"
+                    "event-calendar-button"
+                  <|
+                    Route.routeToString Route.EventCalendar
+                , styled Html.hr
+                    [ css "margin" "0" ]
+                    []
                 , styled div
                     [ css "padding" "4px 16px"
                     , css "display" "flex"

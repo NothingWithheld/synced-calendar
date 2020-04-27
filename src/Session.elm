@@ -6,6 +6,7 @@ module Session exposing
     , getOffset
     , getTimeZoneLabels
     , getUserId
+    , getZone
     , hasUserId
     , init
     , isDSTLabels
@@ -18,6 +19,7 @@ module Session exposing
 
 import Browser.Navigation as Nav
 import Json.Decode as Decode exposing (Decoder)
+import Time exposing (Zone)
 import Utils exposing (findFirst)
 
 
@@ -134,6 +136,11 @@ getKey (Session key _ _) =
 getOffset : Session -> Int
 getOffset (Session _ { offset } _) =
     offset
+
+
+getZone : Session -> Zone
+getZone (Session _ { offset } _) =
+    Time.customZone (offset * 60) []
 
 
 setOffset : Session -> String -> Maybe Session
