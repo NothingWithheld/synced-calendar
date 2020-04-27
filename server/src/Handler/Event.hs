@@ -21,9 +21,24 @@ instance ToJSON ConfirmedEventData where
             "recipientId" .= recipientId,
             "name" .= name,
             "description" .= description,
-            "date" .= date,
+            "date" .= Database.formatDate date,
             "fromTime" .= ((Database.showWithZeros fromHour) Import.++ ":" Import.++ (Database.showWithZeros fromMinutes)),
             "toTime" .= ((Database.showWithZeros toHour) Import.++ ":" Import.++ (Database.showWithZeros toMinutes))
+        ]
+
+data ProposedEventData = ProposedEventData ProposedEventId UserId UserId (Maybe Text) (Maybe Text) Day Day Bool
+
+instance ToJSON ProposedEventData where 
+    toJSON (ProposedEventData eventId creatorId recipientId name description fromDate toDate confirmed) = 
+        object [
+            "id" .= eventId,
+            "creatorId" .= creatorId,
+            "recipientId" .= recipientId,
+            "name" .= name,
+            "description" .= description,
+            "fromDate" .= Database.formatDate fromDate,
+            "toDate" .= Database.formatDate toDate, 
+            "confirmed" .= confirmed 
         ]
 
 convertConfirmedEventToLocal :: ConfirmedEventData -> Text -> Maybe (ConfirmedEventData)
@@ -53,12 +68,13 @@ getProposedEventCreatorR creatorIdText = do
     maybeCreatorId <- Database.fetchUserId (Just creatorIdText)
     case maybeCreatorId of
         Just creatorId -> do 
-            allEventEntries <- runDB $ 
+            allProposedEvents <- runDB $ 
                 selectList [
                     ProposedEventCreatorId <-. [creatorId],
                     ProposedEventConfirmed <-. [False]
                 ] []
-            returnJson allEventEntries
+            returnJson $ Import.map (\(Entity eventId (ProposedEvent _ recipientId name description fromDate toDate confirmed)) ->
+                ProposedEventData eventId creatorId recipientId name description fromDate toDate confirmed) allProposedEvents
         _ -> invalidArgs ["Failed to find user with creatorId: " Import.++ creatorIdText]
 
 postProposedEventCreatorR :: Text -> Handler Value 
@@ -76,8 +92,8 @@ postProposedEventCreatorR creatorIdText = do
     case (maybeCreatorId, maybeRecipientId, maybeFromDate, maybeToDate) of
         (Just creatorId, Just recipientId, Just fromDate, Just toDate) -> do
             let event' = ProposedEvent creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
-            insertedEvent <- runDB $ insertEntity event'
-            returnJson insertedEvent
+            (Entity eventId _) <- runDB $ insertEntity event'
+            returnJson $ ProposedEventData eventId creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
         (_, _, _, _) -> invalidArgs ["Failed to parse arguments. Check API documentation for valid formatting"]
 
 putProposedEventCreatorR :: Text -> Handler Value 
@@ -130,7 +146,8 @@ getProposedEventRecipientR recipientIdText = do
                     ProposedEventRecipientId <-. [recipientId],
                     ProposedEventConfirmed <-. [False]
                 ] []
-            returnJson allProposedEvents
+            returnJson $ Import.map (\(Entity eventId (ProposedEvent creatorId _ name description fromDate toDate confirmed)) ->
+                ProposedEventData eventId creatorId recipientId name description fromDate toDate confirmed) allProposedEvents
         _ -> invalidArgs ["Failed to find user with id: " Import.++ recipientIdText]
 
 getConfirmedEventCreatorR :: Text -> Handler Value

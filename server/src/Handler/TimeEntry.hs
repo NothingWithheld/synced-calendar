@@ -29,7 +29,7 @@ instance ToJSON AvailableTimeEntryData where
             "id" .= entryId,
             "userId" .= userId, 
             "eventId" .= eventId,
-            "date" .= date,
+            "date" .= Database.formatDate date,
             "fromTime" .= ((Database.showWithZeros fromHour) Import.++ ":" Import.++ (Database.showWithZeros fromMinutes)),
             "toTime" .= ((Database.showWithZeros toHour) Import.++ ":" Import.++ (Database.showWithZeros toMinutes))
         ]

@@ -145,8 +145,8 @@ As your code changes, your site will be automatically recompiled and redeployed 
 	**x-www-form-urlencoded body**
 	
 	- recipient_id (Int) -> unique number that identifies a user
-	- from_date (String) ->  written in the format of `MM-DD-YYYY`, API returns in the format `YYYY-DD-MM`
-	- to_date (String) -> written in the format of `MM-DD-YYYY`, API returns in the format `YYYY-DD-MM`
+	- from_date (String) ->  written in the format of `MM-DD-YYYY`
+	- to_date (String) -> written in the format of `MM-DD-YYYY`
 	- name (Maybe String) -> optional string parameter to name the event
 	- description (Maybe String) -> optional string parameter to describe the event
 

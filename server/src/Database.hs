@@ -109,3 +109,7 @@ fetchUserId (Just userIdText) = do
                 _ -> return Nothing 
         _ -> return Nothing 
 fetchUserId Nothing = do return $ Nothing
+
+formatDate :: Day -> Text 
+formatDate date = let dateSplit = T.splitOn "-" (pack $ show date) 
+    in dateSplit!!1 Import.++ "-" Import.++ dateSplit!!2 Import.++ "-" Import.++ dateSplit!!0
