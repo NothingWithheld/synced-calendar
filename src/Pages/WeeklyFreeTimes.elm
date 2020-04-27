@@ -206,6 +206,11 @@ view model =
                     , startSelectingTimeSlot = StartSelectingTimeSlot
                     }
                 ]
+            , viewDiscardConfirmationModal model
+                { cancelDiscardConfirmationModal = CancelDiscardConfirmationModal
+                , onMdc = Mdc
+                , saveEditingTimeSlotWithoutChanges = SaveEditingTimeSlotWithoutChanges
+                }
             ]
         , viewUserRequest model
             { changeSelectionDayNum = ChangeSelectionDayNum
@@ -220,11 +225,6 @@ view model =
             , adjustEventTitle = AdjustEventTitle
             , adjustEventDescription = AdjustEventDescription
             , noOp = NoOp
-            }
-        , viewDiscardConfirmationModal model
-            { cancelDiscardConfirmationModal = CancelDiscardConfirmationModal
-            , onMdc = Mdc
-            , saveEditingTimeSlotWithoutChanges = SaveEditingTimeSlotWithoutChanges
             }
         ]
     }
