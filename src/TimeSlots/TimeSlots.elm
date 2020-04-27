@@ -10,6 +10,11 @@ scrollableTimeSlotsId =
     "scrollable-time-slots"
 
 
+type Calendar a b
+    = WeeklyFreeTimes a
+    | Events b
+
+
 type alias WithLoadingTimeSlots a =
     { a
         | loadingTimeSlots : Bool

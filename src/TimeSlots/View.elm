@@ -6,12 +6,12 @@ import Json.Decode as Decode exposing (field, float)
 import Material
 import Material.Card as Card
 import Material.Menu
-import Material.Options as Options exposing (css, styled, when)
+import Material.Options as Options exposing (css, nop, styled, when)
 import Material.Select as Select
 import Material.Typography as Typography
 import Route
 import Session exposing (WithSession)
-import TimeSlots.TimeSlots as TS
+import TimeSlots.TimeSlots as TS exposing (Calendar(..))
 import Utils exposing (WithMdc)
 
 
@@ -33,25 +33,49 @@ onTimeSlotMouseMove handleTimeSlotMouseMove =
 
 viewCalendarHeading :
     WithMdc msg (WithSession (TS.WithLoadingTimeSlots a))
-    -> { onMdc : Material.Msg msg -> msg, onTimeZoneSelect : String -> msg }
+    ->
+        Calendar
+            { b
+                | onMdc : Material.Msg msg -> msg
+                , onTimeZoneSelect : String -> msg
+            }
+            { c
+                | onMdc : Material.Msg msg -> msg
+                , onTimeZoneSelect : String -> msg
+            }
     -> Html msg
-viewCalendarHeading model ({ onMdc } as updates) =
-    styled div
-        [ css "height" "10vh"
-        , css "display" "flex"
-        , css "padding-left" "12px"
-        , css "align-items" "center"
-        ]
-        [ Route.viewHomeButton model onMdc
-        , styled div
-            [ css "margin-left" "12px" ]
-            [ viewTimeZoneSelect model updates ]
-        ]
+viewCalendarHeading model updates =
+    case updates of
+        WeeklyFreeTimes ({ onMdc } as updates_) ->
+            styled div
+                [ css "height" "10vh"
+                , css "display" "flex"
+                , css "padding-left" "12px"
+                , css "align-items" "center"
+                ]
+                [ Route.viewHomeButton model onMdc
+                , styled div
+                    [ css "margin-left" "12px" ]
+                    [ viewTimeZoneSelect model updates_ ]
+                ]
+
+        Events ({ onMdc } as updates_) ->
+            styled div
+                [ css "height" "10vh"
+                , css "display" "flex"
+                , css "padding-left" "12px"
+                , css "align-items" "center"
+                ]
+                [ Route.viewHomeButton model onMdc
+                , styled div
+                    [ css "margin-left" "12px" ]
+                    [ viewTimeZoneSelect model updates_ ]
+                ]
 
 
 viewTimeZoneSelect :
     WithMdc msg (WithSession (TS.WithLoadingTimeSlots a))
-    -> { onMdc : Material.Msg msg -> msg, onTimeZoneSelect : String -> msg }
+    -> { b | onMdc : Material.Msg msg -> msg, onTimeZoneSelect : String -> msg }
     -> Html msg
 viewTimeZoneSelect model { onMdc, onTimeZoneSelect } =
     let
@@ -156,13 +180,16 @@ viewTimeSlotTimes =
 viewScrollableTimeSlots :
     TS.WithLoadingTimeSlots (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a))
     ->
-        { handleTimeSlotMouseMove : TS.PointerPosition -> msg
-        , startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg
-        , editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
-        , handleTimeSlotMouseUp : msg
-        }
+        Calendar
+            { b
+                | handleTimeSlotMouseMove : TS.PointerPosition -> msg
+                , startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg
+                , editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
+                , handleTimeSlotMouseUp : msg
+            }
+            c
     -> Html msg
-viewScrollableTimeSlots model { handleTimeSlotMouseMove, startSelectingTimeSlot, editTimeSlotSelection, handleTimeSlotMouseUp } =
+viewScrollableTimeSlots model updates =
     let
         isSelectingTimeSlots =
             case model.timeSlotSelection of
@@ -190,16 +217,16 @@ viewScrollableTimeSlots model { handleTimeSlotMouseMove, startSelectingTimeSlot,
             [ css "display" "flex"
             , css "overflow" "hidden"
             , when isSelectingTimeSlots <| css "cursor" "move"
-            , when isSelectingTimeSlots <| Options.onMouseUp handleTimeSlotMouseUp
+            , case updates of
+                WeeklyFreeTimes { handleTimeSlotMouseUp } ->
+                    when isSelectingTimeSlots <| Options.onMouseUp handleTimeSlotMouseUp
+
+                Events _ ->
+                    nop
             ]
             (viewTimeSlotTimes
                 :: List.map
-                    (viewSingleDayTimeSlots model
-                        { handleTimeSlotMouseMove = handleTimeSlotMouseMove
-                        , startSelectingTimeSlot = startSelectingTimeSlot
-                        , editTimeSlotSelection = editTimeSlotSelection
-                        }
-                    )
+                    (viewSingleDayTimeSlots model updates)
                     TS.dayNumRange
             )
         ]
@@ -244,13 +271,16 @@ viewTimeSlotTime hour =
 viewSingleDayTimeSlots :
     TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)
     ->
-        { handleTimeSlotMouseMove : TS.PointerPosition -> msg
-        , startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg
-        , editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
-        }
+        Calendar
+            { b
+                | handleTimeSlotMouseMove : TS.PointerPosition -> msg
+                , startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg
+                , editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
+            }
+            c
     -> Int
     -> Html msg
-viewSingleDayTimeSlots model { handleTimeSlotMouseMove, startSelectingTimeSlot, editTimeSlotSelection } dayNum =
+viewSingleDayTimeSlots model updates dayNum =
     let
         selectedTimeSlotsForThisDay =
             List.filter ((\timeSlot -> timeSlot.dayNum == dayNum) << TS.getTimeSlotFromDetails) model.selectedTimeSlots
@@ -269,48 +299,56 @@ viewSingleDayTimeSlots model { handleTimeSlotMouseMove, startSelectingTimeSlot, 
     styled div
         [ css "flex-grow" "1"
         , css "position" "relative"
-        , when
-            isSelectingTimeSlots
-          <|
-            onTimeSlotMouseMove handleTimeSlotMouseMove
+        , case updates of
+            WeeklyFreeTimes { handleTimeSlotMouseMove } ->
+                when isSelectingTimeSlots <|
+                    onTimeSlotMouseMove handleTimeSlotMouseMove
+
+            Events _ ->
+                nop
         ]
         (List.append
             [ div
                 []
                 (List.map
-                    (viewTimeSlot startSelectingTimeSlot dayNum)
+                    (viewTimeSlot updates dayNum)
                     TS.slotNumRange
                 )
             , viewCurrentlySelectingTimeSlot model dayNum
             ]
             (List.map
-                (viewSelectedTimeSlot editTimeSlotSelection)
+                (viewSelectedTimeSlot updates)
                 selectedTimeSlotsForThisDay
             )
         )
 
 
 viewTimeSlot :
-    (TS.DayNum -> TS.SlotNum -> msg)
+    Calendar { a | startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg } b
     -> Int
     -> Int
     -> Html msg
-viewTimeSlot startSelectingTimeSlot dayNum slotNum =
+viewTimeSlot updates dayNum slotNum =
     styled div
         [ css "border-right" "1px solid #829AB1"
         , when (modBy 4 slotNum == 3) (css "border-bottom" "1px solid #829AB1")
         , css "height" "16px"
-        , Options.onMouseDown (startSelectingTimeSlot dayNum slotNum)
+        , case updates of
+            WeeklyFreeTimes { startSelectingTimeSlot } ->
+                Options.onMouseDown (startSelectingTimeSlot dayNum slotNum)
+
+            Events _ ->
+                nop
         , Options.id (TS.getTimeSlotId dayNum slotNum)
         ]
         []
 
 
 viewSelectedTimeSlot :
-    (TS.SelectedTimeSlotDetails -> msg)
+    Calendar { a | editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg } b
     -> TS.SelectedTimeSlotDetails
     -> Html msg
-viewSelectedTimeSlot editTimeSlotSelection selectedTimeSlotDetails =
+viewSelectedTimeSlot updates selectedTimeSlotDetails =
     let
         (TS.SelectedTimeSlotDetails selectedTimeSlot _) =
             selectedTimeSlotDetails
@@ -326,7 +364,12 @@ viewSelectedTimeSlot editTimeSlotSelection selectedTimeSlotDetails =
         , css "width" "95%"
         , css "border-radius" "8px"
         , css "user-select" "none"
-        , Options.onClick <| editTimeSlotSelection selectedTimeSlotDetails
+        , case updates of
+            WeeklyFreeTimes { editTimeSlotSelection } ->
+                Options.onClick <| editTimeSlotSelection selectedTimeSlotDetails
+
+            Events _ ->
+                nop
         ]
         [ viewTimeSlotDuration selectedTimeSlot ]
 

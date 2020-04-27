@@ -12,7 +12,7 @@ import Material.Options exposing (css, styled)
 import Session exposing (Session)
 import TimeSlots.Commands exposing (requestTimeSlotPositions, requestTimeSlotsElement)
 import TimeSlots.Messaging as TSMessaging
-import TimeSlots.TimeSlots as TS
+import TimeSlots.TimeSlots as TS exposing (Calendar(..))
 import TimeSlots.Update as TSUpdate
 import TimeSlots.View exposing (viewCalendarHeading, viewDayHeadings, viewScrollableTimeSlots)
 import Utils exposing (NoData)
@@ -195,16 +195,20 @@ view model =
             [ styled div
                 []
                 [ viewCalendarHeading model
-                    { onMdc = Mdc
-                    , onTimeZoneSelect = UpdateTimeZone
-                    }
+                    (WeeklyFreeTimes
+                        { onMdc = Mdc
+                        , onTimeZoneSelect = UpdateTimeZone
+                        }
+                    )
                 , viewDayHeadings
                 , viewScrollableTimeSlots model
-                    { editTimeSlotSelection = EditTimeSlotSelection
-                    , handleTimeSlotMouseMove = HandleTimeSlotMouseMove
-                    , handleTimeSlotMouseUp = HandleTimeSlotMouseUp
-                    , startSelectingTimeSlot = StartSelectingTimeSlot
-                    }
+                    (WeeklyFreeTimes
+                        { editTimeSlotSelection = EditTimeSlotSelection
+                        , handleTimeSlotMouseMove = HandleTimeSlotMouseMove
+                        , handleTimeSlotMouseUp = HandleTimeSlotMouseUp
+                        , startSelectingTimeSlot = StartSelectingTimeSlot
+                        }
+                    )
                 ]
             , viewDiscardConfirmationModal model
                 { cancelDiscardConfirmationModal = CancelDiscardConfirmationModal
