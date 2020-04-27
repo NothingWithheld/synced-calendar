@@ -203,7 +203,7 @@ view model =
                         , onTimeZoneSelect = UpdateTimeZone
                         }
                     )
-                , viewDayHeadings
+                , viewDayHeadings model
                 , viewScrollableTimeSlots model
                     (WeeklyFreeTimes
                         { editTimeSlotSelection = EditTimeSlotSelection

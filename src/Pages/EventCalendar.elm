@@ -224,7 +224,7 @@ view model =
                         , moveWeekForward = MoveWeekForward
                         }
                     )
-                , viewDayHeadings
+                , viewDayHeadings model
                 , viewScrollableTimeSlots model
                     (WeeklyFreeTimes
                         { editTimeSlotSelection = EditTimeSlotSelection

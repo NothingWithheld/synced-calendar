@@ -229,8 +229,25 @@ viewMonthHeading model currentDay weekOffset =
             text ""
 
 
-viewDayHeadings : Html msg
-viewDayHeadings =
+
+-- Day Headings
+
+
+viewDayHeadings : WithSession (TSTime.WithTimeDetails a) -> Html msg
+viewDayHeadings model =
+    let
+        dayHeadings =
+            case model.timeDetails of
+                WithTime { currentDay, weekOffset } ->
+                    List.map
+                        (viewDayHeading << viewDayHeadingCopyForDate model currentDay)
+                        (TSTime.getDaysInThatWeek model currentDay weekOffset)
+
+                WithoutTime ->
+                    List.map
+                        (viewDayHeading << viewDayHeadingCopyForWeekday)
+                        TSTime.weekdayStrings
+    in
     styled div
         [ css "display" "flex"
         , css "height" "10vh"
@@ -247,18 +264,12 @@ viewDayHeadings =
             , css "bottom" "0"
             ]
             []
-            :: List.map
-                viewDayHeading
-                TS.dayAbbreviations
+            :: dayHeadings
         )
 
 
-
--- Day Heading
-
-
-viewDayHeading : String -> Html msg
-viewDayHeading dayAbbreviation =
+viewDayHeading : Html msg -> Html msg
+viewDayHeading dayHeadingCopy =
     styled div
         [ css "flex-grow" "1"
         , css "flex-basis" "100%"
@@ -266,9 +277,7 @@ viewDayHeading dayAbbreviation =
         , css "justify-content" "flex-end"
         , css "position" "relative"
         ]
-        [ styled Html.h2
-            [ Typography.headline6, css "margin" "auto" ]
-            [ text dayAbbreviation ]
+        [ dayHeadingCopy
         , styled div
             [ css "height" "30%"
             , css "width" "0"
@@ -278,6 +287,63 @@ viewDayHeading dayAbbreviation =
             ]
             []
         ]
+
+
+viewDayHeadingCopyForDate : WithSession a -> Posix -> Posix -> Html msg
+viewDayHeadingCopyForDate model currentDay date =
+    let
+        timeZone =
+            Session.getZone model.session
+
+        isCurrentDay =
+            date == currentDay
+    in
+    styled div
+        [ css "margin" "auto" ]
+        [ styled Html.p
+            [ css "text-align" "center"
+            , css "margin-top" "0"
+            , css "margin-bottom" "0"
+            , Typography.caption
+            , when isCurrentDay <| css "color" "#2680C2"
+            ]
+            [ text <|
+                TSTime.weekdayToString <|
+                    Time.toWeekday timeZone date
+            ]
+        , if isCurrentDay then
+            styled div
+                [ css "height" "44px"
+                , css "width" "44px"
+                , css "border-radius" "100%"
+                , css "background-color" "#2680C2"
+                , css "color" "white"
+                , css "display" "flex"
+                , css "justify-content" "center"
+                , css "align-items" "center"
+                , Typography.headline5
+                ]
+                [ (text << String.fromInt) <|
+                    Time.toDay timeZone date
+                ]
+
+          else
+            styled Html.p
+                [ css "text-align" "center"
+                , css "margin-top" "8px"
+                , Typography.headline5
+                ]
+                [ (text << String.fromInt) <|
+                    Time.toDay timeZone date
+                ]
+        ]
+
+
+viewDayHeadingCopyForWeekday : String -> Html msg
+viewDayHeadingCopyForWeekday dayAbbreviation =
+    styled Html.p
+        [ Typography.headline6, css "margin" "auto" ]
+        [ text dayAbbreviation ]
 
 
 viewTimeSlotTimes : Html msg
