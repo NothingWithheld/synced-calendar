@@ -3,7 +3,6 @@ module ProposeEvent.Commands exposing (submitEventProposal)
 import Http
 import ProposeEvent.Messaging as PEMessaging
 import Utils exposing (NoData)
-import WeeklyFreeTimes.MainMsg exposing (Msg(..))
 
 
 submitEventProposal :

@@ -1,18 +1,21 @@
-module WeeklyFreeTimes.Main exposing (Model, init, subscriptions, update, view)
+module WeeklyFreeTimes.Main exposing (Model, Msg, init, subscriptions, update, view)
 
 import Browser exposing (Document)
+import Browser.Dom as Dom
 import EventCreation.EventCreation as EC
 import EventCreation.Update as ECUpdate
 import EventCreation.View exposing (viewDiscardConfirmationModal, viewUserRequest)
 import Html exposing (div)
+import Http
 import Material
 import Material.Options exposing (css, styled)
 import Session exposing (Session)
 import TimeSlots.Commands exposing (requestTimeSlotPositions, requestTimeSlotsElement)
+import TimeSlots.Messaging as TSMessaging
 import TimeSlots.TimeSlots as TS
 import TimeSlots.Update as TSUpdate
 import TimeSlots.View exposing (viewCalendarHeading, viewDayHeadings, viewScrollableTimeSlots)
-import WeeklyFreeTimes.MainMsg exposing (Msg(..))
+import Utils exposing (NoData)
 
 
 
@@ -54,6 +57,38 @@ init session =
 
 
 -- UPDATE
+
+
+type Msg
+    = NoOp
+      -- TimeSlots
+    | SetTimeSlotPositions (Result Dom.Error (List Dom.Element))
+    | UpdateTimeZone String
+    | SetTimeSlotsElement (Result Dom.Error Dom.Element)
+    | SetSavedWeeklyTimeSlots (Result Http.Error (List TSMessaging.ServerTimeSlot))
+    | StartSelectingTimeSlot TS.DayNum TS.SlotNum
+    | HandleTimeSlotMouseMove TS.PointerPosition
+    | AdjustTimeSlotSelection TS.PointerPosition (Result Dom.Error Dom.Viewport)
+    | SendSaveTimeSlotRequest
+    | SendUpdateTimeSlotRequest
+    | SetSelectedTimeSlotAfterCreation (Result Http.Error Int)
+    | SetSelectedTimeSlotAfterEditing (Result Http.Error NoData)
+    | HandleTimeSlotMouseUp
+    | EditTimeSlotSelection TS.SelectedTimeSlotDetails
+    | SendDeleteTimeSlotRequest
+    | DeleteTimeSlot (Result Http.Error NoData)
+      -- EventCreation
+    | PromptUserForEventDetails (Result Dom.Error Dom.Element)
+    | AdjustEventTitle String
+    | AdjustEventDescription String
+    | ChangeSelectionDayNum String
+    | ChangeSelectionStartSlot String
+    | ChangeSelectionEndSlot String
+    | HandleEditingCancel
+    | CloseUserPromptForEventDetails
+    | CancelDiscardConfirmationModal
+    | SaveEditingTimeSlotWithoutChanges
+    | Mdc (Material.Msg Msg)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -165,10 +200,32 @@ view model =
                     }
                 , viewDayHeadings
                 , viewScrollableTimeSlots model
+                    { editTimeSlotSelection = EditTimeSlotSelection
+                    , handleTimeSlotMouseMove = HandleTimeSlotMouseMove
+                    , handleTimeSlotMouseUp = HandleTimeSlotMouseUp
+                    , startSelectingTimeSlot = StartSelectingTimeSlot
+                    }
                 ]
             ]
         , viewUserRequest model
+            { changeSelectionDayNum = ChangeSelectionDayNum
+            , changeSelectionStartSlot = ChangeSelectionStartSlot
+            , changeSelectionEndSlot = ChangeSelectionEndSlot
+            , onMdc = Mdc
+            , closeUserPromptForEventDetails = CloseUserPromptForEventDetails
+            , sendSaveTimeSlotRequest = SendSaveTimeSlotRequest
+            , sendDeleteTimeSlotRequest = SendDeleteTimeSlotRequest
+            , handleEditingCancel = HandleEditingCancel
+            , sendUpdateTimeSlotRequest = SendUpdateTimeSlotRequest
+            , adjustEventTitle = AdjustEventTitle
+            , adjustEventDescription = AdjustEventDescription
+            , noOp = NoOp
+            }
         , viewDiscardConfirmationModal model
+            { cancelDiscardConfirmationModal = CancelDiscardConfirmationModal
+            , onMdc = Mdc
+            , saveEditingTimeSlotWithoutChanges = SaveEditingTimeSlotWithoutChanges
+            }
         ]
     }
 

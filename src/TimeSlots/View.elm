@@ -13,13 +13,12 @@ import Route
 import Session exposing (WithSession)
 import TimeSlots.TimeSlots as TS
 import Utils exposing (WithMdc)
-import WeeklyFreeTimes.MainMsg exposing (Msg(..))
 
 
-onTimeSlotMouseMove : Options.Property c Msg
-onTimeSlotMouseMove =
+onTimeSlotMouseMove : (TS.PointerPosition -> msg) -> Options.Property c msg
+onTimeSlotMouseMove handleTimeSlotMouseMove =
     Options.on "mousemove"
-        (Decode.map HandleTimeSlotMouseMove
+        (Decode.map handleTimeSlotMouseMove
             (Decode.map2
                 TS.PointerPosition
                 (field "pageX" float)
@@ -88,7 +87,7 @@ viewTimeZoneSelectOption timeZoneLabel isSelected =
         [ text timeZoneLabel ]
 
 
-viewDayHeadings : Html Msg
+viewDayHeadings : Html msg
 viewDayHeadings =
     styled div
         [ css "display" "flex"
@@ -116,7 +115,7 @@ viewDayHeadings =
 -- Day Heading
 
 
-viewDayHeading : String -> Html Msg
+viewDayHeading : String -> Html msg
 viewDayHeading dayAbbreviation =
     styled div
         [ css "flex-grow" "1"
@@ -139,7 +138,7 @@ viewDayHeading dayAbbreviation =
         ]
 
 
-viewTimeSlotTimes : Html Msg
+viewTimeSlotTimes : Html msg
 viewTimeSlotTimes =
     styled div
         [ css "width" "70px"
@@ -154,8 +153,16 @@ viewTimeSlotTimes =
 -- Time Slots
 
 
-viewScrollableTimeSlots : TS.WithLoadingTimeSlots (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)) -> Html Msg
-viewScrollableTimeSlots model =
+viewScrollableTimeSlots :
+    TS.WithLoadingTimeSlots (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a))
+    ->
+        { handleTimeSlotMouseMove : TS.PointerPosition -> msg
+        , startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg
+        , editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
+        , handleTimeSlotMouseUp : msg
+        }
+    -> Html msg
+viewScrollableTimeSlots model { handleTimeSlotMouseMove, startSelectingTimeSlot, editTimeSlotSelection, handleTimeSlotMouseUp } =
     let
         isSelectingTimeSlots =
             case model.timeSlotSelection of
@@ -183,17 +190,22 @@ viewScrollableTimeSlots model =
             [ css "display" "flex"
             , css "overflow" "hidden"
             , when isSelectingTimeSlots <| css "cursor" "move"
-            , when isSelectingTimeSlots <| Options.onMouseUp HandleTimeSlotMouseUp
+            , when isSelectingTimeSlots <| Options.onMouseUp handleTimeSlotMouseUp
             ]
             (viewTimeSlotTimes
                 :: List.map
-                    (viewSingleDayTimeSlots model)
+                    (viewSingleDayTimeSlots model
+                        { handleTimeSlotMouseMove = handleTimeSlotMouseMove
+                        , startSelectingTimeSlot = startSelectingTimeSlot
+                        , editTimeSlotSelection = editTimeSlotSelection
+                        }
+                    )
                     TS.dayNumRange
             )
         ]
 
 
-viewTimeSlotTime : Int -> Html Msg
+viewTimeSlotTime : Int -> Html msg
 viewTimeSlotTime hour =
     let
         dayPeriod =
@@ -229,8 +241,16 @@ viewTimeSlotTime hour =
         ]
 
 
-viewSingleDayTimeSlots : TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a) -> Int -> Html Msg
-viewSingleDayTimeSlots model dayNum =
+viewSingleDayTimeSlots :
+    TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)
+    ->
+        { handleTimeSlotMouseMove : TS.PointerPosition -> msg
+        , startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg
+        , editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
+        }
+    -> Int
+    -> Html msg
+viewSingleDayTimeSlots model { handleTimeSlotMouseMove, startSelectingTimeSlot, editTimeSlotSelection } dayNum =
     let
         selectedTimeSlotsForThisDay =
             List.filter ((\timeSlot -> timeSlot.dayNum == dayNum) << TS.getTimeSlotFromDetails) model.selectedTimeSlots
@@ -247,31 +267,50 @@ viewSingleDayTimeSlots model dayNum =
                     False
     in
     styled div
-        [ css "flex-grow" "1", css "position" "relative", when isSelectingTimeSlots onTimeSlotMouseMove ]
+        [ css "flex-grow" "1"
+        , css "position" "relative"
+        , when
+            isSelectingTimeSlots
+          <|
+            onTimeSlotMouseMove handleTimeSlotMouseMove
+        ]
         (List.append
             [ div
                 []
-                (List.map (viewTimeSlot dayNum) TS.slotNumRange)
+                (List.map
+                    (viewTimeSlot startSelectingTimeSlot dayNum)
+                    TS.slotNumRange
+                )
             , viewCurrentlySelectingTimeSlot model dayNum
             ]
-            (List.map viewSelectedTimeSlot selectedTimeSlotsForThisDay)
+            (List.map
+                (viewSelectedTimeSlot editTimeSlotSelection)
+                selectedTimeSlotsForThisDay
+            )
         )
 
 
-viewTimeSlot : Int -> Int -> Html Msg
-viewTimeSlot dayNum slotNum =
+viewTimeSlot :
+    (TS.DayNum -> TS.SlotNum -> msg)
+    -> Int
+    -> Int
+    -> Html msg
+viewTimeSlot startSelectingTimeSlot dayNum slotNum =
     styled div
         [ css "border-right" "1px solid #829AB1"
         , when (modBy 4 slotNum == 3) (css "border-bottom" "1px solid #829AB1")
         , css "height" "16px"
-        , Options.onMouseDown (StartSelectingTimeSlot dayNum slotNum)
+        , Options.onMouseDown (startSelectingTimeSlot dayNum slotNum)
         , Options.id (TS.getTimeSlotId dayNum slotNum)
         ]
         []
 
 
-viewSelectedTimeSlot : TS.SelectedTimeSlotDetails -> Html Msg
-viewSelectedTimeSlot selectedTimeSlotDetails =
+viewSelectedTimeSlot :
+    (TS.SelectedTimeSlotDetails -> msg)
+    -> TS.SelectedTimeSlotDetails
+    -> Html msg
+viewSelectedTimeSlot editTimeSlotSelection selectedTimeSlotDetails =
     let
         (TS.SelectedTimeSlotDetails selectedTimeSlot _) =
             selectedTimeSlotDetails
@@ -287,12 +326,12 @@ viewSelectedTimeSlot selectedTimeSlotDetails =
         , css "width" "95%"
         , css "border-radius" "8px"
         , css "user-select" "none"
-        , Options.onClick <| EditTimeSlotSelection selectedTimeSlotDetails
+        , Options.onClick <| editTimeSlotSelection selectedTimeSlotDetails
         ]
         [ viewTimeSlotDuration selectedTimeSlot ]
 
 
-viewTimeSlotDuration : TS.WithSelectingTimeSlot a -> Html Msg
+viewTimeSlotDuration : TS.WithSelectingTimeSlot a -> Html msg
 viewTimeSlotDuration { startBound, endBound } =
     let
         ( startTime, startAmOrPm ) =
@@ -325,7 +364,10 @@ viewTimeSlotDuration { startBound, endBound } =
         ]
 
 
-viewCurrentlySelectingTimeSlot : TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a) -> TS.DayNum -> Html Msg
+viewCurrentlySelectingTimeSlot :
+    TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a)
+    -> TS.DayNum
+    -> Html msg
 viewCurrentlySelectingTimeSlot model dayNum =
     case model.timeSlotSelection of
         TS.CurrentlySelecting timeSlotSelection ->
@@ -342,7 +384,7 @@ viewUserChangingTimeSlot :
     TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a)
     -> TS.WithSelectingTimeSlot b
     -> TS.DayNum
-    -> Html Msg
+    -> Html msg
 viewUserChangingTimeSlot model timeSlotSelection dayNum =
     let
         cardDimensions =
@@ -401,7 +443,7 @@ type alias CardDimensions =
     }
 
 
-viewLoader : Html Msg
+viewLoader : Html msg
 viewLoader =
     let
         viewLoaderDot _ =

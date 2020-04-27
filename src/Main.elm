@@ -12,7 +12,6 @@ import Route exposing (Route)
 import Session exposing (Session)
 import Url exposing (Url)
 import WeeklyFreeTimes.Main
-import WeeklyFreeTimes.MainMsg
 
 
 
@@ -82,7 +81,7 @@ type Msg
     | ClickLink UrlRequest
     | LoginMsg Login.Main.Msg
     | HomeMsg Home.Main.Msg
-    | WeeklyFreeTimesMsg WeeklyFreeTimes.MainMsg.Msg
+    | WeeklyFreeTimesMsg WeeklyFreeTimes.Main.Msg
     | ProposeEventMsg ProposeEvent.Main.Msg
 
 

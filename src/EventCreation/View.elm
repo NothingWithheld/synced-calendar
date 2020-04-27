@@ -4,6 +4,7 @@ import EventCreation.Constants as ECConsts
 import EventCreation.EventCreation as EC
 import Html exposing (Html, div, text)
 import Json.Decode as Decode
+import Material
 import Material.Button as Button
 import Material.Card as Card
 import Material.IconButton as IconButton
@@ -13,12 +14,28 @@ import Material.Select as Select
 import Material.TextField as TextField
 import Material.Typography as Typography
 import TimeSlots.TimeSlots as TS
-import Utils exposing (getListItemAt)
-import WeeklyFreeTimes.MainMsg exposing (Msg(..), WithMdc)
+import Utils exposing (WithMdc, getListItemAt)
 
 
-viewUserRequest : WithMdc (EC.WithEventCreation (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a))) -> Html Msg
-viewUserRequest model =
+viewUserRequest :
+    WithMdc msg (EC.WithEventCreation (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a)))
+    ->
+        { b
+            | changeSelectionDayNum : String -> msg
+            , changeSelectionStartSlot : String -> msg
+            , changeSelectionEndSlot : String -> msg
+            , onMdc : Material.Msg msg -> msg
+            , closeUserPromptForEventDetails : msg
+            , sendSaveTimeSlotRequest : msg
+            , sendDeleteTimeSlotRequest : msg
+            , handleEditingCancel : msg
+            , sendUpdateTimeSlotRequest : msg
+            , adjustEventTitle : String -> msg
+            , adjustEventDescription : String -> msg
+            , noOp : msg
+        }
+    -> Html msg
+viewUserRequest model ({ handleEditingCancel } as updates) =
     case model.eventCreation of
         EC.NotCreating ->
             text ""
@@ -32,7 +49,7 @@ viewUserRequest model =
                 , css "z-index" "100"
                 , css "display" "flex"
                 , css "flex-direction" "column"
-                , Options.onClick HandleEditingCancel
+                , Options.onClick handleEditingCancel
                 ]
                 [ styled div
                     [ css "max-height" <| String.fromFloat (max 0 eventCreationPosition.y) ++ "px"
@@ -45,7 +62,7 @@ viewUserRequest model =
                     [ css "display" "flex"
                     ]
                     [ styled div [ css "width" <| String.fromFloat eventCreationPosition.x ++ "px", css "height" "0px" ] []
-                    , viewUserRequestForm model eventCreationDetails
+                    , viewUserRequestForm model updates eventCreationDetails
                     ]
                 , styled div
                     [ css "min-height" "32px"
@@ -56,10 +73,25 @@ viewUserRequest model =
 
 
 viewUserRequestForm :
-    WithMdc (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a))
+    WithMdc msg (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a))
+    ->
+        { b
+            | changeSelectionDayNum : String -> msg
+            , changeSelectionStartSlot : String -> msg
+            , changeSelectionEndSlot : String -> msg
+            , onMdc : Material.Msg msg -> msg
+            , closeUserPromptForEventDetails : msg
+            , sendSaveTimeSlotRequest : msg
+            , sendDeleteTimeSlotRequest : msg
+            , handleEditingCancel : msg
+            , sendUpdateTimeSlotRequest : msg
+            , adjustEventTitle : String -> msg
+            , adjustEventDescription : String -> msg
+            , noOp : msg
+        }
     -> EC.EventCreationDetails
-    -> Html Msg
-viewUserRequestForm model eventCreationDetails =
+    -> Html msg
+viewUserRequestForm model ({ noOp } as updates) eventCreationDetails =
     let
         intersectsTimeSlots =
             TS.doesTSSelectionIntersectSelectedTimeSlots
@@ -73,7 +105,7 @@ viewUserRequestForm model eventCreationDetails =
         , css "box-shadow" "0 24px 38px 3px rgba(0,0,0,0.14), 0 9px 46px 8px rgba(0,0,0,0.12), 0 11px 15px -7px rgba(0,0,0,0.2)"
         , Options.onWithOptions "click"
             (Decode.succeed
-                { message = NoOp
+                { message = noOp
                 , preventDefault = False
                 , stopPropagation = True
                 }
@@ -81,73 +113,112 @@ viewUserRequestForm model eventCreationDetails =
         ]
         (case eventCreationDetails of
             EC.WeeklyFreeTimes ->
-                viewWeeklyFreeTimesForm model intersectsTimeSlots
+                viewWeeklyFreeTimesForm model updates intersectsTimeSlots
 
             EC.EventDetails eventItems ->
-                viewEventDetailsForm model eventItems intersectsTimeSlots
+                viewEventDetailsForm model updates eventItems intersectsTimeSlots
         )
 
 
-viewWeeklyFreeTimesForm : WithMdc (TS.WithTimeSlotSelection a) -> Bool -> List (Html Msg)
-viewWeeklyFreeTimesForm model intersectsTimeSlots =
+viewWeeklyFreeTimesForm :
+    WithMdc msg (TS.WithTimeSlotSelection a)
+    ->
+        { b
+            | changeSelectionDayNum : String -> msg
+            , changeSelectionStartSlot : String -> msg
+            , changeSelectionEndSlot : String -> msg
+            , onMdc : Material.Msg msg -> msg
+            , closeUserPromptForEventDetails : msg
+            , sendSaveTimeSlotRequest : msg
+            , sendDeleteTimeSlotRequest : msg
+            , handleEditingCancel : msg
+            , sendUpdateTimeSlotRequest : msg
+        }
+    -> Bool
+    -> List (Html msg)
+viewWeeklyFreeTimesForm model updates intersectsTimeSlots =
     case model.timeSlotSelection of
         TS.CurrentlySelecting _ ->
-            [ viewTimeChangeSelects model
-            , viewInitialCreationActionButtons model intersectsTimeSlots
+            [ viewTimeChangeSelects model updates
+            , viewInitialCreationActionButtons model updates intersectsTimeSlots
             ]
 
         TS.EditingSelection _ _ ->
-            [ viewTimeChangeSelects model
-            , viewEditingActionButtons model intersectsTimeSlots
+            [ viewTimeChangeSelects model updates
+            , viewEditingActionButtons model updates intersectsTimeSlots
             ]
 
         _ ->
             []
 
 
-viewEventDetailsForm : WithMdc (TS.WithTimeSlotSelection a) -> EC.EventItems -> Bool -> List (Html Msg)
-viewEventDetailsForm model eventItems intersectsTimeSlots =
-    [ TextField.view Mdc
+viewEventDetailsForm :
+    WithMdc msg (TS.WithTimeSlotSelection a)
+    ->
+        { b
+            | closeUserPromptForEventDetails : msg
+            , sendSaveTimeSlotRequest : msg
+            , onMdc : Material.Msg msg -> msg
+            , changeSelectionDayNum : String -> msg
+            , changeSelectionStartSlot : String -> msg
+            , changeSelectionEndSlot : String -> msg
+            , adjustEventTitle : String -> msg
+            , adjustEventDescription : String -> msg
+        }
+    -> EC.EventItems
+    -> Bool
+    -> List (Html msg)
+viewEventDetailsForm model ({ onMdc, adjustEventTitle, adjustEventDescription } as updates) eventItems intersectsTimeSlots =
+    [ TextField.view onMdc
         "event-title"
         model.mdc
         [ TextField.label "Title"
         , TextField.value eventItems.title
-        , Options.onInput AdjustEventTitle
+        , Options.onInput adjustEventTitle
         ]
         []
-    , viewTimeChangeSelects model
-    , TextField.view Mdc
+    , viewTimeChangeSelects model updates
+    , TextField.view onMdc
         "event-description"
         model.mdc
         [ TextField.label "Description"
         , TextField.value eventItems.description
-        , Options.onInput AdjustEventDescription
+        , Options.onInput adjustEventDescription
         ]
         []
-    , viewInitialCreationActionButtons model intersectsTimeSlots
+    , viewInitialCreationActionButtons model updates intersectsTimeSlots
     ]
 
 
-viewInitialCreationActionButtons : WithMdc a -> Bool -> Html Msg
-viewInitialCreationActionButtons model intersectsTimeSlots =
+viewInitialCreationActionButtons :
+    WithMdc msg a
+    ->
+        { b
+            | closeUserPromptForEventDetails : msg
+            , sendSaveTimeSlotRequest : msg
+            , onMdc : Material.Msg msg -> msg
+        }
+    -> Bool
+    -> Html msg
+viewInitialCreationActionButtons model { closeUserPromptForEventDetails, sendSaveTimeSlotRequest, onMdc } intersectsTimeSlots =
     Card.actions [ css "display" "flex", css "flex-direction" "row-reverse" ]
         [ Card.actionButtons []
-            [ Button.view Mdc
+            [ Button.view onMdc
                 "close-event-button"
                 model.mdc
                 [ Card.actionButton
                 , Button.ripple
-                , Options.onClick CloseUserPromptForEventDetails
+                , Options.onClick closeUserPromptForEventDetails
                 , css "margin-right" "8px"
                 ]
                 [ text "Cancel" ]
-            , Button.view Mdc
+            , Button.view onMdc
                 "set-event-button"
                 model.mdc
                 [ Card.actionButton
                 , Button.ripple
                 , Button.unelevated
-                , Options.onClick SendSaveTimeSlotRequest
+                , Options.onClick sendSaveTimeSlotRequest
                 , when intersectsTimeSlots Button.disabled
                 ]
                 [ text "Submit" ]
@@ -155,34 +226,48 @@ viewInitialCreationActionButtons model intersectsTimeSlots =
         ]
 
 
-viewEditingActionButtons : WithMdc a -> Bool -> Html Msg
-viewEditingActionButtons model intersectsTimeSlots =
+viewEditingActionButtons :
+    WithMdc msg a
+    ->
+        { b
+            | sendDeleteTimeSlotRequest : msg
+            , handleEditingCancel : msg
+            , sendUpdateTimeSlotRequest : msg
+            , onMdc : Material.Msg msg -> msg
+        }
+    -> Bool
+    -> Html msg
+viewEditingActionButtons model updates intersectsTimeSlots =
+    let
+        { sendDeleteTimeSlotRequest, handleEditingCancel, sendUpdateTimeSlotRequest, onMdc } =
+            updates
+    in
     Card.actions [ css "display" "flex", css "flex-direction" "row-reverse" ]
         [ Card.actionButtons []
-            [ IconButton.view Mdc
+            [ IconButton.view onMdc
                 "trash-event-button"
                 model.mdc
                 [ IconButton.icon1 "delete"
                 , IconButton.label1 "Delete this time slot"
-                , Options.onClick SendDeleteTimeSlotRequest
+                , Options.onClick sendDeleteTimeSlotRequest
                 ]
                 []
-            , Button.view Mdc
+            , Button.view onMdc
                 "cancel-event-button"
                 model.mdc
                 [ Card.actionButton
                 , Button.ripple
-                , Options.onClick HandleEditingCancel
+                , Options.onClick handleEditingCancel
                 , css "margin-right" "8px"
                 ]
                 [ text "Cancel" ]
-            , Button.view Mdc
+            , Button.view onMdc
                 "set-event-button"
                 model.mdc
                 [ Card.actionButton
                 , Button.ripple
                 , Button.unelevated
-                , Options.onClick SendUpdateTimeSlotRequest
+                , Options.onClick sendUpdateTimeSlotRequest
                 , when intersectsTimeSlots Button.disabled
                 ]
                 [ text "Submit" ]
@@ -190,33 +275,67 @@ viewEditingActionButtons model intersectsTimeSlots =
         ]
 
 
-viewTimeChangeSelects : WithMdc (TS.WithTimeSlotSelection a) -> Html Msg
-viewTimeChangeSelects model =
+viewTimeChangeSelects :
+    WithMdc msg (TS.WithTimeSlotSelection a)
+    ->
+        { b
+            | changeSelectionDayNum : String -> msg
+            , changeSelectionStartSlot : String -> msg
+            , changeSelectionEndSlot : String -> msg
+            , onMdc : Material.Msg msg -> msg
+        }
+    -> Html msg
+viewTimeChangeSelects model updates =
     case model.timeSlotSelection of
         TS.CurrentlySelecting selectedTimeSlot ->
-            viewWeeklyFreeTimesSelects model selectedTimeSlot
+            viewWeeklyFreeTimesSelects model updates selectedTimeSlot
 
         TS.EditingSelection selectedTimeSlot _ ->
-            viewWeeklyFreeTimesSelects model selectedTimeSlot
+            viewWeeklyFreeTimesSelects model updates selectedTimeSlot
 
         _ ->
             text ""
 
 
-viewWeeklyFreeTimesSelects : WithMdc a -> TS.WithSelectingTimeSlot b -> Html Msg
-viewWeeklyFreeTimesSelects model { dayNum, startBound, endBound } =
+viewWeeklyFreeTimesSelects :
+    WithMdc msg a
+    ->
+        { b
+            | changeSelectionDayNum : String -> msg
+            , changeSelectionStartSlot : String -> msg
+            , changeSelectionEndSlot : String -> msg
+            , onMdc : Material.Msg msg -> msg
+        }
+    -> TS.WithSelectingTimeSlot c
+    -> Html msg
+viewWeeklyFreeTimesSelects model updates { dayNum, startBound, endBound } =
     styled div
         [ css "display" "flex"
         , css "justify-content" "space-between"
         ]
-        [ viewDayChangeSelect model dayNum
-        , viewStartTimeSlotSelect model startBound.slotNum
-        , viewEndTimeSlotSelect model startBound.slotNum endBound.slotNum
+        [ viewDayChangeSelect model
+            updates
+            dayNum
+        , viewStartTimeSlotSelect model
+            updates
+            startBound.slotNum
+        , viewEndTimeSlotSelect model
+            updates
+            startBound.slotNum
+            endBound.slotNum
         ]
 
 
-viewDayChangeSelect : WithMdc a -> TS.DayNum -> Html Msg
-viewDayChangeSelect model selectedDayNum =
+viewDayChangeSelect :
+    WithMdc msg a
+    ->
+        { b
+            | changeSelectionDayNum : String -> msg
+            , onMdc : Material.Msg msg -> msg
+        }
+    -> TS.DayNum
+    -> Html msg
+viewDayChangeSelect model { changeSelectionDayNum, onMdc } selectedDayNum =
     let
         maybeSelectedDayAbbr =
             getListItemAt selectedDayNum TS.dayAbbreviations
@@ -224,13 +343,13 @@ viewDayChangeSelect model selectedDayNum =
         selectedDayAbbr =
             Maybe.withDefault "" maybeSelectedDayAbbr
     in
-    Select.view Mdc
+    Select.view onMdc
         ECConsts.daySelectId
         model.mdc
         [ Select.label "Day"
         , Select.selectedText selectedDayAbbr
         , Select.required
-        , Select.onSelect ChangeSelectionDayNum
+        , Select.onSelect changeSelectionDayNum
         ]
     <|
         List.map
@@ -244,7 +363,7 @@ viewDayChangeSelect model selectedDayNum =
                 TS.dayAbbreviations
 
 
-viewDaySelectOption : TS.DayNum -> String -> Bool -> Material.Menu.Item Msg
+viewDaySelectOption : TS.DayNum -> String -> Bool -> Material.Menu.Item msg
 viewDaySelectOption dayNum label isSelected =
     Select.option
         [ Select.value <| String.fromInt dayNum
@@ -254,19 +373,27 @@ viewDaySelectOption dayNum label isSelected =
         [ text <| label ]
 
 
-viewStartTimeSlotSelect : WithMdc a -> TS.SlotNum -> Html Msg
-viewStartTimeSlotSelect model selectedSlotNum =
+viewStartTimeSlotSelect :
+    WithMdc msg a
+    ->
+        { b
+            | changeSelectionStartSlot : String -> msg
+            , onMdc : Material.Msg msg -> msg
+        }
+    -> TS.SlotNum
+    -> Html msg
+viewStartTimeSlotSelect model { changeSelectionStartSlot, onMdc } selectedSlotNum =
     let
         ( startTime, startAmOrPm ) =
             TS.getTimeForSlotNum selectedSlotNum False
     in
-    Select.view Mdc
+    Select.view onMdc
         ECConsts.startTimeSelectId
         model.mdc
         [ Select.label "Start"
         , Select.selectedText <| startTime ++ startAmOrPm
         , Select.required
-        , Select.onSelect ChangeSelectionStartSlot
+        , Select.onSelect changeSelectionStartSlot
         ]
     <|
         List.map
@@ -276,19 +403,28 @@ viewStartTimeSlotSelect model selectedSlotNum =
             TS.slotNumRange
 
 
-viewEndTimeSlotSelect : WithMdc a -> TS.SlotNum -> TS.SlotNum -> Html Msg
-viewEndTimeSlotSelect model selectedStartSlotNum selectedEndSlotNum =
+viewEndTimeSlotSelect :
+    WithMdc msg a
+    ->
+        { b
+            | changeSelectionEndSlot : String -> msg
+            , onMdc : Material.Msg msg -> msg
+        }
+    -> TS.SlotNum
+    -> TS.SlotNum
+    -> Html msg
+viewEndTimeSlotSelect model { changeSelectionEndSlot, onMdc } selectedStartSlotNum selectedEndSlotNum =
     let
         ( endTime, endAmOrPm ) =
             TS.getTimeForSlotNum selectedEndSlotNum True
     in
-    Select.view Mdc
+    Select.view onMdc
         ECConsts.endTimeSelectId
         model.mdc
         [ Select.label "End"
         , Select.selectedText <| endTime ++ endAmOrPm
         , Select.required
-        , Select.onSelect ChangeSelectionEndSlot
+        , Select.onSelect changeSelectionEndSlot
         ]
     <|
         List.map
@@ -305,7 +441,12 @@ viewEndTimeSlotSelect model selectedStartSlotNum selectedEndSlotNum =
             List.filter ((<=) selectedStartSlotNum) TS.slotNumRange
 
 
-viewTimeSlotSelectOption : String -> Bool -> TS.SlotNum -> Bool -> Material.Menu.Item Msg
+viewTimeSlotSelectOption :
+    String
+    -> Bool
+    -> TS.SlotNum
+    -> Bool
+    -> Material.Menu.Item msg
 viewTimeSlotSelectOption labelAddition isEndSlot slotNum isSelected =
     let
         ( time, amOrPm ) =
@@ -319,8 +460,16 @@ viewTimeSlotSelectOption labelAddition isEndSlot slotNum isSelected =
         [ text <| time ++ amOrPm ++ labelAddition ]
 
 
-viewDiscardConfirmationModal : WithMdc (EC.WithDiscardConfirmationModal a) -> Html Msg
-viewDiscardConfirmationModal model =
+viewDiscardConfirmationModal :
+    WithMdc msg (EC.WithDiscardConfirmationModal a)
+    ->
+        { b
+            | cancelDiscardConfirmationModal : msg
+            , saveEditingTimeSlotWithoutChanges : msg
+            , onMdc : Material.Msg msg -> msg
+        }
+    -> Html msg
+viewDiscardConfirmationModal model { onMdc, cancelDiscardConfirmationModal, saveEditingTimeSlotWithoutChanges } =
     if model.isDiscardConfirmationModalOpen then
         styled div
             [ css "position" "absolute"
@@ -341,22 +490,22 @@ viewDiscardConfirmationModal model =
                     ]
                 , Card.actions [ css "display" "flex", css "flex-direction" "row-reverse" ]
                     [ Card.actionButtons []
-                        [ Button.view Mdc
+                        [ Button.view onMdc
                             "close-event-button"
                             model.mdc
                             [ Card.actionButton
                             , Button.ripple
-                            , Options.onClick CancelDiscardConfirmationModal
+                            , Options.onClick cancelDiscardConfirmationModal
                             , css "margin-right" "8px"
                             ]
                             [ text "Cancel" ]
-                        , Button.view Mdc
+                        , Button.view onMdc
                             "set-event-button"
                             model.mdc
                             [ Card.actionButton
                             , Button.ripple
                             , Button.unelevated
-                            , Options.onClick SaveEditingTimeSlotWithoutChanges
+                            , Options.onClick saveEditingTimeSlotWithoutChanges
                             ]
                             [ text "Discard" ]
                         ]
