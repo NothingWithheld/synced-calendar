@@ -13,12 +13,14 @@ AvailableTimeEntry json
     date Day
     fromTime TimeOfDay
     toTime TimeOfDay
+    spanMultiple Bool
     deriving Show Eq
 FreeTimeEntry json
     userId UserId
     day Text
     fromTime TimeOfDay
     toTime TimeOfDay
+    spanMultiple Bool
     deriving Show Eq
 ProposedEvent json 
     creatorId UserId
@@ -33,6 +35,7 @@ ConfirmedEvent json
     proposedEventId ProposedEventId
     date Day 
     fromTime TimeOfDay 
-    toTime TimeOfDay 
+    toTime TimeOfDay
+    spanMultiple Bool 
     UniqueProposedEventId proposedEventId
     deriving Show Eq

@@ -10,32 +10,34 @@ import Data.Time.LocalTime
 import Data.Text.Read
 import qualified Database
 
-data FreeTimeEntryData = FreeTimeEntryData FreeTimeEntryId UserId Text TimeOfDay TimeOfDay
-data AvailableTimeEntryData = AvailableTimeEntryData AvailableTimeEntryId UserId ProposedEventId Day TimeOfDay TimeOfDay
+data FreeTimeEntryData = FreeTimeEntryData FreeTimeEntryId UserId Text TimeOfDay TimeOfDay Bool
+data AvailableTimeEntryData = AvailableTimeEntryData AvailableTimeEntryId UserId ProposedEventId Day TimeOfDay TimeOfDay Bool
 
 instance ToJSON FreeTimeEntryData where 
-    toJSON (FreeTimeEntryData entryId userId day (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _)) =
+    toJSON (FreeTimeEntryData entryId userId day (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _) spanMultiple) =
         object [
             "id" .= entryId,
             "userId" .= userId, 
             "day" .= day,
             "fromTime" .= ((Database.showWithZeros fromHour) Import.++ ":" Import.++ (Database.showWithZeros fromMinutes)),
-            "toTime" .= ((Database.showWithZeros toHour) Import.++ ":" Import.++ (Database.showWithZeros toMinutes))
+            "toTime" .= ((Database.showWithZeros toHour) Import.++ ":" Import.++ (Database.showWithZeros toMinutes)),
+            "spanMultiple" .= spanMultiple
         ]
 
 instance ToJSON AvailableTimeEntryData where 
-    toJSON (AvailableTimeEntryData entryId eventId userId date (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _)) =
+    toJSON (AvailableTimeEntryData entryId eventId userId date (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _) spanMultiple) =
         object [
             "id" .= entryId,
             "userId" .= userId, 
             "eventId" .= eventId,
             "date" .= Database.formatDate date,
             "fromTime" .= ((Database.showWithZeros fromHour) Import.++ ":" Import.++ (Database.showWithZeros fromMinutes)),
-            "toTime" .= ((Database.showWithZeros toHour) Import.++ ":" Import.++ (Database.showWithZeros toMinutes))
+            "toTime" .= ((Database.showWithZeros toHour) Import.++ ":" Import.++ (Database.showWithZeros toMinutes)),
+            "spanMultiple" .= spanMultiple
         ]
 
 convertFreeTimeEntryToLocal :: Entity FreeTimeEntry -> Text -> Maybe FreeTimeEntryData
-convertFreeTimeEntryToLocal (Entity entryId (FreeTimeEntry userId day fromTime toTime)) timezone = do 
+convertFreeTimeEntryToLocal (Entity entryId (FreeTimeEntry userId day fromTime toTime spanMultiple)) timezone = do 
     let maybeLocalFromTime = Database.convertUTCToLocal fromTime timezone
     let maybeLocalToTime = Database.convertUTCToLocal toTime timezone
     case (maybeLocalFromTime, maybeLocalToTime) of 
@@ -44,12 +46,14 @@ convertFreeTimeEntryToLocal (Entity entryId (FreeTimeEntry userId day fromTime t
             -- between to two days 
             let maybeLocalDay = Database.updateDayString day fromTimeDayOffset
             case maybeLocalDay of 
-                Just localDay -> Just $ FreeTimeEntryData entryId userId localDay localFromTime localToTime
+                Just localDay -> do 
+                    let newSpanMultiple = if localDay == day then spanMultiple else not spanMultiple
+                    return $ FreeTimeEntryData entryId userId localDay localFromTime localToTime newSpanMultiple
                 _ -> Nothing
         (_, _) -> Nothing
 
 convertAvailableTimeEntryToLocal :: Entity AvailableTimeEntry -> Text -> Maybe AvailableTimeEntryData
-convertAvailableTimeEntryToLocal (Entity entryId (AvailableTimeEntry userId eventId date fromTime toTime)) timezone = do 
+convertAvailableTimeEntryToLocal (Entity entryId (AvailableTimeEntry userId eventId date fromTime toTime spanMultiple)) timezone = do 
     let maybeLocalFromTime = Database.convertUTCToLocal fromTime timezone
     let maybeLocalToTime = Database.convertUTCToLocal toTime timezone
     case (maybeLocalFromTime, maybeLocalToTime) of 
@@ -57,7 +61,8 @@ convertAvailableTimeEntryToLocal (Entity entryId (AvailableTimeEntry userId even
             -- The database will hold in the day of fromTime if the event is staggered 
             -- between to two days 
             let localDate = addDays fromTimeDayOffset date
-            return $ AvailableTimeEntryData entryId userId eventId localDate localFromTime localToTime
+            let newSpanMultiple = if localDate == date then spanMultiple else not spanMultiple
+            return $ AvailableTimeEntryData entryId userId eventId localDate localFromTime localToTime newSpanMultiple
         (_, _) -> Nothing
 
 getFreeTimeEntryR :: Text -> Handler Value 
@@ -89,9 +94,10 @@ postFreeTimeEntryR userIdText = do
             let maybeUtcDay = Database.updateDayString day fromTimeDayOffset
             case maybeUtcDay of 
                 Just utcDay -> do
-                    let timeEntry' = FreeTimeEntry userId (toLower utcDay) fromTime toTime
+                    let spanMultiple = if utcDay == day then False else True
+                    let timeEntry' = FreeTimeEntry userId (toLower utcDay) fromTime toTime spanMultiple
                     (Entity entryId _) <- runDB $ insertEntity timeEntry'
-                    returnJson $ FreeTimeEntryData entryId userId (toLower utcDay) fromTime toTime
+                    returnJson $ FreeTimeEntryData entryId userId (toLower utcDay) fromTime toTime spanMultiple
                 _ -> invalidArgs ["Failed to parse day, from_time and/or to_time params"]
         (_, _, _, _) -> invalidArgs ["Failed to parse day, from_time and/or to_time params"]
 
@@ -108,17 +114,19 @@ putFreeTimeEntryR entryIdText = do
         (Just day, Just (fromTimeDayOffset, fromTime), Just (_, toTime), Right (entryIdInt, "")) -> do
             allTimeEntries <- runDB $ selectList [FreeTimeEntryId ==. toSqlKey (fromIntegral (entryIdInt::Integer))] []
             case allTimeEntries of 
-                [Entity entryId FreeTimeEntry {..}] -> do 
+                [Entity entryId (FreeTimeEntry _ _ _ _ spanMultiple)] -> do 
                     -- The database will hold in the day of fromTime if the event is staggered 
                     -- between to two days 
                     let maybeUtcDay = Database.updateDayString day fromTimeDayOffset
                     case maybeUtcDay of 
                         Just utcDay -> do
+                            let newSpanMultiple = if utcDay == day then spanMultiple else not spanMultiple
                             runDB $ update entryId 
                                 [
                                     FreeTimeEntryDay =. (toLower utcDay),
                                     FreeTimeEntryFromTime =. fromTime, 
-                                    FreeTimeEntryToTime =. toTime
+                                    FreeTimeEntryToTime =. toTime,
+                                    FreeTimeEntrySpanMultiple =. newSpanMultiple
                                 ]
                             return Null
                         _ -> invalidArgs ["Failed to parse day, from_time and/or to_time params"]
@@ -179,9 +187,10 @@ postAvailableTimeEntryR userIdText = do
                             -- The database will hold in the date of fromTime if the event is staggered 
                             -- between to two days
                             let utcDate = addDays fromTimeDayOffset date
-                            let timeEntry' = AvailableTimeEntry userId eventId utcDate fromTime toTime
+                            let spanMultiple = if utcDate == date then False else True
+                            let timeEntry' = AvailableTimeEntry userId eventId utcDate fromTime toTime spanMultiple
                             (Entity entryId _) <- runDB $ insertEntity timeEntry'
-                            returnJson $ AvailableTimeEntryData entryId userId eventId utcDate fromTime toTime
+                            returnJson $ AvailableTimeEntryData entryId userId eventId utcDate fromTime toTime spanMultiple
                         _ -> invalidArgs ["Failed to find corresponding ProposedEvent with id: " Import.++ eventIdText]
                 _ -> invalidArgs ["Please provide a valid integer for event_id"]
         (_, _, _, _, _) -> invalidArgs ["Failed to parse API params"]
@@ -200,15 +209,17 @@ putAvailableTimeEntryR entryIdText = do
         (Just date, Just (fromTimeDayOffset, fromTime), Just (_, toTime), Right (entryIdInt, "")) -> do
             allTimeEntries <- runDB $ selectList [AvailableTimeEntryId ==. toSqlKey (fromIntegral (entryIdInt::Integer))] []
             case allTimeEntries of 
-                [Entity entryId AvailableTimeEntry {..}] -> do 
+                [Entity entryId (AvailableTimeEntry _ _ _ _ _ spanMultiple)] -> do 
                     -- The database will hold in the date of fromTime if the event is staggered 
                     -- between to two days
                     let utcDate = addDays fromTimeDayOffset date
+                    let newSpanMultiple = if utcDate == date then spanMultiple else not spanMultiple
                     runDB $ update entryId 
                         [
                             AvailableTimeEntryDate =. utcDate,
                             AvailableTimeEntryFromTime =. fromTime, 
-                            AvailableTimeEntryToTime =. toTime
+                            AvailableTimeEntryToTime =. toTime,
+                            AvailableTimeEntrySpanMultiple =. newSpanMultiple
                         ]
                     return Null
                 _ -> notFound

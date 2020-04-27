@@ -10,10 +10,10 @@ import Data.Time.LocalTime
 import Data.Text.Read
 import qualified Database
 
-data ConfirmedEventData = ConfirmedEventData ConfirmedEventId ProposedEventId UserId UserId (Maybe Text) (Maybe Text) Day TimeOfDay TimeOfDay
+data ConfirmedEventData = ConfirmedEventData ConfirmedEventId ProposedEventId UserId UserId (Maybe Text) (Maybe Text) Day TimeOfDay TimeOfDay Bool
 
 instance ToJSON ConfirmedEventData where 
-    toJSON (ConfirmedEventData confirmedEventId eventId creatorId recipientId name description date (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _)) =
+    toJSON (ConfirmedEventData confirmedEventId eventId creatorId recipientId name description date (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _) spanMultiple) =
         object [
             "id" .= confirmedEventId,
             "eventId" .= eventId, 
@@ -23,7 +23,8 @@ instance ToJSON ConfirmedEventData where
             "description" .= description,
             "date" .= Database.formatDate date,
             "fromTime" .= ((Database.showWithZeros fromHour) Import.++ ":" Import.++ (Database.showWithZeros fromMinutes)),
-            "toTime" .= ((Database.showWithZeros toHour) Import.++ ":" Import.++ (Database.showWithZeros toMinutes))
+            "toTime" .= ((Database.showWithZeros toHour) Import.++ ":" Import.++ (Database.showWithZeros toMinutes)),
+            "spanMultiple" .= spanMultiple
         ]
 
 data ProposedEventData = ProposedEventData ProposedEventId UserId UserId (Maybe Text) (Maybe Text) Day Day Bool
@@ -43,7 +44,7 @@ instance ToJSON ProposedEventData where
 
 convertConfirmedEventToLocal :: ConfirmedEventData -> Text -> Maybe (ConfirmedEventData)
 convertConfirmedEventToLocal 
-    (ConfirmedEventData confirmedEventId proposedEventId creatorId recipientId name description date fromTime toTime) timezone = do 
+    (ConfirmedEventData confirmedEventId proposedEventId creatorId recipientId name description date fromTime toTime spanMultiple) timezone = do 
         let maybeLocalFromTime = Database.convertUTCToLocal fromTime timezone
         let maybeLocalToTime = Database.convertUTCToLocal toTime timezone
         case (maybeLocalFromTime, maybeLocalToTime) of 
@@ -51,7 +52,8 @@ convertConfirmedEventToLocal
                 -- The database will hold in the day of fromTime if the event is staggered 
                 -- between to two days 
                 let localDate = addDays fromTimeDayOffset date
-                return $ ConfirmedEventData confirmedEventId proposedEventId creatorId recipientId name description localDate localFromTime localToTime
+                let newSpanMultiple = if localDate == date then spanMultiple else not spanMultiple
+                return $ ConfirmedEventData confirmedEventId proposedEventId creatorId recipientId name description localDate localFromTime localToTime newSpanMultiple
             (_, _) -> Nothing
 
 getConfirmedEventFromProposedEvent :: Entity ProposedEvent -> Handler (Maybe ConfirmedEventData)
@@ -59,8 +61,8 @@ getConfirmedEventFromProposedEvent
     (Entity proposedEventId (ProposedEvent creatorId recipientId name description _ _ _)) = do 
         allEvents <- runDB $ selectList [ConfirmedEventProposedEventId ==. proposedEventId] []
         case allEvents of 
-            [Entity confirmedEventId (ConfirmedEvent _ date fromTime toTime)] -> 
-                return $ Just $ ConfirmedEventData confirmedEventId proposedEventId creatorId recipientId name description date fromTime toTime
+            [Entity confirmedEventId (ConfirmedEvent _ date fromTime toTime spanMultiple)] -> 
+                return $ Just $ ConfirmedEventData confirmedEventId proposedEventId creatorId recipientId name description date fromTime toTime spanMultiple
             _ -> return $ Nothing
 
 getProposedEventCreatorR :: Text -> Handler Value
@@ -190,10 +192,11 @@ postConfirmedEventCreatorR eventIdText = do
                             -- The database will hold in the date of fromTime if the event is staggered 
                             -- between to two days
                             let utcDate = addDays fromTimeDayOffset date
-                            let event' = ConfirmedEvent eventId utcDate fromTime toTime
+                            let spanMultiple = if utcDate == date then False else True
+                            let event' = ConfirmedEvent eventId utcDate fromTime toTime spanMultiple
                             (Entity confirmedEventId _) <- runDB $ insertEntity event'
                             runDB $ update eventId [ProposedEventConfirmed =. True]
-                            returnJson $ ConfirmedEventData confirmedEventId eventId creatorId recipientId name description date fromTime toTime
+                            returnJson $ ConfirmedEventData confirmedEventId eventId creatorId recipientId name description date fromTime toTime spanMultiple
                         (_, _, _) -> invalidArgs ["Failed to parse date, from_time and/or to_time"]
                 _ -> invalidArgs ["Failed to find event with id: " Import.++ eventIdText]
         _ -> invalidArgs ["Failed to find event with id: " Import.++ eventIdText]
@@ -212,15 +215,17 @@ putConfirmedEventCreatorR eventIdText = do
         (Just date, Just (fromTimeDayOffset, fromTime), Just (_, toTime), Right (eventIdInt, "")) -> do
             allEventEntries <- runDB $ selectList [ConfirmedEventId ==. toSqlKey (fromIntegral (eventIdInt::Integer))] []
             case allEventEntries of 
-                [Entity eventId ConfirmedEvent {..}] -> do 
+                [Entity eventId (ConfirmedEvent _ _ _ _ spanMultiple)] -> do 
                      -- The database will hold in the date of fromTime if the event is staggered 
                     -- between to two days 
                     let utcDate = addDays fromTimeDayOffset date
+                    let newSpanMultiple = if utcDate == date then spanMultiple else not spanMultiple
                     runDB $ update eventId 
                         [
                             ConfirmedEventDate =. utcDate,
                             ConfirmedEventFromTime =. fromTime, 
-                            ConfirmedEventToTime =. toTime
+                            ConfirmedEventToTime =. toTime,
+                            ConfirmedEventSpanMultiple =. newSpanMultiple
                         ]
                     return Null
                 _ -> notFound
