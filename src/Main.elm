@@ -3,15 +3,15 @@ module Main exposing (main)
 import Browser exposing (Document, UrlRequest(..))
 import Browser.Navigation as Nav
 import Error
-import Home.Main
 import Html
 import Json.Decode as Decode
-import Login.Main
-import ProposeEvent.Main
+import Pages.Home
+import Pages.Login
+import Pages.ProposeEvent
+import Pages.WeeklyFreeTimes
 import Route exposing (Route)
 import Session exposing (Session)
 import Url exposing (Url)
-import WeeklyFreeTimes.Main
 
 
 
@@ -37,10 +37,10 @@ main =
 type Model
     = NotFound Session
     | Redirect Session
-    | Login Login.Main.Model
-    | Home Home.Main.Model
-    | WeeklyFreeTimes WeeklyFreeTimes.Main.Model
-    | ProposeEvent ProposeEvent.Main.Model
+    | Login Pages.Login.Model
+    | Home Pages.Home.Model
+    | WeeklyFreeTimes Pages.WeeklyFreeTimes.Model
+    | ProposeEvent Pages.ProposeEvent.Model
 
 
 init : Decode.Value -> Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -79,10 +79,10 @@ getSession model =
 type Msg
     = ChangeUrl Url
     | ClickLink UrlRequest
-    | LoginMsg Login.Main.Msg
-    | HomeMsg Home.Main.Msg
-    | WeeklyFreeTimesMsg WeeklyFreeTimes.Main.Msg
-    | ProposeEventMsg ProposeEvent.Main.Msg
+    | LoginMsg Pages.Login.Msg
+    | HomeMsg Pages.Home.Msg
+    | WeeklyFreeTimesMsg Pages.WeeklyFreeTimes.Msg
+    | ProposeEventMsg Pages.ProposeEvent.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -105,19 +105,19 @@ update msg model =
 
         ( LoginMsg subMsg, Login login ) ->
             updateWith Login LoginMsg <|
-                Login.Main.update subMsg login
+                Pages.Login.update subMsg login
 
         ( HomeMsg subMsg, Home home ) ->
             updateWith Home HomeMsg <|
-                Home.Main.update subMsg home
+                Pages.Home.update subMsg home
 
         ( WeeklyFreeTimesMsg subMsg, WeeklyFreeTimes weeklyFreeTimes ) ->
             updateWith WeeklyFreeTimes WeeklyFreeTimesMsg <|
-                WeeklyFreeTimes.Main.update subMsg weeklyFreeTimes
+                Pages.WeeklyFreeTimes.update subMsg weeklyFreeTimes
 
         ( ProposeEventMsg subMsg, ProposeEvent proposeEvent ) ->
             updateWith ProposeEvent ProposeEventMsg <|
-                ProposeEvent.Main.update subMsg proposeEvent
+                Pages.ProposeEvent.update subMsg proposeEvent
 
         ( _, _ ) ->
             ( model, Cmd.none )
@@ -148,26 +148,26 @@ handleUrlChange route model =
 
         ( Route.Login, False ) ->
             updateWith Login LoginMsg <|
-                Login.Main.init session
+                Pages.Login.init session
 
         ( _, False ) ->
             ( model, Route.replaceUrl key Route.Login )
 
         ( Route.Home, True ) ->
             updateWith Home HomeMsg <|
-                Home.Main.init session
+                Pages.Home.init session
 
         ( Route.Login, True ) ->
             updateWith Login LoginMsg <|
-                Login.Main.init session
+                Pages.Login.init session
 
         ( Route.WeeklyFreeTimes, True ) ->
             updateWith WeeklyFreeTimes WeeklyFreeTimesMsg <|
-                WeeklyFreeTimes.Main.init session
+                Pages.WeeklyFreeTimes.init session
 
         ( Route.ProposeEvent, True ) ->
             updateWith ProposeEvent ProposeEventMsg <|
-                ProposeEvent.Main.init session
+                Pages.ProposeEvent.init session
 
         ( Route.Logout, True ) ->
             ( Redirect <| Session.signOut session, Route.replaceUrl key Route.Login )
@@ -187,18 +187,18 @@ view model =
             { title = "", body = [] }
 
         Login login ->
-            viewWith LoginMsg <| Login.Main.view login
+            viewWith LoginMsg <| Pages.Login.view login
 
         Home home ->
-            viewWith HomeMsg <| Home.Main.view home
+            viewWith HomeMsg <| Pages.Home.view home
 
         WeeklyFreeTimes weeklyFreeTimes ->
             viewWith WeeklyFreeTimesMsg <|
-                WeeklyFreeTimes.Main.view weeklyFreeTimes
+                Pages.WeeklyFreeTimes.view weeklyFreeTimes
 
         ProposeEvent proposeEvent ->
             viewWith ProposeEventMsg <|
-                ProposeEvent.Main.view proposeEvent
+                Pages.ProposeEvent.view proposeEvent
 
 
 viewWith : (subMsg -> Msg) -> Document subMsg -> Document Msg
@@ -223,16 +223,16 @@ subscriptions model =
 
         Login login ->
             Sub.map LoginMsg <|
-                Login.Main.subscriptions login
+                Pages.Login.subscriptions login
 
         Home home ->
             Sub.map HomeMsg <|
-                Home.Main.subscriptions home
+                Pages.Home.subscriptions home
 
         WeeklyFreeTimes weeklyFreeTimes ->
             Sub.map WeeklyFreeTimesMsg <|
-                WeeklyFreeTimes.Main.subscriptions weeklyFreeTimes
+                Pages.WeeklyFreeTimes.subscriptions weeklyFreeTimes
 
         ProposeEvent proposeEvent ->
             Sub.map ProposeEventMsg <|
-                ProposeEvent.Main.subscriptions proposeEvent
+                Pages.ProposeEvent.subscriptions proposeEvent

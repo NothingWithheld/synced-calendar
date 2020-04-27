@@ -1,4 +1,4 @@
-module WeeklyFreeTimes.Main exposing (Model, Msg, init, subscriptions, update, view)
+module Pages.WeeklyFreeTimes exposing (Model, Msg, init, subscriptions, update, view)
 
 import Browser exposing (Document)
 import Browser.Dom as Dom

@@ -1,4 +1,4 @@
-module Home.Main exposing (Model, Msg, init, subscriptions, update, view)
+module Pages.Home exposing (Model, Msg, init, subscriptions, update, view)
 
 import Browser exposing (Document)
 import Html exposing (Html, div, text)
