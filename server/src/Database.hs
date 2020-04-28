@@ -113,3 +113,7 @@ fetchUserId Nothing = do return $ Nothing
 formatDate :: Day -> Text 
 formatDate date = let dateSplit = T.splitOn "-" (pack $ show date) 
     in dateSplit!!1 Import.++ "-" Import.++ dateSplit!!2 Import.++ "-" Import.++ dateSplit!!0
+
+splitStringByCommas :: Text -> [Text]
+splitStringByCommas "" = []
+splitStringByCommas s = T.splitOn "," (T.filter (/=' ') s)

@@ -65,6 +65,18 @@ getConfirmedEventFromProposedEvent
                 return $ Just $ ConfirmedEventData confirmedEventId proposedEventId creatorId recipientId name description date fromTime toTime spanMultiple
             _ -> return $ Nothing
 
+createProposedEvent :: (Text, Text, Maybe Text, Maybe Text, Day, Day) -> Handler (Maybe ProposedEventData)
+createProposedEvent (recipientIdText, creatorIdText, maybeName, maybeDescription, fromDate, toDate) = do 
+    let confirmed = False
+    maybeCreatorId <- Database.fetchUserId (Just creatorIdText)
+    maybeRecipientId <- Database.fetchUserId (Just recipientIdText)
+    case (maybeCreatorId, maybeRecipientId) of 
+        (Just creatorId, Just recipientId) -> do 
+            let event' = ProposedEvent creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
+            (Entity eventId _) <- runDB $ insertEntity event'
+            return $ Just $ ProposedEventData eventId creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
+        (_, _) -> return Nothing
+
 getProposedEventCreatorR :: Text -> Handler Value
 getProposedEventCreatorR creatorIdText = do 
     maybeCreatorId <- Database.fetchUserId (Just creatorIdText)
@@ -81,22 +93,20 @@ getProposedEventCreatorR creatorIdText = do
 
 postProposedEventCreatorR :: Text -> Handler Value 
 postProposedEventCreatorR creatorIdText = do 
-    maybeRecipientIdText <- lookupPostParam "recipient_id"
+    maybeRecipientIdsText <- lookupPostParam "recipient_ids"
     maybeName <- lookupPostParam "name"
     maybeDescription <- lookupPostParam "description"
     maybeFromDateText <- lookupPostParam "from_date"
     maybeToDateText <- lookupPostParam "to_date"
-    let confirmed = False
-    maybeCreatorId <- Database.fetchUserId (Just creatorIdText)
-    maybeRecipientId <- Database.fetchUserId maybeRecipientIdText
     let maybeFromDate = Database.convertTextToDate maybeFromDateText
     let maybeToDate = Database.convertTextToDate maybeToDateText
-    case (maybeCreatorId, maybeRecipientId, maybeFromDate, maybeToDate) of
-        (Just creatorId, Just recipientId, Just fromDate, Just toDate) -> do
-            let event' = ProposedEvent creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
-            (Entity eventId _) <- runDB $ insertEntity event'
-            returnJson $ ProposedEventData eventId creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
-        (_, _, _, _) -> invalidArgs ["Failed to parse arguments. Check API documentation for valid formatting"]
+    case (maybeRecipientIdsText, maybeFromDate, maybeToDate) of
+        (Just recipientIdsText, Just fromDate, Just toDate) -> do
+            let recipientIds = Database.splitStringByCommas recipientIdsText
+            let arguments = Import.map (\x -> (x, creatorIdText, maybeName, maybeDescription, fromDate, toDate)) recipientIds
+            unwrapped_events <- Import.mapM createProposedEvent arguments
+            returnJson $ catMaybes unwrapped_events
+        (_, _, _) -> invalidArgs ["Failed to parse arguments. Check API documentation for valid formatting"]
 
 putProposedEventCreatorR :: Text -> Handler Value 
 putProposedEventCreatorR eventIdText = do 
