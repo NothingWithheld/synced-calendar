@@ -17,7 +17,6 @@ import TimeSlots.Commands
         , requestTimeSlotPositions
         , requestTimeSlotsElement
         )
-import TimeSlots.Messaging as TSMessaging
 import TimeSlots.Time exposing (TimeDetails(..))
 import TimeSlots.TimeSlots as TS exposing (Calendar(..))
 import TimeSlots.Update as TSUpdate
@@ -78,16 +77,10 @@ type Msg
     | SetTimeSlotPositions (Result Dom.Error (List Dom.Element))
     | UpdateTimeZone String
     | SetTimeSlotsElement (Result Dom.Error Dom.Element)
-    | SetSavedWeeklyTimeSlots (Result Http.Error (List TSMessaging.ServerTimeSlot))
-    | StartSelectingTimeSlot TS.DayNum TS.SlotNum
-    | HandleTimeSlotMouseMove TS.PointerPosition
-    | AdjustTimeSlotSelection TS.PointerPosition (Result Dom.Error Dom.Viewport)
     | SendSaveTimeSlotRequest
     | SendUpdateTimeSlotRequest
     | SetSelectedTimeSlotAfterCreation (Result Http.Error Int)
     | SetSelectedTimeSlotAfterEditing (Result Http.Error NoData)
-    | HandleTimeSlotMouseUp
-    | EditTimeSlotSelection TS.SelectedTimeSlotDetails
     | SendDeleteTimeSlotRequest
     | DeleteTimeSlot (Result Http.Error NoData)
       -- EventCreation
@@ -124,25 +117,13 @@ update msg model =
             TSUpdate.moveWeekBackward model
 
         SetTimeSlotPositions result ->
-            TSUpdate.setTimeSlotPositions model SetSavedWeeklyTimeSlots result
+            TSUpdate.setTimeSlotPositions model (Events Nothing) result
 
         UpdateTimeZone timeZoneLabel ->
-            TSUpdate.updateTimeZone model SetSavedWeeklyTimeSlots timeZoneLabel
+            TSUpdate.updateTimeZone model (Events Nothing) timeZoneLabel
 
         SetTimeSlotsElement result ->
             TSUpdate.setTimeSlotsElement model result
-
-        SetSavedWeeklyTimeSlots result ->
-            TSUpdate.setSavedWeeklyTimeSlots model result
-
-        StartSelectingTimeSlot dayNum slotNum ->
-            TSUpdate.startSelectingTimeSlot model dayNum slotNum
-
-        HandleTimeSlotMouseMove pointerPosition ->
-            TSUpdate.handleTimeSlotMouseMove model AdjustTimeSlotSelection pointerPosition
-
-        AdjustTimeSlotSelection pointerPosition result ->
-            TSUpdate.adjustTimeSlotSelection model pointerPosition result
 
         SendSaveTimeSlotRequest ->
             TSUpdate.sendSaveTimeSlotRequest model SetSelectedTimeSlotAfterCreation
@@ -155,12 +136,6 @@ update msg model =
 
         SetSelectedTimeSlotAfterEditing result ->
             TSUpdate.setSelectedTimeSlotAfterEditing model result
-
-        HandleTimeSlotMouseUp ->
-            TSUpdate.handleTimeSlotMouseUp model PromptUserForEventDetails
-
-        EditTimeSlotSelection selectedTimeslotDetails ->
-            TSUpdate.editTimeSlotSelection model PromptUserForEventDetails selectedTimeslotDetails
 
         SendDeleteTimeSlotRequest ->
             TSUpdate.sendDeleteTimeSlotRequest model DeleteTimeSlot
@@ -225,14 +200,7 @@ view model =
                         }
                     )
                 , viewDayHeadings model
-                , viewScrollableTimeSlots model
-                    (WeeklyFreeTimes
-                        { editTimeSlotSelection = EditTimeSlotSelection
-                        , handleTimeSlotMouseMove = HandleTimeSlotMouseMove
-                        , handleTimeSlotMouseUp = HandleTimeSlotMouseUp
-                        , startSelectingTimeSlot = StartSelectingTimeSlot
-                        }
-                    )
+                , viewScrollableTimeSlots model (Events Nothing)
                 ]
             , viewDiscardConfirmationModal model
                 { cancelDiscardConfirmationModal = CancelDiscardConfirmationModal

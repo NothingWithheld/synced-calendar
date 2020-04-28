@@ -36,7 +36,7 @@ import TimeSlots.Commands
         )
 import TimeSlots.Messaging as TSMessaging
 import TimeSlots.Time as TSTime exposing (TimeDetails(..))
-import TimeSlots.TimeSlots as TS
+import TimeSlots.TimeSlots as TS exposing (Calendar(..))
 import Utils
     exposing
         ( NoData
@@ -99,20 +99,32 @@ moveWeekBackward model =
 
 
 setTimeSlotPositions :
-    TS.WithTimeSlotPositions (WithSession a)
-    -> (Result Http.Error (List TSMessaging.ServerTimeSlot) -> msg)
+    TS.WithTimeSlotPositions (TS.WithLoadingTimeSlots (WithSession a))
+    -> Calendar (Result Http.Error (List TSMessaging.ServerTimeSlot) -> msg) b
     -> Result Dom.Error (List Dom.Element)
-    -> ( TS.WithTimeSlotPositions (WithSession a), Cmd msg )
-setTimeSlotPositions model setSavedWeeklyTS result =
+    -> ( TS.WithTimeSlotPositions (TS.WithLoadingTimeSlots (WithSession a)), Cmd msg )
+setTimeSlotPositions model updates result =
     let
         updateModelWithTSPositions elementList =
             ( { model
                 | timeSlotPositions = TS.setTimeSlotPositions TS.startingSlotNum 0 elementList
+                , loadingTimeSlots =
+                    case updates of
+                        WeeklyFreeTimes _ ->
+                            True
+
+                        Events _ ->
+                            False
               }
-            , requestSavedWeeklyTimeSlots
-                setSavedWeeklyTS
-                (Session.getUserId model.session)
-                (Session.getOffset model.session)
+            , case updates of
+                WeeklyFreeTimes setSavedWeeklyTS ->
+                    requestSavedWeeklyTimeSlots
+                        setSavedWeeklyTS
+                        (Session.getUserId model.session)
+                        (Session.getOffset model.session)
+
+                Events _ ->
+                    Cmd.none
             )
     in
     defaultOnError ( model, Cmd.none ) result updateModelWithTSPositions
@@ -120,17 +132,31 @@ setTimeSlotPositions model setSavedWeeklyTS result =
 
 updateTimeZone :
     TS.WithLoadingTimeSlots (WithSession a)
-    -> (Result Http.Error (List TSMessaging.ServerTimeSlot) -> msg)
+    -> Calendar (Result Http.Error (List TSMessaging.ServerTimeSlot) -> msg) b
     -> String
     -> ( TS.WithLoadingTimeSlots (WithSession a), Cmd msg )
-updateTimeZone model onGetUpdatedTimeSlots timeZoneLabel =
+updateTimeZone model updates timeZoneLabel =
     case Session.setOffset model.session timeZoneLabel of
         Just newSession ->
-            ( { model | session = newSession, loadingTimeSlots = True }
-            , requestSavedWeeklyTimeSlots
-                onGetUpdatedTimeSlots
-                (Session.getUserId newSession)
-                (Session.getOffset newSession)
+            ( { model
+                | session = newSession
+                , loadingTimeSlots =
+                    case updates of
+                        WeeklyFreeTimes _ ->
+                            True
+
+                        Events _ ->
+                            False
+              }
+            , case updates of
+                WeeklyFreeTimes setSavedWeeklyTS ->
+                    requestSavedWeeklyTimeSlots
+                        setSavedWeeklyTS
+                        (Session.getUserId model.session)
+                        (Session.getOffset model.session)
+
+                Events _ ->
+                    Cmd.none
             )
 
         Nothing ->

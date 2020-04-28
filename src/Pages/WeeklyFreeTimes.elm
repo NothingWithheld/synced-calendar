@@ -105,10 +105,10 @@ update msg model =
 
         -- TimeSlots
         SetTimeSlotPositions result ->
-            TSUpdate.setTimeSlotPositions model SetSavedWeeklyTimeSlots result
+            TSUpdate.setTimeSlotPositions model (WeeklyFreeTimes SetSavedWeeklyTimeSlots) result
 
         UpdateTimeZone timeZoneLabel ->
-            TSUpdate.updateTimeZone model SetSavedWeeklyTimeSlots timeZoneLabel
+            TSUpdate.updateTimeZone model (WeeklyFreeTimes SetSavedWeeklyTimeSlots) timeZoneLabel
 
         SetTimeSlotsElement result ->
             TSUpdate.setTimeSlotsElement model result

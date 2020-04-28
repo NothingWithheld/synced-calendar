@@ -13,8 +13,12 @@ import Material.Options as Options exposing (css, styled, when)
 import Material.Select as Select
 import Material.TextField as TextField
 import Material.Typography as Typography
-import TimeSlots.TimeSlots as TS
+import TimeSlots.TimeSlots as TS exposing (Calendar(..))
 import Utils exposing (WithMdc, getListItemAt)
+
+
+
+-- viewUserRequest
 
 
 viewUserRequest :
@@ -458,6 +462,10 @@ viewTimeSlotSelectOption labelAddition isEndSlot slotNum isSelected =
             Select.selected
         ]
         [ text <| time ++ amOrPm ++ labelAddition ]
+
+
+
+-- viewDiscardConfirmationModal
 
 
 viewDiscardConfirmationModal :
