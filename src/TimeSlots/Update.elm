@@ -190,11 +190,11 @@ setSavedWeeklyTimeSlots model result =
                 endBound =
                     getListItemAt endSlot model_.timeSlotPositions
             in
-            case Maybe.map2 (TS.SelectedTimeSlot dayNum id) startBound endBound of
+            case Maybe.map2 (TS.TimeSlot dayNum) startBound endBound of
                 Just selectionBounds ->
                     { model_
                         | selectedTimeSlots =
-                            TS.SelectedTimeSlotDetails selectionBounds EC.WeeklyFreeTimes
+                            TS.SelectedTimeSlotDetails selectionBounds (EC.SetWeeklyFreeTime id)
                                 :: model_.selectedTimeSlots
                     }
 
@@ -334,18 +334,20 @@ sendUpdateTimeSlotRequest model setTSAfterEdit =
             let
                 { dayNum, startBound, endBound } =
                     TS.getOrderedTimeSlot selectionBounds
-
-                timeSlotId =
-                    .id <| TS.getTimeSlotFromDetails prevSelection
             in
-            ( model
-            , updateWeeklyTimeSlot setTSAfterEdit
-                timeSlotId
-                (Session.getOffset model.session)
-                dayNum
-                startBound.slotNum
-                endBound.slotNum
-            )
+            case TS.getEventDetailsFromDetails prevSelection of
+                EC.SetWeeklyFreeTime timeSlotId ->
+                    ( model
+                    , updateWeeklyTimeSlot setTSAfterEdit
+                        timeSlotId
+                        (Session.getOffset model.session)
+                        dayNum
+                        startBound.slotNum
+                        endBound.slotNum
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -364,8 +366,8 @@ setSelectedTimeSlotAfterCreation model result =
 
                 selectedTimeSlot =
                     TS.SelectedTimeSlotDetails
-                        (TS.selectingToSelectedTimeSlot orderedSelectionBounds timeSlotId)
-                        eventDetails
+                        orderedSelectionBounds
+                        (EC.SetWeeklyFreeTime timeSlotId)
 
                 intersectsTimeSlots =
                     TS.doesTSSelectionIntersectSelectedTimeSlots
@@ -401,10 +403,7 @@ setSelectedTimeSlotAfterEditing model result =
 
                 selectedTimeSlot =
                     TS.SelectedTimeSlotDetails
-                        (TS.selectingToSelectedTimeSlot orderedSelectionBounds <|
-                            .id <|
-                                TS.getTimeSlotFromDetails prevSelection
-                        )
+                        orderedSelectionBounds
                         eventDetails
 
                 intersectsTimeSlots =
@@ -526,13 +525,14 @@ sendDeleteTimeSlotRequest :
 sendDeleteTimeSlotRequest model onDelete =
     case model.timeSlotSelection of
         TS.EditingSelection _ prevSelection ->
-            let
-                timeSlotId =
-                    .id <| TS.getTimeSlotFromDetails prevSelection
-            in
-            ( model
-            , deleteWeeklyTimeSlot onDelete timeSlotId
-            )
+            case TS.getEventDetailsFromDetails prevSelection of
+                EC.SetWeeklyFreeTime timeSlotId ->
+                    ( model
+                    , deleteWeeklyTimeSlot onDelete timeSlotId
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )

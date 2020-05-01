@@ -558,7 +558,7 @@ viewSelectedTimeSlot updates selectedTimeSlotDetails =
         [ viewTimeSlotDuration selectedTimeSlot ]
 
 
-viewTimeSlotDuration : TS.WithSelectingTimeSlot a -> Html msg
+viewTimeSlotDuration : TS.WithTimeSlot a -> Html msg
 viewTimeSlotDuration { startBound, endBound } =
     let
         ( startTime, startAmOrPm ) =
@@ -609,7 +609,7 @@ viewCurrentlySelectingTimeSlot model dayNum =
 
 viewUserChangingTimeSlot :
     TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a)
-    -> TS.WithSelectingTimeSlot b
+    -> TS.WithTimeSlot b
     -> TS.DayNum
     -> Html msg
 viewUserChangingTimeSlot model timeSlotSelection dayNum =
@@ -648,7 +648,7 @@ viewUserChangingTimeSlot model timeSlotSelection dayNum =
         text ""
 
 
-getCardDimensions : TS.WithSelectingTimeSlot a -> CardDimensions
+getCardDimensions : TS.WithTimeSlot a -> CardDimensions
 getCardDimensions { startBound, endBound } =
     let
         ( higherBound, lowerBound ) =

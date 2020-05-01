@@ -52,33 +52,16 @@ type alias WithTimeSlotsElement a =
     { a | timeSlotsElement : Maybe Element }
 
 
-type alias SelectingTimeSlot =
+type alias TimeSlot =
     { dayNum : DayNum
     , startBound : TimeSlotBoundaryPosition
     , endBound : TimeSlotBoundaryPosition
     }
 
 
-type alias WithSelectingTimeSlot a =
+type alias WithTimeSlot a =
     { a
         | dayNum : DayNum
-        , startBound : TimeSlotBoundaryPosition
-        , endBound : TimeSlotBoundaryPosition
-    }
-
-
-type alias SelectedTimeSlot =
-    { dayNum : DayNum
-    , id : Int
-    , startBound : TimeSlotBoundaryPosition
-    , endBound : TimeSlotBoundaryPosition
-    }
-
-
-type alias WithSelectedTimeSlot a =
-    { a
-        | dayNum : DayNum
-        , id : Int
         , startBound : TimeSlotBoundaryPosition
         , endBound : TimeSlotBoundaryPosition
     }
@@ -98,14 +81,14 @@ type alias WithTimeSlotInitialSelection a =
 
 
 type SelectedTimeSlotDetails
-    = SelectedTimeSlotDetails SelectedTimeSlot EC.EventCreationDetails
+    = SelectedTimeSlotDetails TimeSlot EC.EventCreationDetails
 
 
 type TimeSlotSelection
     = NotSelecting
     | InitialPressNoMove TimeSlotInitialSelection
-    | CurrentlySelecting SelectingTimeSlot
-    | EditingSelection SelectingTimeSlot SelectedTimeSlotDetails
+    | CurrentlySelecting TimeSlot
+    | EditingSelection TimeSlot SelectedTimeSlotDetails
 
 
 type alias WithTimeSlotSelection a =
@@ -179,7 +162,7 @@ useTSPositionForInitialSelection beginningSelectionRecord dayNum timeSlotPositio
 
 setTimeSlotSelectionBounds :
     WithTimeSlotSelection a
-    -> SelectingTimeSlot
+    -> TimeSlot
     -> WithTimeSlotSelection a
 setTimeSlotSelectionBounds beginningSelectionRecord selectionBounds =
     case beginningSelectionRecord.timeSlotSelection of
@@ -203,7 +186,7 @@ useTSPositionForBothSelectionBounds :
     -> WithTimeSlotSelection a
 useTSPositionForBothSelectionBounds beginningSelectionRecord dayNum timeSlotPosition =
     setTimeSlotSelectionBounds beginningSelectionRecord <|
-        SelectingTimeSlot dayNum timeSlotPosition timeSlotPosition
+        TimeSlot dayNum timeSlotPosition timeSlotPosition
 
 
 useTSPositionsForSelectionBounds :
@@ -214,7 +197,7 @@ useTSPositionsForSelectionBounds :
     -> WithTimeSlotSelection a
 useTSPositionsForSelectionBounds beginningSelectionRecord dayNum startBound timeSlotPosition =
     setTimeSlotSelectionBounds beginningSelectionRecord <|
-        SelectingTimeSlot dayNum startBound timeSlotPosition
+        TimeSlot dayNum startBound timeSlotPosition
 
 
 setTimeSlotPositions : Int -> Float -> List Dom.Element -> List TimeSlotBoundaryPosition
@@ -314,9 +297,14 @@ getUnselectedTimeSlotRange currentTimeSlotDetails dayNum startSlotNum endSlotNum
         Maybe.map getContinuousRange rangeStart
 
 
-getTimeSlotFromDetails : SelectedTimeSlotDetails -> WithSelectedTimeSlot {}
+getTimeSlotFromDetails : SelectedTimeSlotDetails -> WithTimeSlot {}
 getTimeSlotFromDetails (SelectedTimeSlotDetails timeSlot _) =
     timeSlot
+
+
+getEventDetailsFromDetails : SelectedTimeSlotDetails -> EC.EventCreationDetails
+getEventDetailsFromDetails (SelectedTimeSlotDetails _ eventDetails) =
+    eventDetails
 
 
 getTimeSlotPositionOfPointer : List TimeSlotBoundaryPosition -> Float -> Maybe TimeSlotBoundaryPosition
@@ -337,7 +325,7 @@ getTimeSlotPositionOfPointer timeSlotPositions pageY =
     getTSPOPHelper timeSlotPositions
 
 
-getOrderedTimeSlot : WithSelectingTimeSlot a -> WithSelectingTimeSlot a
+getOrderedTimeSlot : WithTimeSlot a -> WithTimeSlot a
 getOrderedTimeSlot timeSlot =
     let
         { startBound, endBound } =
@@ -423,7 +411,7 @@ getTimeDurationBetween startSlot endSlot =
         (String.fromFloat <| toFloat diff / 4) ++ " hrs"
 
 
-areSelectionBoundsEqual : WithSelectingTimeSlot a -> WithSelectingTimeSlot b -> Bool
+areSelectionBoundsEqual : WithTimeSlot a -> WithTimeSlot b -> Bool
 areSelectionBoundsEqual selectionBoundsA selectionBoundsB =
     selectionBoundsA.dayNum
         == selectionBoundsB.dayNum
@@ -433,14 +421,15 @@ areSelectionBoundsEqual selectionBoundsA selectionBoundsB =
         == selectionBoundsB.endBound
 
 
-selectingToSelectedTimeSlot : SelectingTimeSlot -> Int -> SelectedTimeSlot
-selectingToSelectedTimeSlot { dayNum, startBound, endBound } timeSlotId =
-    SelectedTimeSlot dayNum
-        timeSlotId
-        startBound
-        endBound
+
+-- selectingToSelectedTimeSlot : TimeSlot -> Int -> TimeSlot
+-- selectingToSelectedTimeSlot { dayNum, startBound, endBound } timeSlotId =
+--     TimeSlot dayNum
+--         timeSlotId
+--         startBound
+--         endBound
 
 
-selectedToSelectingTimeSlot : SelectedTimeSlot -> SelectingTimeSlot
+selectedToSelectingTimeSlot : TimeSlot -> TimeSlot
 selectedToSelectingTimeSlot { dayNum, startBound, endBound } =
-    SelectingTimeSlot dayNum startBound endBound
+    TimeSlot dayNum startBound endBound

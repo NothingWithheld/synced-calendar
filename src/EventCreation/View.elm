@@ -116,7 +116,10 @@ viewUserRequestForm model ({ noOp } as updates) eventCreationDetails =
             )
         ]
         (case eventCreationDetails of
-            EC.WeeklyFreeTimes ->
+            EC.UnsetWeeklyFreeTime ->
+                viewWeeklyFreeTimesForm model updates intersectsTimeSlots
+
+            EC.SetWeeklyFreeTime _ ->
                 viewWeeklyFreeTimesForm model updates intersectsTimeSlots
 
             EC.EventDetails eventItems ->
@@ -310,7 +313,7 @@ viewWeeklyFreeTimesSelects :
             , changeSelectionEndSlot : String -> msg
             , onMdc : Material.Msg msg -> msg
         }
-    -> TS.WithSelectingTimeSlot c
+    -> TS.WithTimeSlot c
     -> Html msg
 viewWeeklyFreeTimesSelects model updates { dayNum, startBound, endBound } =
     styled div

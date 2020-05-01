@@ -20,7 +20,8 @@ type alias WithEventCreation a =
 
 
 type EventCreationDetails
-    = WeeklyFreeTimes
+    = UnsetWeeklyFreeTime
+    | SetWeeklyFreeTime Int -- weekly free time slot ID
     | EventDetails EventItems
 
 
@@ -43,8 +44,11 @@ type alias WithDiscardConfirmationModal a =
 areEventCreationsEqual : EventCreationDetails -> EventCreationDetails -> Bool
 areEventCreationsEqual eventCreationDetailsA eventCreationDetailsB =
     case ( eventCreationDetailsA, eventCreationDetailsB ) of
-        ( WeeklyFreeTimes, WeeklyFreeTimes ) ->
+        ( UnsetWeeklyFreeTime, UnsetWeeklyFreeTime ) ->
             True
+
+        ( SetWeeklyFreeTime eventA, SetWeeklyFreeTime eventB ) ->
+            eventA == eventB
 
         ( EventDetails eventItemsA, EventDetails eventItemsB ) ->
             eventItemsA == eventItemsB

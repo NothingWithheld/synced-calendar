@@ -75,7 +75,7 @@ promptUserForEventDetails model result =
             in
             ( { model
                 | eventCreation =
-                    EC.CurrentlyCreatingEvent EC.WeeklyFreeTimes { x = x, y = element.y }
+                    EC.CurrentlyCreatingEvent EC.UnsetWeeklyFreeTime { x = x, y = element.y }
               }
             , Cmd.none
             )
