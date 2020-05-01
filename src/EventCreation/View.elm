@@ -1,8 +1,10 @@
 module EventCreation.View exposing (viewDiscardConfirmationModal, viewUserRequest)
 
+import Date
 import EventCreation.Constants as ECConsts
 import EventCreation.EventCreation as EC
 import Html exposing (Html, div, text)
+import Html.Entity as Entity
 import Json.Decode as Decode
 import Material
 import Material.Button as Button
@@ -101,30 +103,55 @@ viewUserRequestForm model ({ noOp } as updates) eventDetails =
             TS.doesTSSelectionIntersectSelectedTimeSlots
                 model.selectedTimeSlots
                 model.timeSlotSelection
+
+        maybeTimeSlot =
+            case model.timeSlotSelection of
+                TS.CurrentlySelecting ts ->
+                    Just ts
+
+                TS.EditingSelection ts _ ->
+                    Just ts
+
+                _ ->
+                    Nothing
     in
-    Card.view
-        [ when intersectsTimeSlots <| css "border" "2px solid #D64545"
-        , css "width" (String.fromFloat EC.eventDetailsPromptWidth ++ "px")
-        , css "padding" "12px 8px 0px"
-        , css "box-shadow" "0 24px 38px 3px rgba(0,0,0,0.14), 0 9px 46px 8px rgba(0,0,0,0.12), 0 11px 15px -7px rgba(0,0,0,0.2)"
-        , Options.onWithOptions "click"
-            (Decode.succeed
-                { message = noOp
-                , preventDefault = False
-                , stopPropagation = True
-                }
-            )
-        ]
-        (case eventDetails of
-            EC.UnsetWeeklyFreeTime ->
-                viewWeeklyFreeTimesForm model updates intersectsTimeSlots
+    case maybeTimeSlot of
+        Just timeSlot ->
+            Card.view
+                [ when intersectsTimeSlots <| css "border" "2px solid #D64545"
+                , css "width" (String.fromFloat EC.eventDetailsPromptWidth ++ "px")
+                , css "padding" "12px 8px 0px"
+                , css "box-shadow" "0 24px 38px 3px rgba(0,0,0,0.14), 0 9px 46px 8px rgba(0,0,0,0.12), 0 11px 15px -7px rgba(0,0,0,0.2)"
+                , Options.onWithOptions "click"
+                    (Decode.succeed
+                        { message = noOp
+                        , preventDefault = False
+                        , stopPropagation = True
+                        }
+                    )
+                ]
+                (case eventDetails of
+                    EC.UnsetWeeklyFreeTime ->
+                        viewWeeklyFreeTimesForm model updates intersectsTimeSlots
 
-            EC.SetWeeklyFreeTime _ ->
-                viewWeeklyFreeTimesForm model updates intersectsTimeSlots
+                    EC.SetWeeklyFreeTime _ ->
+                        viewWeeklyFreeTimesForm model updates intersectsTimeSlots
 
-            EC.ConfirmedEvent eventItems ->
-                viewEventDetailsForm model updates eventItems intersectsTimeSlots
-        )
+                    EC.UnsetAvailableTime ->
+                        viewWeeklyFreeTimesForm model updates intersectsTimeSlots
+
+                    EC.SetAvailableTime ->
+                        viewWeeklyFreeTimesForm model updates intersectsTimeSlots
+
+                    EC.UnsetConfirmedEvent confirmedEventDetails ->
+                        viewConfirmedEventForm model updates timeSlot confirmedEventDetails
+
+                    EC.ConfirmedEvent confirmedEventDetails ->
+                        viewConfirmedEventForm model updates timeSlot confirmedEventDetails
+                )
+
+        Nothing ->
+            text ""
 
 
 viewWeeklyFreeTimesForm :
@@ -157,6 +184,74 @@ viewWeeklyFreeTimesForm model updates intersectsTimeSlots =
 
         _ ->
             []
+
+
+viewConfirmedEventForm :
+    WithMdc msg a
+    ->
+        { b
+            | handleEditingCancel : msg
+            , onMdc : Material.Msg msg -> msg
+        }
+    -> TS.TimeSlot
+    -> EC.ConfirmedEventDetails
+    -> List (Html msg)
+viewConfirmedEventForm model { onMdc, handleEditingCancel } { startBound, endBound } confirmedEventDetails =
+    let
+        ( startTime, startAmOrPm ) =
+            TS.getTimeForSlotNum startBound.slotNum False
+
+        ( endTime, endAmOrPm ) =
+            TS.getTimeForSlotNum endBound.slotNum True
+
+        startsAndEndsSameHalfOfDay =
+            startAmOrPm == endAmOrPm
+    in
+    [ styled Html.h4
+        [ Typography.headline5
+        , css "margin" "0 0 4px"
+        ]
+        [ text confirmedEventDetails.title
+        ]
+    , styled div
+        [ css "display" "flex"
+        , css "align-items" "center"
+        ]
+        [ styled Html.p
+            [ css "margin" "0" ]
+            [ text <| Date.format "MMMM d, y" confirmedEventDetails.date ]
+        , styled Html.p
+            [ css "margin" "0 0 0 24px" ]
+            [ text <|
+                startTime
+                    ++ (if startsAndEndsSameHalfOfDay then
+                            ""
+
+                        else
+                            startAmOrPm
+                       )
+                    ++ " "
+                    ++ Entity.ndash
+                    ++ " "
+                    ++ endTime
+                    ++ endAmOrPm
+            ]
+        ]
+    , styled Html.p [ css "margin" "4px 0" ] [ text confirmedEventDetails.description ]
+    , Card.actions [ css "display" "flex", css "flex-direction" "row-reverse" ]
+        [ Card.actionButtons []
+            [ Button.view onMdc
+                "close-event-button"
+                model.mdc
+                [ Card.actionButton
+                , Button.ripple
+                , Button.unelevated
+                , Options.onClick handleEditingCancel
+                ]
+                [ text "Cancel" ]
+            ]
+        ]
+    ]
 
 
 viewEventDetailsForm :

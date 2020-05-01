@@ -95,6 +95,7 @@ type Msg
     | SendUpdateTimeSlotRequest
     | SetSelectedTimeSlotAfterCreation (Result Http.Error Int)
     | SetSelectedTimeSlotAfterEditing (Result Http.Error NoData)
+    | EditTimeSlotSelection TS.SelectedTimeSlotDetails
     | SendDeleteTimeSlotRequest
     | DeleteTimeSlot (Result Http.Error NoData)
       -- EventCreation
@@ -169,6 +170,9 @@ update msg model =
         SetSelectedTimeSlotAfterEditing result ->
             TSUpdate.setSelectedTimeSlotAfterEditing model result
 
+        EditTimeSlotSelection selectedTimeslotDetails ->
+            TSUpdate.editTimeSlotSelection model PromptUserForEventDetails selectedTimeslotDetails
+
         SendDeleteTimeSlotRequest ->
             TSUpdate.sendDeleteTimeSlotRequest model DeleteTimeSlot
 
@@ -232,7 +236,7 @@ view model =
                         }
                     )
                 , viewDayHeadings model
-                , viewScrollableTimeSlots model (Events Nothing)
+                , viewScrollableTimeSlots model (Events { editTimeSlotSelection = EditTimeSlotSelection })
                 ]
             , viewDiscardConfirmationModal model
                 { cancelDiscardConfirmationModal = CancelDiscardConfirmationModal

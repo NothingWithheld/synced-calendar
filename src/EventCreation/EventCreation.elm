@@ -26,6 +26,9 @@ type alias WithEventCreation a =
 type EventDetails
     = UnsetWeeklyFreeTime
     | SetWeeklyFreeTime Int -- weekly free time slot ID
+    | UnsetAvailableTime
+    | SetAvailableTime
+    | UnsetConfirmedEvent ConfirmedEventDetails
     | ConfirmedEvent ConfirmedEventDetails
 
 
@@ -79,6 +82,15 @@ getDateFromDetails eventDetails =
         SetWeeklyFreeTime _ ->
             Nothing
 
+        UnsetAvailableTime ->
+            Nothing
+
+        SetAvailableTime ->
+            Nothing
+
+        UnsetConfirmedEvent { date } ->
+            Just date
+
         ConfirmedEvent { date } ->
             Just date
 
@@ -87,6 +99,9 @@ isConfirmedEvent : EventDetails -> Bool
 isConfirmedEvent eventDetails =
     case eventDetails of
         ConfirmedEvent _ ->
+            True
+
+        UnsetConfirmedEvent _ ->
             True
 
         _ ->

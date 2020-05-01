@@ -373,7 +373,9 @@ viewScrollableTimeSlots :
                 , editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
                 , handleTimeSlotMouseUp : msg
             }
-            c
+            { c
+                | editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
+            }
     -> Html msg
 viewScrollableTimeSlots model updates =
     let
@@ -471,7 +473,9 @@ viewSingleDayTimeSlots :
                 , startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg
                 , editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
             }
-            c
+            { c
+                | editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
+            }
     -> ( TS.DayNum, Maybe Posix )
     -> Html msg
 viewSingleDayTimeSlots model updates ( dayNum, maybeDate ) =
@@ -556,7 +560,10 @@ viewTimeSlot updates dayNum slotNum =
 
 
 viewSelectedTimeSlot :
-    Calendar { a | editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg } b
+    Calendar { a | editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg }
+        { b
+            | editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
+        }
     -> TS.SelectedTimeSlotDetails
     -> Html msg
 viewSelectedTimeSlot updates selectedTimeSlotDetails =
@@ -591,8 +598,8 @@ viewSelectedTimeSlot updates selectedTimeSlotDetails =
             WeeklyFreeTimes { editTimeSlotSelection } ->
                 Options.onClick <| editTimeSlotSelection selectedTimeSlotDetails
 
-            Events _ ->
-                nop
+            Events { editTimeSlotSelection } ->
+                Options.onClick <| editTimeSlotSelection selectedTimeSlotDetails
         ]
         [ viewTimeSlotDuration selectedTimeSlot hasSingleSlotHeight ]
 
