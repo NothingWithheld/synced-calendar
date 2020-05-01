@@ -1,4 +1,8 @@
-module ProposeEvent.Commands exposing (submitEventProposal)
+module ProposeEvent.Commands exposing
+    ( requestProposedEventsBy
+    , requestProposedEventsFor
+    , submitEventProposal
+    )
 
 import Http
 import ProposeEvent.Messaging as PEMessaging
@@ -31,3 +35,25 @@ submitEventProposal onSubmitResult userId recipientId fromDate toDate name descr
 
         Nothing ->
             Cmd.none
+
+
+requestProposedEventsBy :
+    (Result Http.Error (List PEMessaging.ServerProposedEvent) -> msg)
+    -> String
+    -> Cmd msg
+requestProposedEventsBy onResult userId =
+    Http.get
+        { url = "http://localhost:3000/api/" ++ userId ++ "/proposed-event/creator"
+        , expect = Http.expectJson onResult PEMessaging.serverProposedEventListDecoder
+        }
+
+
+requestProposedEventsFor :
+    (Result Http.Error (List PEMessaging.ServerProposedEvent) -> msg)
+    -> String
+    -> Cmd msg
+requestProposedEventsFor onResult userId =
+    Http.get
+        { url = "http://localhost:3000/api/" ++ userId ++ "/proposed-event/recipient"
+        , expect = Http.expectJson onResult PEMessaging.serverProposedEventListDecoder
+        }
