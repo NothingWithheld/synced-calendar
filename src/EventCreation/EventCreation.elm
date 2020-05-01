@@ -1,13 +1,15 @@
 module EventCreation.EventCreation exposing
-    ( EventCreation(..)
+    ( ConfirmedEventDetails
+    , EventCreation(..)
     , EventCreationDetails(..)
     , EventCreationPosition
-    , EventItems
     , WithDiscardConfirmationModal
     , WithEventCreation
     , areEventCreationsEqual
     , eventDetailsPromptWidth
     )
+
+import Date exposing (Date)
 
 
 type EventCreation
@@ -22,12 +24,16 @@ type alias WithEventCreation a =
 type EventCreationDetails
     = UnsetWeeklyFreeTime
     | SetWeeklyFreeTime Int -- weekly free time slot ID
-    | EventDetails EventItems
+    | ConfirmedEvent ConfirmedEventDetails
 
 
-type alias EventItems =
-    { title : String
+type alias ConfirmedEventDetails =
+    { eventId : Int
+    , recipientIds : List String
+    , creatorId : String
+    , title : String
     , description : String
+    , date : Date
     }
 
 
@@ -50,8 +56,8 @@ areEventCreationsEqual eventCreationDetailsA eventCreationDetailsB =
         ( SetWeeklyFreeTime eventA, SetWeeklyFreeTime eventB ) ->
             eventA == eventB
 
-        ( EventDetails eventItemsA, EventDetails eventItemsB ) ->
-            eventItemsA == eventItemsB
+        ( ConfirmedEvent eventA, ConfirmedEvent eventB ) ->
+            eventA == eventB
 
         ( _, _ ) ->
             False

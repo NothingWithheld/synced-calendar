@@ -10,6 +10,8 @@ module TimeSlots.Update exposing
     , sendSaveTimeSlotRequest
     , sendUpdateTimeSlotRequest
     , setInitialTime
+    , setSavedConfirmedEventsBy
+    , setSavedConfirmedEventsFor
     , setSavedWeeklyTimeSlots
     , setSelectedTimeSlotAfterCreation
     , setSelectedTimeSlotAfterEditing
@@ -46,6 +48,10 @@ import Utils
         , getListItemAt
         , useWithoutCmdMsg
         )
+
+
+
+-- time
 
 
 setInitialTime :
@@ -98,42 +104,17 @@ moveWeekBackward model =
             ( model, Cmd.none )
 
 
-setTimeSlotPositions :
-    TS.WithTimeSlotPositions (TS.WithLoadingTSPositions (WithSession a))
-    -> Calendar (Result Http.Error (List TSMessaging.ServerTimeSlot) -> msg) b
-    -> Result Dom.Error (List Dom.Element)
-    -> ( TS.WithTimeSlotPositions (TS.WithLoadingTSPositions (WithSession a)), Cmd msg )
-setTimeSlotPositions model updates result =
-    let
-        updateModelWithTSPositions elementList =
-            ( { model
-                | timeSlotPositions = TS.setTimeSlotPositions TS.startingSlotNum 0 elementList
-                , loadingTSPositions = False
-              }
-            , case updates of
-                WeeklyFreeTimes setSavedWeeklyTS ->
-                    requestSavedWeeklyTimeSlots
-                        setSavedWeeklyTS
-                        (Session.getUserId model.session)
-                        (Session.getOffset model.session)
-
-                Events _ ->
-                    Cmd.none
-            )
-    in
-    defaultOnError ( model, Cmd.none ) result updateModelWithTSPositions
-
-
 updateTimeZone :
-    TS.WithLoadingAllExceptTSPositions (WithSession a)
+    TS.WithLoadingAllExceptTSPositions (WithSession (TS.WithSelectedTimeSlots a))
     -> Calendar (Result Http.Error (List TSMessaging.ServerTimeSlot) -> msg) b
     -> String
-    -> ( TS.WithLoadingAllExceptTSPositions (WithSession a), Cmd msg )
+    -> ( TS.WithLoadingAllExceptTSPositions (WithSession (TS.WithSelectedTimeSlots a)), Cmd msg )
 updateTimeZone model updates timeZoneLabel =
     case Session.setOffset model.session timeZoneLabel of
         Just newSession ->
             ( { model
                 | session = newSession
+                , selectedTimeSlots = []
                 , loadingWeeklyFreeTimes =
                     case updates of
                         WeeklyFreeTimes _ ->
@@ -171,6 +152,36 @@ updateTimeZone model updates timeZoneLabel =
             ( model, Cmd.none )
 
 
+
+-- DOM position loads
+
+
+setTimeSlotPositions :
+    TS.WithTimeSlotPositions (TS.WithLoadingTSPositions (WithSession a))
+    -> Calendar (Result Http.Error (List TSMessaging.ServerTimeSlot) -> msg) b
+    -> Result Dom.Error (List Dom.Element)
+    -> ( TS.WithTimeSlotPositions (TS.WithLoadingTSPositions (WithSession a)), Cmd msg )
+setTimeSlotPositions model updates result =
+    let
+        updateModelWithTSPositions elementList =
+            ( { model
+                | timeSlotPositions = TS.setTimeSlotPositions TS.startingSlotNum 0 elementList
+                , loadingTSPositions = False
+              }
+            , case updates of
+                WeeklyFreeTimes setSavedWeeklyTS ->
+                    requestSavedWeeklyTimeSlots
+                        setSavedWeeklyTS
+                        (Session.getUserId model.session)
+                        (Session.getOffset model.session)
+
+                Events _ ->
+                    Cmd.none
+            )
+    in
+    defaultOnError ( model, Cmd.none ) result updateModelWithTSPositions
+
+
 setTimeSlotsElement :
     TS.WithTimeSlotsElement a
     -> Result Dom.Error Dom.Element
@@ -182,6 +193,10 @@ setTimeSlotsElement model result =
 
         Err _ ->
             ( model, Cmd.none )
+
+
+
+-- saved results from DB
 
 
 setSavedWeeklyTimeSlots :
@@ -215,7 +230,6 @@ setSavedWeeklyTimeSlots model result =
                 updateWithTimeSlot
                 { model
                     | loadingWeeklyFreeTimes = False
-                    , selectedTimeSlots = []
                 }
                 timeSlotList
             , Cmd.none
@@ -223,6 +237,83 @@ setSavedWeeklyTimeSlots model result =
 
         Err _ ->
             ( model, Cmd.none )
+
+
+updateWithConfirmedEvent :
+    TSMessaging.ServerConfirmedEvent
+    -> TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a)
+    -> TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a)
+updateWithConfirmedEvent { eventId, recipientIds, creatorId, title, description, date, dayNum, startSlot, endSlot } model =
+    let
+        startBound =
+            getListItemAt startSlot model.timeSlotPositions
+
+        endBound =
+            getListItemAt endSlot model.timeSlotPositions
+    in
+    case Maybe.map2 (TS.TimeSlot dayNum) startBound endBound of
+        Just selectionBounds ->
+            { model
+                | selectedTimeSlots =
+                    TS.SelectedTimeSlotDetails selectionBounds
+                        (EC.ConfirmedEvent
+                            { eventId = eventId
+                            , recipientIds = recipientIds
+                            , creatorId = creatorId
+                            , title = title
+                            , description = description
+                            , date = date
+                            }
+                        )
+                        :: model.selectedTimeSlots
+            }
+
+        Nothing ->
+            model
+
+
+setSavedConfirmedEventsFor :
+    TS.WithLoadingConfirmedEventsFor (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a))
+    -> Result Http.Error (List TSMessaging.ServerConfirmedEvent)
+    -> ( TS.WithLoadingConfirmedEventsFor (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a)), Cmd msg )
+setSavedConfirmedEventsFor model result =
+    case result of
+        Ok confirmedEventList ->
+            ( List.foldl
+                updateWithConfirmedEvent
+                { model
+                    | loadingConfirmedEventsFor = False
+                }
+                confirmedEventList
+            , Cmd.none
+            )
+
+        Err _ ->
+            ( model, Cmd.none )
+
+
+setSavedConfirmedEventsBy :
+    TS.WithLoadingConfirmedEventsBy (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a))
+    -> Result Http.Error (List TSMessaging.ServerConfirmedEvent)
+    -> ( TS.WithLoadingConfirmedEventsBy (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a)), Cmd msg )
+setSavedConfirmedEventsBy model result =
+    case result of
+        Ok confirmedEventList ->
+            ( List.foldl
+                updateWithConfirmedEvent
+                { model
+                    | loadingConfirmedEventsBy = False
+                }
+                confirmedEventList
+            , Cmd.none
+            )
+
+        Err _ ->
+            ( model, Cmd.none )
+
+
+
+-- time slot user interaction
 
 
 startSelectingTimeSlot :

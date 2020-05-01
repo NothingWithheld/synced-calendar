@@ -17,6 +17,7 @@ import TimeSlots.Commands
         , requestTimeSlotPositions
         , requestTimeSlotsElement
         )
+import TimeSlots.Messaging as TSMessaging
 import TimeSlots.Time exposing (TimeDetails(..))
 import TimeSlots.TimeSlots as TS exposing (Calendar(..))
 import TimeSlots.Update as TSUpdate
@@ -83,6 +84,8 @@ type Msg
     | MoveWeekForward
     | MoveWeekBackward
     | SetTimeSlotPositions (Result Dom.Error (List Dom.Element))
+    | SetSavedConfirmedEventsBy (Result Http.Error (List TSMessaging.ServerConfirmedEvent))
+    | SetSavedConfirmedEventsFor (Result Http.Error (List TSMessaging.ServerConfirmedEvent))
     | UpdateTimeZone String
     | SetTimeSlotsElement (Result Dom.Error Dom.Element)
     | SendSaveTimeSlotRequest
@@ -126,6 +129,12 @@ update msg model =
 
         SetTimeSlotPositions result ->
             TSUpdate.setTimeSlotPositions model (Events Nothing) result
+
+        SetSavedConfirmedEventsBy result ->
+            TSUpdate.setSavedConfirmedEventsBy model result
+
+        SetSavedConfirmedEventsFor result ->
+            TSUpdate.setSavedConfirmedEventsFor model result
 
         UpdateTimeZone timeZoneLabel ->
             TSUpdate.updateTimeZone model (Events Nothing) timeZoneLabel

@@ -122,7 +122,7 @@ viewUserRequestForm model ({ noOp } as updates) eventCreationDetails =
             EC.SetWeeklyFreeTime _ ->
                 viewWeeklyFreeTimesForm model updates intersectsTimeSlots
 
-            EC.EventDetails eventItems ->
+            EC.ConfirmedEvent eventItems ->
                 viewEventDetailsForm model updates eventItems intersectsTimeSlots
         )
 
@@ -172,7 +172,7 @@ viewEventDetailsForm :
             , adjustEventTitle : String -> msg
             , adjustEventDescription : String -> msg
         }
-    -> EC.EventItems
+    -> EC.ConfirmedEventDetails
     -> Bool
     -> List (Html msg)
 viewEventDetailsForm model ({ onMdc, adjustEventTitle, adjustEventDescription } as updates) eventItems intersectsTimeSlots =

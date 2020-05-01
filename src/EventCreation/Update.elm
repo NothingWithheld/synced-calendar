@@ -89,11 +89,11 @@ adjustEventTitle model title =
     case model.eventCreation of
         EC.CurrentlyCreatingEvent eventCreationDetails eventPosition ->
             case eventCreationDetails of
-                EC.EventDetails eventDetails ->
+                EC.ConfirmedEvent eventDetails ->
                     ( { model
                         | eventCreation =
                             EC.CurrentlyCreatingEvent
-                                (EC.EventDetails
+                                (EC.ConfirmedEvent
                                     { eventDetails
                                         | title = title
                                     }
@@ -115,11 +115,11 @@ adjustEventDescription model description =
     case model.eventCreation of
         EC.CurrentlyCreatingEvent eventCreationDetails eventPosition ->
             case eventCreationDetails of
-                EC.EventDetails eventDetails ->
+                EC.ConfirmedEvent eventDetails ->
                     ( { model
                         | eventCreation =
                             EC.CurrentlyCreatingEvent
-                                (EC.EventDetails
+                                (EC.ConfirmedEvent
                                     { eventDetails
                                         | description = description
                                     }
