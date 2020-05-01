@@ -1,5 +1,7 @@
 module TimeSlots.Commands exposing
     ( deleteWeeklyTimeSlot
+    , requestConfirmedEventsBy
+    , requestConfirmedEventsFor
     , requestCurrentDay
     , requestSavedWeeklyTimeSlots
     , requestTimeSlotPositions
@@ -35,6 +37,10 @@ requestTimeSlotPositions setTimeSlotPositions =
 requestTimeSlotsElement : (Result Dom.Error Dom.Element -> msg) -> Cmd msg
 requestTimeSlotsElement setTimeSlotsElement =
     Task.attempt setTimeSlotsElement (Dom.getElement TS.scrollableTimeSlotsId)
+
+
+
+-- Weekly Free Times
 
 
 requestSavedWeeklyTimeSlots :
@@ -111,4 +117,44 @@ deleteWeeklyTimeSlot onDelete timeSlotId =
         , expect = Http.expectJson onDelete TSMessaging.noDataDecoder
         , timeout = Nothing
         , tracker = Nothing
+        }
+
+
+
+-- Confirmed Events
+
+
+requestConfirmedEventsBy :
+    (Result Http.Error (List TSMessaging.ServerConfirmedEvent) -> msg)
+    -> String
+    -> Int
+    -> Cmd msg
+requestConfirmedEventsBy onResult userId timeZoneOffset =
+    let
+        queryString =
+            Builder.toQuery
+                [ Builder.int "timezone" timeZoneOffset
+                ]
+    in
+    Http.get
+        { url = "http://localhost:3000/api/" ++ userId ++ "/confirmed-event/creator" ++ queryString
+        , expect = Http.expectJson onResult TSMessaging.serverConfirmedEventListDecoder
+        }
+
+
+requestConfirmedEventsFor :
+    (Result Http.Error (List TSMessaging.ServerConfirmedEvent) -> msg)
+    -> String
+    -> Int
+    -> Cmd msg
+requestConfirmedEventsFor onResult userId timeZoneOffset =
+    let
+        queryString =
+            Builder.toQuery
+                [ Builder.int "timezone" timeZoneOffset
+                ]
+    in
+    Http.get
+        { url = "http://localhost:3000/api/" ++ userId ++ "/confirmed-event/recipient" ++ queryString
+        , expect = Http.expectJson onResult TSMessaging.serverConfirmedEventListDecoder
         }
