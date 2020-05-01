@@ -1,8 +1,8 @@
 module ProposeEvent.Messaging exposing
-    ( ServerProposedEvent
+    ( ProposedEvent
     , getEventProposalQueryString
     , noDataDecoder
-    , serverProposedEventListDecoder
+    , proposedEventListDecoder
     )
 
 import Date exposing (Date)
@@ -45,7 +45,7 @@ slashesToDashesDate date =
     String.replace "/" "-" date
 
 
-type alias ServerProposedEvent =
+type alias ProposedEvent =
     { title : String
     , description : String
     , creatorId : String
@@ -56,14 +56,14 @@ type alias ServerProposedEvent =
     }
 
 
-serverProposedEventListDecoder : Decoder (List ServerProposedEvent)
-serverProposedEventListDecoder =
-    Decode.map (List.filterMap identity) <| Decode.list serverProposedEventDecoder
+proposedEventListDecoder : Decoder (List ProposedEvent)
+proposedEventListDecoder =
+    Decode.map (List.filterMap identity) <| Decode.list proposedEventDecoder
 
 
-serverProposedEventDecoder : Decoder (Maybe ServerProposedEvent)
-serverProposedEventDecoder =
-    Decode.succeed toServerProposedEvent
+proposedEventDecoder : Decoder (Maybe ProposedEvent)
+proposedEventDecoder =
+    Decode.succeed toProposedEvent
         |> required "name" Decode.string
         |> required "description" Decode.string
         |> required "creatorId" Decode.string
@@ -73,7 +73,7 @@ serverProposedEventDecoder =
         |> required "toDate" (Decode.map TSTime.stringToDate Decode.string)
 
 
-toServerProposedEvent :
+toProposedEvent :
     String
     -> String
     -> String
@@ -81,9 +81,9 @@ toServerProposedEvent :
     -> List String
     -> Maybe Date
     -> Maybe Date
-    -> Maybe ServerProposedEvent
-toServerProposedEvent title description creatorId eventId recipientIds fromDate toDate =
+    -> Maybe ProposedEvent
+toProposedEvent title description creatorId eventId recipientIds fromDate toDate =
     Maybe.map2
-        (ServerProposedEvent title description creatorId eventId recipientIds)
+        (ProposedEvent title description creatorId eventId recipientIds)
         fromDate
         toDate

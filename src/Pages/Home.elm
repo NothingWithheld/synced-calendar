@@ -2,11 +2,14 @@ module Pages.Home exposing (Model, Msg, init, subscriptions, update, view)
 
 import Browser exposing (Document)
 import Html exposing (Html, div, text)
+import Http
 import Material
 import Material.Button as Button
 import Material.Elevation as Elevation
 import Material.Options exposing (css, styled)
 import Material.Typography as Typography
+import ProposeEvent.Commands exposing (requestProposedEventsBy, requestProposedEventsFor)
+import ProposeEvent.Messaging exposing (ProposedEvent)
 import Route
 import Session exposing (Session)
 
@@ -18,6 +21,8 @@ import Session exposing (Session)
 type alias Model =
     { session : Session
     , mdc : Material.Model Msg
+    , receivedProposedEvents : List ProposedEvent
+    , createdProposedEvents : List ProposedEvent
     }
 
 
@@ -25,8 +30,14 @@ init : Session -> ( Model, Cmd Msg )
 init session =
     ( { session = session
       , mdc = Material.defaultModel
+      , receivedProposedEvents = []
+      , createdProposedEvents = []
       }
-    , Material.init Mdc
+    , Cmd.batch
+        [ Material.init Mdc
+        , requestProposedEventsBy SetCreatedProposedEvents (Session.getUserId session)
+        , requestProposedEventsFor SetReceivedProposedEvents (Session.getUserId session)
+        ]
     )
 
 
@@ -36,6 +47,8 @@ init session =
 
 type Msg
     = Mdc (Material.Msg Msg)
+    | SetReceivedProposedEvents (Result Http.Error (List ProposedEvent))
+    | SetCreatedProposedEvents (Result Http.Error (List ProposedEvent))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -43,6 +56,22 @@ update msg model =
     case msg of
         Mdc msg_ ->
             Material.update Mdc msg_ model
+
+        SetReceivedProposedEvents result ->
+            case result of
+                Ok receivedProposedEvents ->
+                    ( { model | receivedProposedEvents = receivedProposedEvents }, Cmd.none )
+
+                Err _ ->
+                    ( model, Cmd.none )
+
+        SetCreatedProposedEvents result ->
+            case result of
+                Ok createdProposedEvents ->
+                    ( { model | createdProposedEvents = createdProposedEvents }, Cmd.none )
+
+                Err _ ->
+                    ( model, Cmd.none )
 
 
 

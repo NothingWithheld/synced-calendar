@@ -38,22 +38,22 @@ submitEventProposal onSubmitResult userId recipientId fromDate toDate name descr
 
 
 requestProposedEventsBy :
-    (Result Http.Error (List PEMessaging.ServerProposedEvent) -> msg)
+    (Result Http.Error (List PEMessaging.ProposedEvent) -> msg)
     -> String
     -> Cmd msg
 requestProposedEventsBy onResult userId =
     Http.get
         { url = "http://localhost:3000/api/" ++ userId ++ "/proposed-event/creator"
-        , expect = Http.expectJson onResult PEMessaging.serverProposedEventListDecoder
+        , expect = Http.expectJson onResult PEMessaging.proposedEventListDecoder
         }
 
 
 requestProposedEventsFor :
-    (Result Http.Error (List PEMessaging.ServerProposedEvent) -> msg)
+    (Result Http.Error (List PEMessaging.ProposedEvent) -> msg)
     -> String
     -> Cmd msg
 requestProposedEventsFor onResult userId =
     Http.get
         { url = "http://localhost:3000/api/" ++ userId ++ "/proposed-event/recipient"
-        , expect = Http.expectJson onResult PEMessaging.serverProposedEventListDecoder
+        , expect = Http.expectJson onResult PEMessaging.proposedEventListDecoder
         }
