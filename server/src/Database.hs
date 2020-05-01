@@ -110,6 +110,22 @@ fetchUserId (Just userIdText) = do
         _ -> return Nothing 
 fetchUserId Nothing = do return $ Nothing
 
+fetchProposedEvent :: Maybe Text -> Handler (Maybe (Entity ProposedEvent))
+fetchProposedEvent (Just eventIdText) = do 
+    let eitherEventId = decimal eventIdText
+    case eitherEventId of 
+        Right (eventIdInt, "") -> do
+            allProposedEvents <- runDB $ 
+                selectList [
+                    ProposedEventId ==. toSqlKey (fromIntegral (eventIdInt::Integer)),
+                    ProposedEventConfirmed <-. [False]
+                ] []
+            case allProposedEvents of 
+                [x] -> return $ Just x
+                _ -> return Nothing 
+        _ -> return Nothing 
+fetchProposedEvent Nothing = do return $ Nothing
+
 formatDate :: Day -> Text 
 formatDate date = let dateSplit = T.splitOn "-" (pack $ show date) 
     in dateSplit!!1 Import.++ "-" Import.++ dateSplit!!2 Import.++ "-" Import.++ dateSplit!!0

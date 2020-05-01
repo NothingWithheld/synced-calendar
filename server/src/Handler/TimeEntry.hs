@@ -5,10 +5,12 @@ module Handler.TimeEntry where
 
 import Import 
 import Database.Persist.Sql (toSqlKey)
+import Data.Dates
 import Data.Time.Calendar
 import Data.Time.LocalTime
 import Data.Text.Read
 import qualified Database
+import qualified Handler.Event
 
 data FreeTimeEntryData = FreeTimeEntryData FreeTimeEntryId UserId Text TimeOfDay TimeOfDay Bool
 data AvailableTimeEntryData = AvailableTimeEntryData AvailableTimeEntryId UserId ProposedEventId Day TimeOfDay TimeOfDay Bool
@@ -233,3 +235,69 @@ deleteAvailableTimeEntryR entryIdText = do
             runDB $ deleteWhere [AvailableTimeEntryId ==. toSqlKey (fromIntegral (entryIdInt::Integer))]
             return Null
         _ -> badMethod
+
+createAvailableFromFree :: [FreeTimeEntry] -> Day -> Day -> Key ProposedEvent -> [AvailableTimeEntry]
+createAvailableFromFree entries fromDate toDate eventId
+    | fromDate == toDate = []
+    | otherwise =  (createAvailableFromFreeHelper entries fromDate eventId) Import.++ 
+        (createAvailableFromFree entries (addDays 1 fromDate) toDate eventId)
+
+createAvailableFromFreeHelper :: [FreeTimeEntry] -> Day -> Key ProposedEvent -> [AvailableTimeEntry]
+createAvailableFromFreeHelper [] _ _ = []
+createAvailableFromFreeHelper ((FreeTimeEntry userId day fromTime toTime spanMultiple):xs) date eventId = 
+    case (toLower $ pack $ show $ dateWeekDay (dayToDateTime date)) == day of 
+        True -> [AvailableTimeEntry userId eventId date fromTime toTime spanMultiple] Import.++ 
+            createAvailableFromFreeHelper xs date eventId
+        False -> createAvailableFromFreeHelper xs date eventId
+
+iterateConfirmedEvents :: [AvailableTimeEntry] -> [Handler.Event.ConfirmedEventData] -> [AvailableTimeEntry]
+iterateConfirmedEvents entries [] = entries 
+iterateConfirmedEvents entries (x:xs) = let new_entries = iterateAvailableTimeEntries entries x in iterateConfirmedEvents new_entries xs
+
+iterateAvailableTimeEntries :: [AvailableTimeEntry] -> Handler.Event.ConfirmedEventData -> [AvailableTimeEntry]
+iterateAvailableTimeEntries [] _ = []
+iterateAvailableTimeEntries (x:xs) confirmed_event = (splitFreeTime x confirmed_event) Import.++ (iterateAvailableTimeEntries xs confirmed_event)
+
+splitFreeTime :: AvailableTimeEntry -> Handler.Event.ConfirmedEventData -> [AvailableTimeEntry]
+splitFreeTime entry@(AvailableTimeEntry userId eventId dateA fromTimeA toTimeA spanMultiple) 
+    (Handler.Event.ConfirmedEventData _ _ _ _ _ _ dateC fromTimeC toTimeC _) = do 
+    case (dateA == dateC, 
+        fromTimeC <= fromTimeA && toTimeC >= toTimeA,
+        fromTimeC <= fromTimeA && toTimeC < toTimeA && toTimeC > fromTimeA,
+        fromTimeC > fromTimeA && toTimeC >= toTimeA && fromTimeC < toTimeA,
+        fromTimeC > fromTimeA && toTimeC < toTimeA,
+        spanMultiple) of 
+            (True, True, False, False, False, False) -> [] 
+            (True, False, True, False, False, False) -> 
+                [AvailableTimeEntry userId eventId dateA toTimeC toTimeA spanMultiple] 
+            (True, False, False, True, False, False) -> 
+                [AvailableTimeEntry userId eventId dateA fromTimeA fromTimeC spanMultiple] 
+            (True, False, False, False, True, False) -> 
+                [AvailableTimeEntry userId eventId dateA fromTimeA fromTimeC spanMultiple,
+                AvailableTimeEntry userId eventId dateA toTimeC toTimeA spanMultiple] 
+            _ -> [entry]
+
+insertEntriesToDatabase :: [AvailableTimeEntry] -> Handler [Entity AvailableTimeEntry]
+insertEntriesToDatabase [] = do return []
+insertEntriesToDatabase (x:xs) = do 
+    insertedEntity <- runDB $ insertEntity x
+    recursed_entities <- insertEntriesToDatabase xs 
+    return $ [insertedEntity] Import.++ recursed_entities
+
+postFreeToAvailableTimeEntryR :: Text -> Handler Value 
+postFreeToAvailableTimeEntryR eventIdText = do 
+    fetchProposedEvent <- Database.fetchProposedEvent (Just eventIdText)
+    maybeTimeZone <- lookupPostParam "timezone"
+    case (fetchProposedEvent, maybeTimeZone) of 
+        (Just (Entity eventId (ProposedEvent _ userId _ _ fromDate toDate False)), Just timezone) -> do 
+            allEntityFreeTimeEntries <- runDB $ selectList [FreeTimeEntryUserId ==. userId] []
+            allProposedEvents <- runDB $ selectList 
+                ([ProposedEventCreatorId ==. userId, ProposedEventConfirmed ==. True] 
+                ||. [ProposedEventRecipientId ==. userId, ProposedEventConfirmed ==. True]) []
+            allConfirmedEvents <- Import.mapM Handler.Event.getConfirmedEventFromProposedEvent allProposedEvents
+            let allFreeTimeEntries = Import.map (\(Entity _ a) -> a) allEntityFreeTimeEntries
+            let potentialAvailableTimeEntries = createAvailableFromFree allFreeTimeEntries fromDate toDate eventId
+            let allAvailableTimes = iterateConfirmedEvents potentialAvailableTimeEntries (catMaybes allConfirmedEvents)
+            inserted_entries <- insertEntriesToDatabase allAvailableTimes
+            returnJson $ catMaybes $ Import.map (\x -> convertAvailableTimeEntryToLocal x timezone) inserted_entries
+        (_, _) -> invalidArgs ["Failed to pass in valid arguments for timezone or route to valid eventId"]

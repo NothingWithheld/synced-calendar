@@ -174,7 +174,7 @@ As your code changes, your site will be automatically recompiled and redeployed 
 
 	**x-www-form-urlencoded body**
 	
-	- recipient_id (Int) -> unique number that identifies a `User` object
+	- recipient_ids ([Int]) -> list of unique number that identifies a `User` object, format value like "1,2,3"
 	- from_date (String) ->  written in the format of `MM-DD-YYYY`
 	- to_date (String) -> written in the format of `MM-DD-YYYY`
 	- name (Maybe String) -> optional string parameter to name the event
@@ -255,6 +255,15 @@ As your code changes, your site will be automatically recompiled and redeployed 
 - **DELETE** `/api/{id}/confirmed-event/creator`
 	
 	Deletes a ConfirmedEvent given the corresponding ProposedEvent's `id`, which is provided in a GET request of ProposedEvent. 
+
+	id (Int) -> Unique number that identifies a `ProposedEvent`
+
+### Misc
+- **POST** `/api/{id}/free-to-available`
+
+	Creates AvailableTimeEntry for the `recipient_id` of the `ProposedEvent`. Finds `FreeTimeEntry` and `ConfirmedEvent`
+	of `recipient_id` and returns array of `AvailableTimeEntry` that are within recipient's `FreeTimeEntry` blocks, but do not 
+	conflict with `ConfirmedEvent`.
 
 	id (Int) -> Unique number that identifies a `ProposedEvent`
 
