@@ -26,7 +26,11 @@ import Utils exposing (NoData)
 type alias Model =
     { session : Session
     , timeDetails : TimeDetails
-    , loadingTimeSlots : Bool
+    , loadingWeeklyFreeTimes : Bool
+    , loadingConfirmedEventsBy : Bool
+    , loadingConfirmedEventsFor : Bool
+    , loadingNonConflictingFreeTimes : Bool
+    , loadingTSPositions : Bool
     , timeSlotPositions : List TS.TimeSlotBoundaryPosition
     , timeSlotsElement : Maybe TS.Element
     , timeSlotSelection : TS.TimeSlotSelection
@@ -41,7 +45,11 @@ init : Session -> ( Model, Cmd Msg )
 init session =
     ( { session = session
       , timeDetails = WithoutTime
-      , loadingTimeSlots = True
+      , loadingWeeklyFreeTimes = True
+      , loadingConfirmedEventsBy = False
+      , loadingConfirmedEventsFor = False
+      , loadingNonConflictingFreeTimes = False
+      , loadingTSPositions = True
       , timeSlotPositions = []
       , timeSlotsElement = Nothing
       , timeSlotSelection = TS.NotSelecting

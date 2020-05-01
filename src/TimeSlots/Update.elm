@@ -99,22 +99,16 @@ moveWeekBackward model =
 
 
 setTimeSlotPositions :
-    TS.WithTimeSlotPositions (TS.WithLoadingTimeSlots (WithSession a))
+    TS.WithTimeSlotPositions (TS.WithLoadingTSPositions (WithSession a))
     -> Calendar (Result Http.Error (List TSMessaging.ServerTimeSlot) -> msg) b
     -> Result Dom.Error (List Dom.Element)
-    -> ( TS.WithTimeSlotPositions (TS.WithLoadingTimeSlots (WithSession a)), Cmd msg )
+    -> ( TS.WithTimeSlotPositions (TS.WithLoadingTSPositions (WithSession a)), Cmd msg )
 setTimeSlotPositions model updates result =
     let
         updateModelWithTSPositions elementList =
             ( { model
                 | timeSlotPositions = TS.setTimeSlotPositions TS.startingSlotNum 0 elementList
-                , loadingTimeSlots =
-                    case updates of
-                        WeeklyFreeTimes _ ->
-                            True
-
-                        Events _ ->
-                            False
+                , loadingTSPositions = False
               }
             , case updates of
                 WeeklyFreeTimes setSavedWeeklyTS ->
@@ -131,29 +125,43 @@ setTimeSlotPositions model updates result =
 
 
 updateTimeZone :
-    TS.WithLoadingTimeSlots (WithSession a)
+    TS.WithLoadingAllExceptTSPositions (WithSession a)
     -> Calendar (Result Http.Error (List TSMessaging.ServerTimeSlot) -> msg) b
     -> String
-    -> ( TS.WithLoadingTimeSlots (WithSession a), Cmd msg )
+    -> ( TS.WithLoadingAllExceptTSPositions (WithSession a), Cmd msg )
 updateTimeZone model updates timeZoneLabel =
     case Session.setOffset model.session timeZoneLabel of
         Just newSession ->
             ( { model
                 | session = newSession
-                , loadingTimeSlots =
+                , loadingWeeklyFreeTimes =
                     case updates of
                         WeeklyFreeTimes _ ->
                             True
 
                         Events _ ->
                             False
+                , loadingConfirmedEventsBy =
+                    case updates of
+                        WeeklyFreeTimes _ ->
+                            False
+
+                        Events _ ->
+                            True
+                , loadingConfirmedEventsFor =
+                    case updates of
+                        WeeklyFreeTimes _ ->
+                            False
+
+                        Events _ ->
+                            True
               }
             , case updates of
                 WeeklyFreeTimes setSavedWeeklyTS ->
                     requestSavedWeeklyTimeSlots
                         setSavedWeeklyTS
-                        (Session.getUserId model.session)
-                        (Session.getOffset model.session)
+                        (Session.getUserId newSession)
+                        (Session.getOffset newSession)
 
                 Events _ ->
                     Cmd.none
@@ -177,9 +185,9 @@ setTimeSlotsElement model result =
 
 
 setSavedWeeklyTimeSlots :
-    TS.WithLoadingTimeSlots (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a))
+    TS.WithLoadingWeeklyFreeTimes (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a))
     -> Result Http.Error (List TSMessaging.ServerTimeSlot)
-    -> ( TS.WithLoadingTimeSlots (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a)), Cmd msg )
+    -> ( TS.WithLoadingWeeklyFreeTimes (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a)), Cmd msg )
 setSavedWeeklyTimeSlots model result =
     let
         updateWithTimeSlot { dayNum, startSlot, endSlot, id } model_ =
@@ -206,7 +214,7 @@ setSavedWeeklyTimeSlots model result =
             ( List.foldl
                 updateWithTimeSlot
                 { model
-                    | loadingTimeSlots = False
+                    | loadingWeeklyFreeTimes = False
                     , selectedTimeSlots = []
                 }
                 timeSlotList
@@ -359,7 +367,7 @@ setSelectedTimeSlotAfterCreation :
     -> ( EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)), Cmd msg )
 setSelectedTimeSlotAfterCreation model result =
     case ( model.eventCreation, model.timeSlotSelection, result ) of
-        ( EC.CurrentlyCreatingEvent eventDetails _, TS.CurrentlySelecting selectionBounds, Ok timeSlotId ) ->
+        ( EC.CurrentlyCreatingEvent _ _, TS.CurrentlySelecting selectionBounds, Ok timeSlotId ) ->
             let
                 orderedSelectionBounds =
                     TS.getOrderedTimeSlot selectionBounds
@@ -396,7 +404,7 @@ setSelectedTimeSlotAfterEditing :
     -> ( EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)), Cmd msg )
 setSelectedTimeSlotAfterEditing model result =
     case ( model.eventCreation, model.timeSlotSelection, result ) of
-        ( EC.CurrentlyCreatingEvent eventDetails _, TS.EditingSelection selectionBounds prevSelection, Ok _ ) ->
+        ( EC.CurrentlyCreatingEvent eventDetails _, TS.EditingSelection selectionBounds _, Ok _ ) ->
             let
                 orderedSelectionBounds =
                     TS.getOrderedTimeSlot selectionBounds
@@ -512,7 +520,7 @@ editTimeSlotSelection model promptEventDetails selectedTimeSlotDetails =
     ECUpdate.initiateUserPromptForEventDetails
         { model
             | timeSlotSelection =
-                TS.EditingSelection (TS.selectedToSelectingTimeSlot selectedTimeSlot) selectedTimeSlotDetails
+                TS.EditingSelection selectedTimeSlot selectedTimeSlotDetails
             , selectedTimeSlots = selectedTimeSlotsWithoutChosen
         }
         promptEventDetails

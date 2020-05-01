@@ -35,7 +35,7 @@ onTimeSlotMouseMove handleTimeSlotMouseMove =
 
 
 viewCalendarHeading :
-    WithMdc msg (WithSession (TS.WithLoadingTimeSlots (TSTime.WithTimeDetails a)))
+    WithMdc msg (WithSession (TS.WithLoadingAll (TSTime.WithTimeDetails a)))
     ->
         Calendar
             { b
@@ -79,7 +79,7 @@ viewCalendarHeading model updates =
 
 
 viewTimeZoneSelect :
-    WithMdc msg (WithSession (TS.WithLoadingTimeSlots a))
+    WithMdc msg (WithSession (TS.WithLoadingAll a))
     -> { b | onMdc : Material.Msg msg -> msg, onTimeZoneSelect : String -> msg }
     -> Html msg
 viewTimeZoneSelect model { onMdc, onTimeZoneSelect } =
@@ -91,7 +91,7 @@ viewTimeZoneSelect model { onMdc, onTimeZoneSelect } =
         "time-zone-select"
         model.mdc
         [ Select.required
-        , when model.loadingTimeSlots Select.disabled
+        , when (TS.isLoading model) Select.disabled
         , Select.label "Time Zone"
         , Select.selectedText selectedTimeZone
         , Select.onSelect onTimeZoneSelect
@@ -362,7 +362,7 @@ viewTimeSlotTimes =
 
 
 viewScrollableTimeSlots :
-    TS.WithLoadingTimeSlots (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a))
+    TS.WithLoadingAll (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a))
     ->
         Calendar
             { b
@@ -392,7 +392,7 @@ viewScrollableTimeSlots model updates =
         , css "position" "relative"
         , Options.id TS.scrollableTimeSlotsId
         ]
-        [ if model.loadingTimeSlots then
+        [ if TS.isLoading model then
             viewLoader
 
           else

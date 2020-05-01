@@ -15,10 +15,45 @@ type Calendar a b
     | Events b
 
 
-type alias WithLoadingTimeSlots a =
-    { a
-        | loadingTimeSlots : Bool
-    }
+type alias WithLoadingWeeklyFreeTimes a =
+    { a | loadingWeeklyFreeTimes : Bool }
+
+
+type alias WithLoadingConfirmedEventsBy a =
+    { a | loadingConfirmedEventsBy : Bool }
+
+
+type alias WithLoadingConfirmedEventsFor a =
+    { a | loadingConfirmedEventsFor : Bool }
+
+
+type alias WithLoadingNonConflictingFreeTimes a =
+    { a | loadingNonConflictingFreeTimes : Bool }
+
+
+type alias WithLoadingTSPositions a =
+    { a | loadingTSPositions : Bool }
+
+
+type alias WithLoadingAllExceptTSPositions a =
+    WithLoadingWeeklyFreeTimes (WithLoadingConfirmedEventsBy (WithLoadingConfirmedEventsFor (WithLoadingNonConflictingFreeTimes a)))
+
+
+type alias WithLoadingAll a =
+    WithLoadingWeeklyFreeTimes (WithLoadingConfirmedEventsBy (WithLoadingConfirmedEventsFor (WithLoadingNonConflictingFreeTimes (WithLoadingTSPositions a))))
+
+
+isLoading : WithLoadingAll a -> Bool
+isLoading model =
+    model.loadingWeeklyFreeTimes
+        || model.loadingConfirmedEventsBy
+        || model.loadingConfirmedEventsFor
+        || model.loadingNonConflictingFreeTimes
+        || model.loadingTSPositions
+
+
+
+-- time slots
 
 
 type alias DayNum =
@@ -419,17 +454,3 @@ areSelectionBoundsEqual selectionBoundsA selectionBoundsB =
         == selectionBoundsB.startBound
         && selectionBoundsA.endBound
         == selectionBoundsB.endBound
-
-
-
--- selectingToSelectedTimeSlot : TimeSlot -> Int -> TimeSlot
--- selectingToSelectedTimeSlot { dayNum, startBound, endBound } timeSlotId =
---     TimeSlot dayNum
---         timeSlotId
---         startBound
---         endBound
-
-
-selectedToSelectingTimeSlot : TimeSlot -> TimeSlot
-selectedToSelectingTimeSlot { dayNum, startBound, endBound } =
-    TimeSlot dayNum startBound endBound
