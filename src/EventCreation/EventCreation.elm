@@ -8,6 +8,7 @@ module EventCreation.EventCreation exposing
     , areEventCreationsEqual
     , eventDetailsPromptWidth
     , getDateFromDetails
+    , isConfirmedEvent
     )
 
 import Date exposing (Date)
@@ -70,8 +71,8 @@ eventDetailsPromptWidth =
 
 
 getDateFromDetails : EventCreationDetails -> Maybe Date
-getDateFromDetails eventCreationDetails =
-    case eventCreationDetails of
+getDateFromDetails eventDetails =
+    case eventDetails of
         UnsetWeeklyFreeTime ->
             Nothing
 
@@ -80,3 +81,13 @@ getDateFromDetails eventCreationDetails =
 
         ConfirmedEvent { date } ->
             Just date
+
+
+isConfirmedEvent : EventCreationDetails -> Bool
+isConfirmedEvent eventDetails =
+    case eventDetails of
+        ConfirmedEvent _ ->
+            True
+
+        _ ->
+            False

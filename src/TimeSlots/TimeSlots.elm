@@ -94,14 +94,6 @@ type alias TimeSlot =
     }
 
 
-type alias WithTimeSlot a =
-    { a
-        | dayNum : DayNum
-        , startBound : TimeSlotBoundaryPosition
-        , endBound : TimeSlotBoundaryPosition
-    }
-
-
 type alias TimeSlotInitialSelection =
     { dayNum : DayNum
     , startBound : TimeSlotBoundaryPosition
@@ -332,7 +324,7 @@ getUnselectedTimeSlotRange currentTimeSlotDetails dayNum startSlotNum endSlotNum
         Maybe.map getContinuousRange rangeStart
 
 
-getTimeSlotFromDetails : SelectedTimeSlotDetails -> WithTimeSlot {}
+getTimeSlotFromDetails : SelectedTimeSlotDetails -> TimeSlot
 getTimeSlotFromDetails (SelectedTimeSlotDetails timeSlot _) =
     timeSlot
 
@@ -360,7 +352,7 @@ getTimeSlotPositionOfPointer timeSlotPositions pageY =
     getTSPOPHelper timeSlotPositions
 
 
-getOrderedTimeSlot : WithTimeSlot a -> WithTimeSlot a
+getOrderedTimeSlot : TimeSlot -> TimeSlot
 getOrderedTimeSlot timeSlot =
     let
         { startBound, endBound } =
@@ -374,6 +366,11 @@ getOrderedTimeSlot timeSlot =
                 ( endBound, startBound )
     in
     { timeSlot | startBound = topSlot, endBound = bottomSlot }
+
+
+hasSingleSlotHeight : TimeSlot -> Bool
+hasSingleSlotHeight { startBound, endBound } =
+    startBound.slotNum == endBound.slotNum
 
 
 getTimeSlotId : DayNum -> SlotNum -> String
@@ -446,7 +443,7 @@ getTimeDurationBetween startSlot endSlot =
         (String.fromFloat <| toFloat diff / 4) ++ " hrs"
 
 
-areSelectionBoundsEqual : WithTimeSlot a -> WithTimeSlot b -> Bool
+areSelectionBoundsEqual : TimeSlot -> TimeSlot -> Bool
 areSelectionBoundsEqual selectionBoundsA selectionBoundsB =
     selectionBoundsA.dayNum
         == selectionBoundsB.dayNum

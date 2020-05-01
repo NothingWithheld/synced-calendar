@@ -1,5 +1,6 @@
 module TimeSlots.View exposing (viewCalendarHeading, viewDayHeadings, viewScrollableTimeSlots)
 
+import Constants
 import EventCreation.EventCreation as EC
 import Html exposing (Html, div, text)
 import Html.Entity as Entity
@@ -560,14 +561,26 @@ viewSelectedTimeSlot :
     -> Html msg
 viewSelectedTimeSlot updates selectedTimeSlotDetails =
     let
-        (TS.SelectedTimeSlotDetails selectedTimeSlot _) =
+        (TS.SelectedTimeSlotDetails selectedTimeSlot eventDetails) =
             selectedTimeSlotDetails
 
         cardDimensions =
             getCardDimensions selectedTimeSlot
+
+        isConfirmedEvent =
+            EC.isConfirmedEvent eventDetails
+
+        hasSingleSlotHeight =
+            TS.hasSingleSlotHeight selectedTimeSlot
     in
     Card.view
-        [ css "background-color" "#147D64"
+        [ css "background-color"
+            (if isConfirmedEvent then
+                Constants.confirmedEventColor
+
+             else
+                Constants.setTimeSlotColor
+            )
         , css "top" (String.fromFloat cardDimensions.y ++ "px")
         , css "height" (String.fromFloat (cardDimensions.height - 4) ++ "px")
         , css "position" "absolute"
@@ -581,11 +594,11 @@ viewSelectedTimeSlot updates selectedTimeSlotDetails =
             Events _ ->
                 nop
         ]
-        [ viewTimeSlotDuration selectedTimeSlot ]
+        [ viewTimeSlotDuration selectedTimeSlot hasSingleSlotHeight ]
 
 
-viewTimeSlotDuration : TS.WithTimeSlot a -> Html msg
-viewTimeSlotDuration { startBound, endBound } =
+viewTimeSlotDuration : TS.TimeSlot -> Bool -> Html msg
+viewTimeSlotDuration { startBound, endBound } hasSingleSlotHeight =
     let
         ( startTime, startAmOrPm ) =
             TS.getTimeForSlotNum startBound.slotNum False
@@ -599,7 +612,15 @@ viewTimeSlotDuration { startBound, endBound } =
     styled Html.p
         [ Typography.caption
         , css "color" "white"
-        , css "margin" "2px 8px"
+        , css "margin-left" "8px"
+        , css "margin-top"
+            (if hasSingleSlotHeight then
+                "0"
+
+             else
+                "2px"
+            )
+        , when hasSingleSlotHeight <| css "line-height" "1rem"
         ]
         [ text <|
             startTime
@@ -635,13 +656,19 @@ viewCurrentlySelectingTimeSlot model dayNum =
 
 viewUserChangingTimeSlot :
     TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a)
-    -> TS.WithTimeSlot b
+    -> TS.TimeSlot
     -> TS.DayNum
     -> Html msg
 viewUserChangingTimeSlot model timeSlotSelection dayNum =
     let
         cardDimensions =
             getCardDimensions timeSlotSelection
+
+        orderedTimeSlotSelection =
+            TS.getOrderedTimeSlot timeSlotSelection
+
+        hasSingleSlotHeight =
+            TS.hasSingleSlotHeight orderedTimeSlotSelection
 
         dayNumCurrentlySelected =
             timeSlotSelection.dayNum
@@ -667,14 +694,14 @@ viewUserChangingTimeSlot model timeSlotSelection dayNum =
             , css "border-radius" "8px"
             , css "user-select" "none"
             ]
-            [ viewTimeSlotDuration <| TS.getOrderedTimeSlot timeSlotSelection
+            [ viewTimeSlotDuration orderedTimeSlotSelection hasSingleSlotHeight
             ]
 
     else
         text ""
 
 
-getCardDimensions : TS.WithTimeSlot a -> CardDimensions
+getCardDimensions : TS.TimeSlot -> CardDimensions
 getCardDimensions { startBound, endBound } =
     let
         ( higherBound, lowerBound ) =

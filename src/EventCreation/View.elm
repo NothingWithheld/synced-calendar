@@ -313,7 +313,7 @@ viewWeeklyFreeTimesSelects :
             , changeSelectionEndSlot : String -> msg
             , onMdc : Material.Msg msg -> msg
         }
-    -> TS.WithTimeSlot c
+    -> TS.TimeSlot
     -> Html msg
 viewWeeklyFreeTimesSelects model updates { dayNum, startBound, endBound } =
     styled div
