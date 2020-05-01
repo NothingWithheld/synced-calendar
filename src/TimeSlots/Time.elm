@@ -1,16 +1,21 @@
 module TimeSlots.Time exposing
     ( TimeDetails(..)
     , WithTimeDetails
+    , dateToDayNum
     , getDaysInThatWeek
     , monthToLongString
     , monthToShortString
+    , stringToDate
     , weekdayStrings
     , weekdayToString
     , weekdaysInOrder
     )
 
+import Date exposing (Date)
 import Session exposing (WithSession)
 import Time exposing (Month(..), Posix, Weekday(..))
+import TimeSlots.TimeSlots as TS
+import Utils exposing (getListItemAt)
 
 
 type TimeDetails
@@ -58,6 +63,11 @@ millisInDay =
 weekdaysInOrder : List Weekday
 weekdaysInOrder =
     [ Sun, Mon, Tue, Wed, Thu, Fri, Sat ]
+
+
+monthsInOrder : List Month
+monthsInOrder =
+    [ Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec ]
 
 
 weekdayToString : Weekday -> String
@@ -193,3 +203,25 @@ getWeekdayNum weekday =
 
         Sat ->
             6
+
+
+monthNumToMonth : Int -> Maybe Month
+monthNumToMonth monthNum =
+    getListItemAt (monthNum - 1) monthsInOrder
+
+
+stringToDate : String -> Maybe Date
+stringToDate iso =
+    case List.map String.toInt <| String.split "-" iso of
+        [ Just year, Just monthNum, Just day ] ->
+            Maybe.map
+                (\month -> Date.fromCalendarDate year month day)
+                (monthNumToMonth monthNum)
+
+        _ ->
+            Nothing
+
+
+dateToDayNum : Date -> TS.DayNum
+dateToDayNum date =
+    getWeekdayNum <| Date.weekday date

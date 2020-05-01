@@ -1,15 +1,20 @@
 module TimeSlots.Messaging exposing
-    ( ServerTimeSlot
+    ( ServerConfirmedEvent
+    , ServerTimeSlot
     , getFreeTimesQueryString
     , getPostFreeTimesJson
     , idDecoder
     , noDataDecoder
+    , serverConfirmedEventListDecoder
     , serverTimeSlotDecoder
     , serverTimeSlotListDecoder
     )
 
+import Date exposing (Date)
 import Json.Decode as Decode exposing (Decoder)
+import Json.Decode.Pipeline exposing (required)
 import Json.Encode as Encode exposing (Value)
+import TimeSlots.Time as TSTime
 import TimeSlots.TimeSlots as TS
 import Url.Builder as Builder
 import Utils exposing (NoData(..), getListItemAt)
@@ -35,6 +40,47 @@ serverTimeSlotDecoder =
         (Decode.map Just <| Decode.field "id" Decode.int)
         (Decode.map (militaryToSlotNum False) <| Decode.field "fromTime" Decode.string)
         (Decode.map (militaryToSlotNum True) <| Decode.field "toTime" Decode.string)
+
+
+type alias ServerConfirmedEvent =
+    { eventId : Int
+    , recipientIds : List String
+    , creatorId : String
+    , title : String
+    , description : String
+    , date : Date
+    , dayNum : TS.DayNum
+    , startSlot : TS.SlotNum
+    , endSlot : TS.SlotNum
+    }
+
+
+serverConfirmedEventListDecoder : Decoder (List ServerConfirmedEvent)
+serverConfirmedEventListDecoder =
+    Decode.map (List.filterMap identity) <| Decode.list serverConfirmedEventDecoder
+
+
+serverConfirmedEventDecoder : Decoder (Maybe ServerConfirmedEvent)
+serverConfirmedEventDecoder =
+    Decode.succeed toServerConfirmedEvent
+        |> required "eventId" Decode.int
+        |> required "recipientId" (Decode.map (String.split ",") Decode.string)
+        |> required "creatorId" Decode.string
+        |> required "title" Decode.string
+        |> required "description" Decode.string
+        |> required "date" (Decode.map TSTime.stringToDate Decode.string)
+        |> required "fromTime" (Decode.map (militaryToSlotNum False) Decode.string)
+        |> required "toTime" (Decode.map (militaryToSlotNum True) Decode.string)
+
+
+toServerConfirmedEvent : Int -> List String -> String -> String -> String -> Maybe Date -> Maybe TS.SlotNum -> Maybe TS.SlotNum -> Maybe ServerConfirmedEvent
+toServerConfirmedEvent eventId recipientIds creatorId title description date startSlot endSlot =
+    Maybe.map4
+        (ServerConfirmedEvent eventId recipientIds creatorId title description)
+        date
+        (Maybe.map TSTime.dateToDayNum date)
+        startSlot
+        endSlot
 
 
 idDecoder : Decoder Int
