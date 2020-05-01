@@ -32,6 +32,8 @@ import Time exposing (Posix)
 import TimeSlots.Commands
     exposing
         ( deleteWeeklyTimeSlot
+        , requestConfirmedEventsBy
+        , requestConfirmedEventsFor
         , requestSavedWeeklyTimeSlots
         , saveWeeklyTimeSlot
         , updateWeeklyTimeSlot
@@ -158,7 +160,14 @@ updateTimeZone model updates timeZoneLabel =
 
 setTimeSlotPositions :
     TS.WithTimeSlotPositions (TS.WithLoadingTSPositions (WithSession a))
-    -> Calendar (Result Http.Error (List TSMessaging.ServerTimeSlot) -> msg) b
+    ->
+        Calendar (Result Http.Error (List TSMessaging.ServerTimeSlot) -> msg)
+            { b
+                | setSavedConfirmedEvBy :
+                    Result Http.Error (List TSMessaging.ServerConfirmedEvent) -> msg
+                , setSavedConfirmedEvFor :
+                    Result Http.Error (List TSMessaging.ServerConfirmedEvent) -> msg
+            }
     -> Result Dom.Error (List Dom.Element)
     -> ( TS.WithTimeSlotPositions (TS.WithLoadingTSPositions (WithSession a)), Cmd msg )
 setTimeSlotPositions model updates result =
@@ -175,8 +184,19 @@ setTimeSlotPositions model updates result =
                         (Session.getUserId model.session)
                         (Session.getOffset model.session)
 
-                Events _ ->
-                    Cmd.none
+                Events { setSavedConfirmedEvBy, setSavedConfirmedEvFor } ->
+                    Cmd.batch
+                        [ requestConfirmedEventsBy
+                            setSavedConfirmedEvBy
+                            (Session.getUserId model.session)
+                            (Session.getOffset model.session)
+
+                        -- Server Bug -> sends same result for By and For
+                        -- , requestConfirmedEventsFor
+                        --     setSavedConfirmedEvFor
+                        --     (Session.getUserId model.session)
+                        --     (Session.getOffset model.session)
+                        ]
             )
     in
     defaultOnError ( model, Cmd.none ) result updateModelWithTSPositions

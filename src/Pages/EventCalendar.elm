@@ -52,7 +52,9 @@ init session =
     ( { session = session
       , timeDetails = WithoutTime
       , loadingWeeklyFreeTimes = False
-      , loadingConfirmedEventsBy = False
+      , loadingConfirmedEventsBy = True
+
+      -- Server Bug -> sends same result for By and For
       , loadingConfirmedEventsFor = False
       , loadingNonConflictingFreeTimes = False
       , loadingTSPositions = True
@@ -128,7 +130,13 @@ update msg model =
             TSUpdate.moveWeekBackward model
 
         SetTimeSlotPositions result ->
-            TSUpdate.setTimeSlotPositions model (Events Nothing) result
+            TSUpdate.setTimeSlotPositions model
+                (Events
+                    { setSavedConfirmedEvBy = SetSavedConfirmedEventsBy
+                    , setSavedConfirmedEvFor = SetSavedConfirmedEventsFor
+                    }
+                )
+                result
 
         SetSavedConfirmedEventsBy result ->
             TSUpdate.setSavedConfirmedEventsBy model result
