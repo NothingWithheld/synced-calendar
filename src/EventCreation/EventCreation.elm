@@ -1,8 +1,8 @@
 module EventCreation.EventCreation exposing
     ( ConfirmedEventDetails
     , EventCreation(..)
-    , EventCreationDetails(..)
     , EventCreationPosition
+    , EventDetails(..)
     , WithDiscardConfirmationModal
     , WithEventCreation
     , areEventCreationsEqual
@@ -16,14 +16,14 @@ import Date exposing (Date)
 
 type EventCreation
     = NotCreating
-    | CurrentlyCreatingEvent EventCreationDetails EventCreationPosition
+    | CurrentlyCreatingEvent EventDetails EventCreationPosition
 
 
 type alias WithEventCreation a =
     { a | eventCreation : EventCreation }
 
 
-type EventCreationDetails
+type EventDetails
     = UnsetWeeklyFreeTime
     | SetWeeklyFreeTime Int -- weekly free time slot ID
     | ConfirmedEvent ConfirmedEventDetails
@@ -49,9 +49,9 @@ type alias WithDiscardConfirmationModal a =
     { a | isDiscardConfirmationModalOpen : Bool }
 
 
-areEventCreationsEqual : EventCreationDetails -> EventCreationDetails -> Bool
-areEventCreationsEqual eventCreationDetailsA eventCreationDetailsB =
-    case ( eventCreationDetailsA, eventCreationDetailsB ) of
+areEventCreationsEqual : EventDetails -> EventDetails -> Bool
+areEventCreationsEqual eventDetailsA eventDetailsB =
+    case ( eventDetailsA, eventDetailsB ) of
         ( UnsetWeeklyFreeTime, UnsetWeeklyFreeTime ) ->
             True
 
@@ -70,7 +70,7 @@ eventDetailsPromptWidth =
     320
 
 
-getDateFromDetails : EventCreationDetails -> Maybe Date
+getDateFromDetails : EventDetails -> Maybe Date
 getDateFromDetails eventDetails =
     case eventDetails of
         UnsetWeeklyFreeTime ->
@@ -83,7 +83,7 @@ getDateFromDetails eventDetails =
             Just date
 
 
-isConfirmedEvent : EventCreationDetails -> Bool
+isConfirmedEvent : EventDetails -> Bool
 isConfirmedEvent eventDetails =
     case eventDetails of
         ConfirmedEvent _ ->

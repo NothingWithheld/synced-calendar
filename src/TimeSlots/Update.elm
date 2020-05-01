@@ -568,7 +568,7 @@ setSelectedTimeSlotAfterEditing model result =
 
 setOneHourSelection :
     TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a))
-    -> (Result Dom.Error Dom.Element -> msg)
+    -> (EC.EventDetails -> Result Dom.Error Dom.Element -> msg)
     -> TS.DayNum
     -> TS.SlotNum
     -> ( TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a)), Cmd msg )
@@ -610,6 +610,7 @@ setOneHourSelection model promptEventDetails dayNum slotNum =
                                     , endBound = endBound
                                     }
                         }
+                        EC.UnsetWeeklyFreeTime
                         promptEventDetails
 
                 ( _, _ ) ->
@@ -621,7 +622,7 @@ setOneHourSelection model promptEventDetails dayNum slotNum =
 
 handleTimeSlotMouseUp :
     TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a))
-    -> (Result Dom.Error Dom.Element -> msg)
+    -> (EC.EventDetails -> Result Dom.Error Dom.Element -> msg)
     -> ( TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a)), Cmd msg )
 handleTimeSlotMouseUp model promptEventDetails =
     case model.timeSlotSelection of
@@ -629,7 +630,7 @@ handleTimeSlotMouseUp model promptEventDetails =
             setOneHourSelection model promptEventDetails dayNum startBound.slotNum
 
         TS.CurrentlySelecting _ ->
-            ECUpdate.initiateUserPromptForEventDetails model promptEventDetails
+            ECUpdate.initiateUserPromptForEventDetails model EC.UnsetWeeklyFreeTime promptEventDetails
 
         _ ->
             ( model, Cmd.none )
@@ -637,12 +638,12 @@ handleTimeSlotMouseUp model promptEventDetails =
 
 editTimeSlotSelection :
     TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a)
-    -> (Result Dom.Error Dom.Element -> msg)
+    -> (EC.EventDetails -> Result Dom.Error Dom.Element -> msg)
     -> TS.SelectedTimeSlotDetails
     -> ( TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a), Cmd msg )
 editTimeSlotSelection model promptEventDetails selectedTimeSlotDetails =
     let
-        (TS.SelectedTimeSlotDetails selectedTimeSlot _) =
+        (TS.SelectedTimeSlotDetails selectedTimeSlot eventDetails) =
             selectedTimeSlotDetails
 
         selectedTimeSlotsWithoutChosen =
@@ -654,6 +655,7 @@ editTimeSlotSelection model promptEventDetails selectedTimeSlotDetails =
                 TS.EditingSelection selectedTimeSlot selectedTimeSlotDetails
             , selectedTimeSlots = selectedTimeSlotsWithoutChosen
         }
+        eventDetails
         promptEventDetails
 
 

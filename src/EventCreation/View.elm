@@ -93,9 +93,9 @@ viewUserRequestForm :
             , adjustEventDescription : String -> msg
             , noOp : msg
         }
-    -> EC.EventCreationDetails
+    -> EC.EventDetails
     -> Html msg
-viewUserRequestForm model ({ noOp } as updates) eventCreationDetails =
+viewUserRequestForm model ({ noOp } as updates) eventDetails =
     let
         intersectsTimeSlots =
             TS.doesTSSelectionIntersectSelectedTimeSlots
@@ -115,7 +115,7 @@ viewUserRequestForm model ({ noOp } as updates) eventCreationDetails =
                 }
             )
         ]
-        (case eventCreationDetails of
+        (case eventDetails of
             EC.UnsetWeeklyFreeTime ->
                 viewWeeklyFreeTimesForm model updates intersectsTimeSlots
 

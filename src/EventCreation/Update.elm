@@ -14,7 +14,6 @@ module EventCreation.Update exposing
 
 import Browser.Dom as Dom
 import EventCreation.EventCreation as EC
-import Flip
 import Task
 import TimeSlots.TimeSlots as TS
 import Utils exposing (getListItemAt)
@@ -22,9 +21,10 @@ import Utils exposing (getListItemAt)
 
 initiateUserPromptForEventDetails :
     TS.WithTimeSlotSelection a
-    -> (Result Dom.Error Dom.Element -> msg)
+    -> EC.EventDetails
+    -> (EC.EventDetails -> Result Dom.Error Dom.Element -> msg)
     -> ( TS.WithTimeSlotSelection a, Cmd msg )
-initiateUserPromptForEventDetails model promptEventDetails =
+initiateUserPromptForEventDetails model eventDetails promptEventDetails =
     case model.timeSlotSelection of
         TS.CurrentlySelecting { dayNum, startBound, endBound } ->
             let
@@ -33,7 +33,7 @@ initiateUserPromptForEventDetails model promptEventDetails =
             in
             ( model
             , Task.attempt
-                promptEventDetails
+                (promptEventDetails eventDetails)
                 (Dom.getElement (TS.getTimeSlotId dayNum minSlotNum))
             )
 
@@ -44,7 +44,7 @@ initiateUserPromptForEventDetails model promptEventDetails =
             in
             ( model
             , Task.attempt
-                promptEventDetails
+                (promptEventDetails eventDetails)
                 (Dom.getElement (TS.getTimeSlotId dayNum minSlotNum))
             )
 
@@ -52,8 +52,12 @@ initiateUserPromptForEventDetails model promptEventDetails =
             ( model, Cmd.none )
 
 
-promptUserForEventDetails : EC.WithEventCreation a -> Result Dom.Error Dom.Element -> ( EC.WithEventCreation a, Cmd msg )
-promptUserForEventDetails model result =
+promptUserForEventDetails :
+    EC.WithEventCreation a
+    -> EC.EventDetails
+    -> Result Dom.Error Dom.Element
+    -> ( EC.WithEventCreation a, Cmd msg )
+promptUserForEventDetails model eventDetails result =
     case result of
         Ok { viewport, element } ->
             let
@@ -75,7 +79,7 @@ promptUserForEventDetails model result =
             in
             ( { model
                 | eventCreation =
-                    EC.CurrentlyCreatingEvent EC.UnsetWeeklyFreeTime { x = x, y = element.y }
+                    EC.CurrentlyCreatingEvent eventDetails { x = x, y = element.y }
               }
             , Cmd.none
             )
@@ -138,7 +142,7 @@ adjustEventDescription model description =
 
 changeSelectionDayNum :
     TS.WithTimeSlotSelection a
-    -> (Result Dom.Error Dom.Element -> msg)
+    -> (EC.EventDetails -> Result Dom.Error Dom.Element -> msg)
     -> String
     -> ( TS.WithTimeSlotSelection a, Cmd msg )
 changeSelectionDayNum model promptEventDetails dayNumStr =
@@ -156,6 +160,7 @@ changeSelectionDayNum model promptEventDetails dayNumStr =
                                 | dayNum = dayNum
                             }
                 }
+                EC.UnsetWeeklyFreeTime
                 promptEventDetails
 
         ( TS.EditingSelection selectionBounds previousDetails, Just dayNum ) ->
@@ -168,6 +173,7 @@ changeSelectionDayNum model promptEventDetails dayNumStr =
                             }
                             previousDetails
                 }
+                (TS.getEventDetailsFromDetails previousDetails)
                 promptEventDetails
 
         ( _, _ ) ->
@@ -176,7 +182,7 @@ changeSelectionDayNum model promptEventDetails dayNumStr =
 
 changeSelectionStartSlot :
     TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a)
-    -> (Result Dom.Error Dom.Element -> msg)
+    -> (EC.EventDetails -> Result Dom.Error Dom.Element -> msg)
     -> String
     -> ( TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a), Cmd msg )
 changeSelectionStartSlot model promptEventDetails startSlotStr =
@@ -184,7 +190,7 @@ changeSelectionStartSlot model promptEventDetails startSlotStr =
         maybeStartSlotNum =
             String.toInt startSlotStr
 
-        updateFunc { startBound, endBound, dayNum } startSlotNum =
+        updateFunc { startBound, endBound, dayNum } eventDetails startSlotNum =
             let
                 startSlotDiff =
                     startSlotNum - startBound.slotNum
@@ -199,17 +205,21 @@ changeSelectionStartSlot model promptEventDetails startSlotStr =
                     getListItemAt shiftedEndSlot model.timeSlotPositions
             in
             Maybe.withDefault ( model, Cmd.none ) <|
-                Maybe.map (Flip.flip initiateUserPromptForEventDetails promptEventDetails) <|
+                Maybe.map
+                    (\model_ ->
+                        initiateUserPromptForEventDetails model_ eventDetails promptEventDetails
+                    )
+                <|
                     Maybe.map2 (TS.useTSPositionsForSelectionBounds model dayNum) newStartBound newEndBound
     in
     case model.timeSlotSelection of
         TS.CurrentlySelecting selectionBounds ->
             Maybe.withDefault ( model, Cmd.none ) <|
-                Maybe.map (updateFunc selectionBounds) maybeStartSlotNum
+                Maybe.map (updateFunc selectionBounds EC.UnsetWeeklyFreeTime) maybeStartSlotNum
 
-        TS.EditingSelection selectionBounds _ ->
+        TS.EditingSelection selectionBounds prevDetails ->
             Maybe.withDefault ( model, Cmd.none ) <|
-                Maybe.map (updateFunc selectionBounds) maybeStartSlotNum
+                Maybe.map (updateFunc selectionBounds (TS.getEventDetailsFromDetails prevDetails)) maybeStartSlotNum
 
         _ ->
             ( model, Cmd.none )

@@ -108,7 +108,7 @@ type alias WithTimeSlotInitialSelection a =
 
 
 type SelectedTimeSlotDetails
-    = SelectedTimeSlotDetails TimeSlot EC.EventCreationDetails
+    = SelectedTimeSlotDetails TimeSlot EC.EventDetails
 
 
 type TimeSlotSelection
@@ -329,7 +329,7 @@ getTimeSlotFromDetails (SelectedTimeSlotDetails timeSlot _) =
     timeSlot
 
 
-getEventDetailsFromDetails : SelectedTimeSlotDetails -> EC.EventCreationDetails
+getEventDetailsFromDetails : SelectedTimeSlotDetails -> EC.EventDetails
 getEventDetailsFromDetails (SelectedTimeSlotDetails _ eventDetails) =
     eventDetails
 

@@ -98,7 +98,7 @@ type Msg
     | SendDeleteTimeSlotRequest
     | DeleteTimeSlot (Result Http.Error NoData)
       -- EventCreation
-    | PromptUserForEventDetails (Result Dom.Error Dom.Element)
+    | PromptUserForEventDetails EC.EventDetails (Result Dom.Error Dom.Element)
     | AdjustEventTitle String
     | AdjustEventDescription String
     | ChangeSelectionDayNum String
@@ -176,8 +176,8 @@ update msg model =
             TSUpdate.deleteTimeSlot model result
 
         -- EventCreation
-        PromptUserForEventDetails result ->
-            ECUpdate.promptUserForEventDetails model result
+        PromptUserForEventDetails eventDetails result ->
+            ECUpdate.promptUserForEventDetails model eventDetails result
 
         AdjustEventTitle title ->
             ECUpdate.adjustEventTitle model title
