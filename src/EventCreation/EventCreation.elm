@@ -7,6 +7,7 @@ module EventCreation.EventCreation exposing
     , WithEventCreation
     , areEventCreationsEqual
     , eventDetailsPromptWidth
+    , getDateFromDetails
     )
 
 import Date exposing (Date)
@@ -66,3 +67,16 @@ areEventCreationsEqual eventCreationDetailsA eventCreationDetailsB =
 eventDetailsPromptWidth : Float
 eventDetailsPromptWidth =
     320
+
+
+getDateFromDetails : EventCreationDetails -> Maybe Date
+getDateFromDetails eventCreationDetails =
+    case eventCreationDetails of
+        UnsetWeeklyFreeTime ->
+            Nothing
+
+        SetWeeklyFreeTime _ ->
+            Nothing
+
+        ConfirmedEvent { date } ->
+            Just date

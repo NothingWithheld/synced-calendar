@@ -52,10 +52,11 @@ init session =
     ( { session = session
       , timeDetails = WithoutTime
       , loadingWeeklyFreeTimes = False
-      , loadingConfirmedEventsBy = True
 
       -- Server Bug -> sends same result for By and For
-      , loadingConfirmedEventsFor = False
+      -- possibly sends results only to creator
+      , loadingConfirmedEventsBy = False
+      , loadingConfirmedEventsFor = True
       , loadingNonConflictingFreeTimes = False
       , loadingTSPositions = True
       , timeSlotPositions = []
@@ -145,7 +146,13 @@ update msg model =
             TSUpdate.setSavedConfirmedEventsFor model result
 
         UpdateTimeZone timeZoneLabel ->
-            TSUpdate.updateTimeZone model (Events Nothing) timeZoneLabel
+            TSUpdate.updateTimeZone model
+                (Events
+                    { setSavedConfirmedEvBy = SetSavedConfirmedEventsBy
+                    , setSavedConfirmedEvFor = SetSavedConfirmedEventsFor
+                    }
+                )
+                timeZoneLabel
 
         SetTimeSlotsElement result ->
             TSUpdate.setTimeSlotsElement model result

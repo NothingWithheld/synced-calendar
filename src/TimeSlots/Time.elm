@@ -3,6 +3,7 @@ module TimeSlots.Time exposing
     , WithTimeDetails
     , dateToDayNum
     , getDaysInThatWeek
+    , isSameDay
     , monthToLongString
     , monthToShortString
     , stringToDate
@@ -225,3 +226,30 @@ stringToDate iso =
 dateToDayNum : Date -> TS.DayNum
 dateToDayNum date =
     getWeekdayNum <| Date.weekday date
+
+
+isSameDay : WithSession a -> Posix -> Date -> Bool
+isSameDay model posixDate date =
+    let
+        timeZone =
+            Session.getZone model.session
+
+        posixYear =
+            Time.toYear timeZone posixDate
+
+        posixMonth =
+            Time.toMonth timeZone posixDate
+
+        posixDay =
+            Time.toDay timeZone posixDate
+
+        dateYear =
+            Date.year date
+
+        dateMonth =
+            Date.month date
+
+        dateDay =
+            Date.day date
+    in
+    posixYear == dateYear && posixMonth == dateMonth && posixDay == dateDay

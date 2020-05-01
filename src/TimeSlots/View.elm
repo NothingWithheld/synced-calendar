@@ -1,5 +1,6 @@
 module TimeSlots.View exposing (viewCalendarHeading, viewDayHeadings, viewScrollableTimeSlots)
 
+import EventCreation.EventCreation as EC
 import Html exposing (Html, div, text)
 import Html.Entity as Entity
 import Json.Decode as Decode exposing (field, float)
@@ -362,7 +363,7 @@ viewTimeSlotTimes =
 
 
 viewScrollableTimeSlots :
-    TS.WithLoadingAll (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a))
+    TS.WithLoadingAll (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TSTime.WithTimeDetails (WithSession a))))
     ->
         Calendar
             { b
@@ -385,6 +386,14 @@ viewScrollableTimeSlots model updates =
 
                 _ ->
                     False
+
+        thatWeekDates =
+            case model.timeDetails of
+                WithTime { currentDay, weekOffset } ->
+                    List.map Just <| TSTime.getDaysInThatWeek model currentDay weekOffset
+
+                WithoutTime ->
+                    List.repeat 7 Nothing
     in
     styled div
         [ css "height" "80vh"
@@ -411,7 +420,7 @@ viewScrollableTimeSlots model updates =
             (viewTimeSlotTimes
                 :: List.map
                     (viewSingleDayTimeSlots model updates)
-                    TS.dayNumRange
+                    (List.map2 Tuple.pair TS.dayNumRange thatWeekDates)
             )
         ]
 
@@ -453,7 +462,7 @@ viewTimeSlotTime hour =
 
 
 viewSingleDayTimeSlots :
-    TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)
+    TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (WithSession a))
     ->
         Calendar
             { b
@@ -462,12 +471,29 @@ viewSingleDayTimeSlots :
                 , editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
             }
             c
-    -> Int
+    -> ( TS.DayNum, Maybe Posix )
     -> Html msg
-viewSingleDayTimeSlots model updates dayNum =
+viewSingleDayTimeSlots model updates ( dayNum, maybeDate ) =
     let
-        selectedTimeSlotsForThisDay =
+        selectedTimeSlotsForThisDayNum =
             List.filter ((\timeSlot -> timeSlot.dayNum == dayNum) << TS.getTimeSlotFromDetails) model.selectedTimeSlots
+
+        selectedTimeSlotsForThisDay =
+            Maybe.withDefault selectedTimeSlotsForThisDayNum <|
+                Maybe.map
+                    (\date ->
+                        List.filter
+                            ((\eventDetails ->
+                                Maybe.withDefault False
+                                    (Maybe.map (TSTime.isSameDay model date)
+                                        (EC.getDateFromDetails eventDetails)
+                                    )
+                             )
+                                << TS.getEventDetailsFromDetails
+                            )
+                            selectedTimeSlotsForThisDayNum
+                    )
+                    maybeDate
 
         isSelectingTimeSlots =
             case model.timeSlotSelection of

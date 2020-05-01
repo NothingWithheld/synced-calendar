@@ -108,7 +108,14 @@ moveWeekBackward model =
 
 updateTimeZone :
     TS.WithLoadingAllExceptTSPositions (WithSession (TS.WithSelectedTimeSlots a))
-    -> Calendar (Result Http.Error (List TSMessaging.ServerTimeSlot) -> msg) b
+    ->
+        Calendar (Result Http.Error (List TSMessaging.ServerTimeSlot) -> msg)
+            { b
+                | setSavedConfirmedEvBy :
+                    Result Http.Error (List TSMessaging.ServerConfirmedEvent) -> msg
+                , setSavedConfirmedEvFor :
+                    Result Http.Error (List TSMessaging.ServerConfirmedEvent) -> msg
+            }
     -> String
     -> ( TS.WithLoadingAllExceptTSPositions (WithSession (TS.WithSelectedTimeSlots a)), Cmd msg )
 updateTimeZone model updates timeZoneLabel =
@@ -130,7 +137,9 @@ updateTimeZone model updates timeZoneLabel =
                             False
 
                         Events _ ->
-                            True
+                            -- Server Bug -> sends same result for By and For
+                            -- possibly sends results only to creator
+                            False
                 , loadingConfirmedEventsFor =
                     case updates of
                         WeeklyFreeTimes _ ->
@@ -146,8 +155,19 @@ updateTimeZone model updates timeZoneLabel =
                         (Session.getUserId newSession)
                         (Session.getOffset newSession)
 
-                Events _ ->
-                    Cmd.none
+                Events { setSavedConfirmedEvBy, setSavedConfirmedEvFor } ->
+                    Cmd.batch
+                        [ -- Server Bug -> sends same result for By and For
+                          -- possibly sends results only to creator
+                          -- requestConfirmedEventsBy
+                          -- setSavedConfirmedEvBy
+                          -- (Session.getUserId newSession)
+                          -- (Session.getOffset newSession)
+                          requestConfirmedEventsFor
+                            setSavedConfirmedEvFor
+                            (Session.getUserId newSession)
+                            (Session.getOffset newSession)
+                        ]
             )
 
         Nothing ->
@@ -186,16 +206,16 @@ setTimeSlotPositions model updates result =
 
                 Events { setSavedConfirmedEvBy, setSavedConfirmedEvFor } ->
                     Cmd.batch
-                        [ requestConfirmedEventsBy
-                            setSavedConfirmedEvBy
+                        [ -- Server Bug -> sends same result for By and For
+                          -- possibly sends results only to creator
+                          -- requestConfirmedEventsBy
+                          -- setSavedConfirmedEvBy
+                          -- (Session.getUserId model.session)
+                          -- (Session.getOffset model.session)
+                          requestConfirmedEventsFor
+                            setSavedConfirmedEvFor
                             (Session.getUserId model.session)
                             (Session.getOffset model.session)
-
-                        -- Server Bug -> sends same result for By and For
-                        -- , requestConfirmedEventsFor
-                        --     setSavedConfirmedEvFor
-                        --     (Session.getUserId model.session)
-                        --     (Session.getOffset model.session)
                         ]
             )
     in
