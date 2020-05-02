@@ -258,10 +258,11 @@ setTimeSlotsElement model result =
 
 
 setSavedWeeklyTimeSlots :
-    TS.WithLoadingWeeklyFreeTimes (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a))
+    TS.WithLoadingAllExceptTSPositions (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots (PE.WithProposedEvent a)))
+    -> Calendar b c d
     -> Result Http.Error (List TSMessaging.ServerTimeSlot)
-    -> ( TS.WithLoadingWeeklyFreeTimes (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a)), Cmd msg )
-setSavedWeeklyTimeSlots model result =
+    -> ( TS.WithLoadingAllExceptTSPositions (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots (PE.WithProposedEvent a))), Cmd msg )
+setSavedWeeklyTimeSlots model updates result =
     let
         updateWithTimeSlot { dayNum, startSlot, endSlot, id } model_ =
             let
@@ -284,14 +285,25 @@ setSavedWeeklyTimeSlots model result =
     in
     case result of
         Ok timeSlotList ->
-            ( List.foldl
-                updateWithTimeSlot
-                { model
-                    | loadingWeeklyFreeTimes = False
-                }
-                timeSlotList
-            , Cmd.none
-            )
+            let
+                updatedModel =
+                    List.foldl
+                        updateWithTimeSlot
+                        { model
+                            | loadingWeeklyFreeTimes = False
+                        }
+                        timeSlotList
+            in
+            case updates of
+                SubmitAvailability _ ->
+                    if TS.isFinishedLoadingForAvailableEvents updatedModel  then
+                        setAvailableTimesFromWFT updatedModel
+
+                    else
+                        ( updatedModel, Cmd.none )
+
+                _ ->
+                    ( updatedModel, Cmd.none )
 
         Err _ ->
             ( model, Cmd.none )
@@ -331,40 +343,64 @@ updateWithConfirmedEvent { eventId, recipientIds, creatorId, title, description,
 
 
 setSavedConfirmedEventsFor :
-    TS.WithLoadingConfirmedEventsFor (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a))
+    TS.WithLoadingAllExceptTSPositions (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots (PE.WithProposedEvent a)))
+    -> Calendar b c d
     -> Result Http.Error (List TSMessaging.ServerConfirmedEvent)
-    -> ( TS.WithLoadingConfirmedEventsFor (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a)), Cmd msg )
-setSavedConfirmedEventsFor model result =
+    -> ( TS.WithLoadingAllExceptTSPositions (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots (PE.WithProposedEvent a))), Cmd msg )
+setSavedConfirmedEventsFor model updates result =
     case result of
         Ok confirmedEventList ->
-            ( List.foldl
-                updateWithConfirmedEvent
-                { model
-                    | loadingConfirmedEventsFor = False
-                }
-                confirmedEventList
-            , Cmd.none
-            )
+            let
+                updatedModel =
+                    List.foldl
+                        updateWithConfirmedEvent
+                        { model
+                            | loadingConfirmedEventsFor = False
+                        }
+                        confirmedEventList
+            in
+            case updates of
+                SubmitAvailability _ ->
+                    if TS.isFinishedLoadingForAvailableEvents updatedModel then
+                        setAvailableTimesFromWFT updatedModel
+
+                    else
+                        ( updatedModel, Cmd.none )
+
+                _ ->
+                    ( updatedModel, Cmd.none )
 
         Err _ ->
             ( model, Cmd.none )
 
 
 setSavedConfirmedEventsBy :
-    TS.WithLoadingConfirmedEventsBy (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a))
+    TS.WithLoadingAllExceptTSPositions (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots (PE.WithProposedEvent a)))
+    -> Calendar b c d
     -> Result Http.Error (List TSMessaging.ServerConfirmedEvent)
-    -> ( TS.WithLoadingConfirmedEventsBy (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a)), Cmd msg )
-setSavedConfirmedEventsBy model result =
+    -> ( TS.WithLoadingAllExceptTSPositions (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots (PE.WithProposedEvent a))), Cmd msg )
+setSavedConfirmedEventsBy model updates result =
     case result of
         Ok confirmedEventList ->
-            ( List.foldl
-                updateWithConfirmedEvent
-                { model
-                    | loadingConfirmedEventsBy = False
-                }
-                confirmedEventList
-            , Cmd.none
-            )
+            let
+                updatedModel =
+                    List.foldl
+                        updateWithConfirmedEvent
+                        { model
+                            | loadingConfirmedEventsBy = False
+                        }
+                        confirmedEventList
+            in
+            case updates of
+                SubmitAvailability _ ->
+                    if TS.isFinishedLoadingForAvailableEvents updatedModel then
+                        setAvailableTimesFromWFT updatedModel
+
+                    else
+                        ( updatedModel, Cmd.none )
+
+                _ ->
+                    ( updatedModel, Cmd.none )
 
         Err _ ->
             ( model, Cmd.none )
@@ -374,7 +410,72 @@ setSavedConfirmedEventsBy model result =
 -- Set available times from weekly free times
 
 
-setAvailableTimesFromWFT : PE.WithProposedEvent (WithSession (TS.WithSelectedTimeSlots (TS.WithLoadingAvailableTimes a))) -> ( PE.WithProposedEvent (WithSession (TS.WithSelectedTimeSlots (TS.WithLoadingAvailableTimes a))), Cmd msg )
+setAvailableTimesFromWFT :
+    TS.WithTimeSlotPositions (PE.WithProposedEvent (TS.WithSelectedTimeSlots (TS.WithLoadingAvailableTimes a)))
+    -> ( TS.WithTimeSlotPositions (PE.WithProposedEvent (TS.WithSelectedTimeSlots (TS.WithLoadingAvailableTimes a))), Cmd msg )
+setAvailableTimesFromWFT model =
+    let
+        isConfirmedEvent eventDetails =
+            case eventDetails of
+                EC.ConfirmedEvent _ ->
+                    True
+
+                _ ->
+                    False
+
+        isFreeTime eventDetails =
+            case eventDetails of
+                EC.SetWeeklyFreeTime _ ->
+                    True
+
+                _ ->
+                    False
+
+        confirmedEventTimeSlots =
+            List.filter
+                (isConfirmedEvent << TS.getEventDetailsFromDetails)
+                model.selectedTimeSlots
+
+        weeklyFreeTimeTimeSlots =
+            List.filter
+                (isFreeTime << TS.getEventDetailsFromDetails)
+                model.selectedTimeSlots
+
+        foldFunc date availableTimeSlots =
+            let
+                dayNumForDate =
+                    TSTime.dateToDayNum date
+
+                wfTimesForDayNum =
+                    List.filter
+                        ((==) dayNumForDate << .dayNum << TS.getTimeSlotFromDetails)
+                        weeklyFreeTimeTimeSlots
+
+                nonConflictingTSs =
+                    List.concatMap
+                        (TS.getNonConflictingPartsOfTimeSlot model confirmedEventTimeSlots << TS.getTimeSlotFromDetails)
+                        wfTimesForDayNum
+            in
+            List.map
+                (\timeSlot -> TS.SelectedTimeSlotDetails timeSlot (EC.AvailableTime date))
+                nonConflictingTSs
+                ++ availableTimeSlots
+    in
+    case model.proposedEvent of
+        Just { fromDate, toDate } ->
+            let
+                availableTimeSlots =
+                    List.foldl foldFunc [] <| TSTime.daysFrom fromDate toDate
+            in
+            ( { model
+                | selectedTimeSlots = availableTimeSlots ++ model.selectedTimeSlots
+                , loadingAvailableTimes = False
+              }
+            , Cmd.none
+            )
+
+        Nothing ->
+            ( model, Cmd.none )
 
 
 

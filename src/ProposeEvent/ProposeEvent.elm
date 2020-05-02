@@ -17,5 +17,5 @@ type alias ProposedEvent =
 type alias WithProposedEvent a =
     { a
         | proposedEvent : Maybe ProposedEvent
-        , alreadySubmitted : Bool
+        , alreadySubmittedAvailability : Bool
     }

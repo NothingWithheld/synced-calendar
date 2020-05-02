@@ -3,6 +3,7 @@ module TimeSlots.Time exposing
     , WithTimeDetails
     , dateToDayNum
     , dateToString
+    , daysFrom
     , getDaysInThatWeek
     , isSameDay
     , isoStringToDate
@@ -272,3 +273,15 @@ isSameDay model posixDate date =
             Date.day date
     in
     posixYear == dateYear && posixMonth == dateMonth && posixDay == dateDay
+
+
+daysFrom : Date -> Date -> List Date
+daysFrom startDate endDate =
+    let
+        daysBetween =
+            Date.diff Date.Days endDate startDate
+    in
+    List.map
+        (\days -> Date.add Date.Days days startDate)
+    <|
+        List.range 0 daysBetween

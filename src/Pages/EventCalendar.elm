@@ -9,6 +9,7 @@ import Html exposing (div)
 import Http
 import Material
 import Material.Options exposing (css, styled)
+import ProposeEvent.ProposeEvent exposing (ProposedEvent)
 import Session exposing (Session)
 import Time exposing (Posix)
 import TimeSlots.Commands
@@ -35,7 +36,7 @@ type alias Model =
     , loadingWeeklyFreeTimes : Bool
     , loadingConfirmedEventsBy : Bool
     , loadingConfirmedEventsFor : Bool
-    , loadingNonConflictingFreeTimes : Bool
+    , loadingAvailableTimes : Bool
     , loadingTSPositions : Bool
     , timeSlotPositions : List TS.TimeSlotBoundaryPosition
     , timeSlotsElement : Maybe TS.Element
@@ -44,6 +45,8 @@ type alias Model =
     , selectedTimeSlots : List TS.SelectedTimeSlotDetails
     , isDiscardConfirmationModalOpen : Bool
     , mdc : Material.Model Msg
+    , proposedEvent : Maybe ProposedEvent
+    , alreadySubmittedAvailability : Bool
     }
 
 
@@ -57,7 +60,7 @@ init session =
       -- possibly sends results only to creator
       , loadingConfirmedEventsBy = False
       , loadingConfirmedEventsFor = True
-      , loadingNonConflictingFreeTimes = False
+      , loadingAvailableTimes = False
       , loadingTSPositions = True
       , timeSlotPositions = []
       , timeSlotsElement = Nothing
@@ -66,6 +69,8 @@ init session =
       , selectedTimeSlots = []
       , isDiscardConfirmationModalOpen = False
       , mdc = Material.defaultModel
+      , proposedEvent = Nothing
+      , alreadySubmittedAvailability = False
       }
     , Cmd.batch
         [ Material.init Mdc
@@ -141,10 +146,10 @@ update msg model =
                 result
 
         SetSavedConfirmedEventsBy result ->
-            TSUpdate.setSavedConfirmedEventsBy model result
+            TSUpdate.setSavedConfirmedEventsBy model (Events {}) result
 
         SetSavedConfirmedEventsFor result ->
-            TSUpdate.setSavedConfirmedEventsFor model result
+            TSUpdate.setSavedConfirmedEventsFor model (Events {}) result
 
         UpdateTimeZone timeZoneLabel ->
             TSUpdate.updateTimeZone model

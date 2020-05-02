@@ -9,6 +9,7 @@ import Html exposing (div)
 import Http
 import Material
 import Material.Options exposing (css, styled)
+import ProposeEvent.ProposeEvent exposing (ProposedEvent)
 import Session exposing (Session)
 import TimeSlots.Commands exposing (requestTimeSlotPositions, requestTimeSlotsElement)
 import TimeSlots.Messaging as TSMessaging
@@ -29,7 +30,7 @@ type alias Model =
     , loadingWeeklyFreeTimes : Bool
     , loadingConfirmedEventsBy : Bool
     , loadingConfirmedEventsFor : Bool
-    , loadingNonConflictingFreeTimes : Bool
+    , loadingAvailableTimes : Bool
     , loadingTSPositions : Bool
     , timeSlotPositions : List TS.TimeSlotBoundaryPosition
     , timeSlotsElement : Maybe TS.Element
@@ -38,6 +39,8 @@ type alias Model =
     , selectedTimeSlots : List TS.SelectedTimeSlotDetails
     , isDiscardConfirmationModalOpen : Bool
     , mdc : Material.Model Msg
+    , proposedEvent : Maybe ProposedEvent
+    , alreadySubmittedAvailability : Bool
     }
 
 
@@ -48,7 +51,7 @@ init session =
       , loadingWeeklyFreeTimes = True
       , loadingConfirmedEventsBy = False
       , loadingConfirmedEventsFor = False
-      , loadingNonConflictingFreeTimes = False
+      , loadingAvailableTimes = False
       , loadingTSPositions = True
       , timeSlotPositions = []
       , timeSlotsElement = Nothing
@@ -57,6 +60,8 @@ init session =
       , selectedTimeSlots = []
       , isDiscardConfirmationModalOpen = False
       , mdc = Material.defaultModel
+      , proposedEvent = Nothing
+      , alreadySubmittedAvailability = False
       }
     , Cmd.batch
         [ Material.init Mdc
@@ -122,7 +127,7 @@ update msg model =
             TSUpdate.setTimeSlotsElement model result
 
         SetSavedWeeklyTimeSlots result ->
-            TSUpdate.setSavedWeeklyTimeSlots model result
+            TSUpdate.setSavedWeeklyTimeSlots model (WeeklyFreeTimes {}) result
 
         StartSelectingTimeSlot dayNum slotNum ->
             TSUpdate.startSelectingTimeSlot model dayNum slotNum

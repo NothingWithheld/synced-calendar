@@ -63,6 +63,14 @@ isLoadingConfirmedEvents model =
         || model.loadingConfirmedEventsFor
 
 
+isFinishedLoadingForAvailableEvents : WithLoadingAllExceptTSPositions a -> Bool
+isFinishedLoadingForAvailableEvents model =
+    not <|
+        model.loadingWeeklyFreeTimes
+            || model.loadingConfirmedEventsBy
+            || model.loadingConfirmedEventsFor
+
+
 
 -- time slots
 
