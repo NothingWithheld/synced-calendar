@@ -68,7 +68,7 @@ serverConfirmedEventDecoder =
         |> required "creatorId" Decode.string
         |> required "name" Decode.string
         |> required "description" Decode.string
-        |> required "date" (Decode.map TSTime.stringToDate Decode.string)
+        |> required "date" (Decode.map TSTime.isoStringToDate Decode.string)
         |> required "fromTime" (Decode.map (militaryToSlotNum False) Decode.string)
         |> required "toTime" (Decode.map (militaryToSlotNum True) Decode.string)
 

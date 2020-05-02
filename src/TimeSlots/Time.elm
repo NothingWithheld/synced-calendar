@@ -2,8 +2,10 @@ module TimeSlots.Time exposing
     ( TimeDetails(..)
     , WithTimeDetails
     , dateToDayNum
+    , dateToString
     , getDaysInThatWeek
     , isSameDay
+    , isoStringToDate
     , monthToLongString
     , monthToShortString
     , stringToDate
@@ -211,8 +213,8 @@ monthNumToMonth monthNum =
     getListItemAt (monthNum - 1) monthsInOrder
 
 
-stringToDate : String -> Maybe Date
-stringToDate iso =
+isoStringToDate : String -> Maybe Date
+isoStringToDate iso =
     case List.map String.toInt <| String.split "-" iso of
         [ Just year, Just monthNum, Just day ] ->
             Maybe.map
@@ -221,6 +223,23 @@ stringToDate iso =
 
         _ ->
             Nothing
+
+
+stringToDate : String -> Maybe Date
+stringToDate iso =
+    case List.map String.toInt <| String.split "-" iso of
+        [ Just monthNum, Just day, Just year ] ->
+            Maybe.map
+                (\month -> Date.fromCalendarDate year month day)
+                (monthNumToMonth monthNum)
+
+        _ ->
+            Nothing
+
+
+dateToString : Date -> String
+dateToString date =
+    Date.format "MM-dd-y" date
 
 
 dateToDayNum : Date -> TS.DayNum

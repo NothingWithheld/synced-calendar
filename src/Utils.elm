@@ -79,3 +79,18 @@ getMinMax a b =
 applyTwice : (a -> a -> b) -> a -> b
 applyTwice fn arg =
     fn arg arg
+
+
+maybeMap7 : (a -> b -> c -> d -> e -> f -> g -> h) -> Maybe a -> Maybe b -> Maybe c -> Maybe d -> Maybe e -> Maybe f -> Maybe g -> Maybe h
+maybeMap7 mapFunc a b c d e f g =
+    let
+        flippedApplicative =
+            Flip.flip applicative
+    in
+    Maybe.map mapFunc a
+        |> flippedApplicative b
+        |> flippedApplicative c
+        |> flippedApplicative d
+        |> flippedApplicative e
+        |> flippedApplicative f
+        |> flippedApplicative g

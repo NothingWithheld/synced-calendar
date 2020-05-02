@@ -3,13 +3,16 @@ module ProposeEvent.Messaging exposing
     , getEventProposalQueryString
     , noDataDecoder
     , proposedEventListDecoder
+    , proposedEventQueryDecoder
+    , proposedEventToQueryParams
     )
 
 import Date exposing (Date)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (required)
 import TimeSlots.Time as TSTime
-import Url.Builder as Builder
+import Url.Builder as Builder exposing (QueryParameter)
+import Url.Parser.Query as Query
 import Utils exposing (NoData(..))
 
 
@@ -69,8 +72,8 @@ proposedEventDecoder =
         |> required "creatorId" Decode.string
         |> required "id" Decode.int
         |> required "recipientId" (Decode.map (String.split ",") Decode.string)
-        |> required "fromDate" (Decode.map TSTime.stringToDate Decode.string)
-        |> required "toDate" (Decode.map TSTime.stringToDate Decode.string)
+        |> required "fromDate" (Decode.map TSTime.isoStringToDate Decode.string)
+        |> required "toDate" (Decode.map TSTime.isoStringToDate Decode.string)
 
 
 toProposedEvent :
@@ -87,3 +90,27 @@ toProposedEvent title description creatorId eventId recipientIds fromDate toDate
         (ProposedEvent title description creatorId eventId recipientIds)
         fromDate
         toDate
+
+
+proposedEventToQueryParams : ProposedEvent -> List QueryParameter
+proposedEventToQueryParams proposedEvent =
+    [ Builder.string "title" proposedEvent.title
+    , Builder.string "description" proposedEvent.description
+    , Builder.string "creatorId" proposedEvent.creatorId
+    , Builder.int "eventId" proposedEvent.eventId
+    , Builder.string "recipientIds" <| String.join "," proposedEvent.recipientIds
+    , Builder.string "fromDate" <| TSTime.dateToString proposedEvent.fromDate
+    , Builder.string "toDate" <| TSTime.dateToString proposedEvent.toDate
+    ]
+
+
+proposedEventQueryDecoder : Query.Parser (Maybe ProposedEvent)
+proposedEventQueryDecoder =
+    Query.map7 (Utils.maybeMap7 ProposedEvent)
+        (Query.string "title")
+        (Query.string "description")
+        (Query.string "creatorId")
+        (Query.int "eventId")
+        (Query.map (Maybe.map (String.split ",")) (Query.string "recipientIds"))
+        (Query.map (Maybe.andThen TSTime.stringToDate) (Query.string "fromDate"))
+        (Query.map (Maybe.andThen TSTime.stringToDate) (Query.string "toDate"))

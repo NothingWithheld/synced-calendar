@@ -9,6 +9,7 @@ import Pages.EventCalendar
 import Pages.Home
 import Pages.Login
 import Pages.ProposeEvent
+import Pages.SubmitAvailability
 import Pages.WeeklyFreeTimes
 import Route exposing (Route)
 import Session exposing (Session)
@@ -42,6 +43,7 @@ type Model
     | Home Pages.Home.Model
     | WeeklyFreeTimes Pages.WeeklyFreeTimes.Model
     | EventCalendar Pages.EventCalendar.Model
+    | SubmitAvailability Pages.SubmitAvailability.Model
     | ProposeEvent Pages.ProposeEvent.Model
 
 
@@ -61,20 +63,23 @@ getSession model =
         Redirect session ->
             session
 
-        Login login ->
-            login.session
+        Login model_ ->
+            model_.session
 
-        Home home ->
-            home.session
+        Home model_ ->
+            model_.session
 
-        WeeklyFreeTimes weeklyFreeTimes ->
-            weeklyFreeTimes.session
+        WeeklyFreeTimes model_ ->
+            model_.session
 
-        EventCalendar eventCalendar ->
-            eventCalendar.session
+        EventCalendar model_ ->
+            model_.session
 
-        ProposeEvent proposeEvent ->
-            proposeEvent.session
+        SubmitAvailability model_ ->
+            model_.session
+
+        ProposeEvent model_ ->
+            model_.session
 
 
 
@@ -88,6 +93,7 @@ type Msg
     | HomeMsg Pages.Home.Msg
     | WeeklyFreeTimesMsg Pages.WeeklyFreeTimes.Msg
     | EventCalendarMsg Pages.EventCalendar.Msg
+    | SubmitAvailabilityMsg Pages.SubmitAvailability.Msg
     | ProposeEventMsg Pages.ProposeEvent.Msg
 
 
@@ -109,25 +115,29 @@ update msg model =
                 External href ->
                     ( model, Nav.load href )
 
-        ( LoginMsg subMsg, Login login ) ->
+        ( LoginMsg subMsg, Login model_ ) ->
             updateWith Login LoginMsg <|
-                Pages.Login.update subMsg login
+                Pages.Login.update subMsg model_
 
-        ( HomeMsg subMsg, Home home ) ->
+        ( HomeMsg subMsg, Home model_ ) ->
             updateWith Home HomeMsg <|
-                Pages.Home.update subMsg home
+                Pages.Home.update subMsg model_
 
-        ( WeeklyFreeTimesMsg subMsg, WeeklyFreeTimes weeklyFreeTimes ) ->
+        ( WeeklyFreeTimesMsg subMsg, WeeklyFreeTimes model_ ) ->
             updateWith WeeklyFreeTimes WeeklyFreeTimesMsg <|
-                Pages.WeeklyFreeTimes.update subMsg weeklyFreeTimes
+                Pages.WeeklyFreeTimes.update subMsg model_
 
-        ( EventCalendarMsg subMsg, EventCalendar eventCalendar ) ->
+        ( EventCalendarMsg subMsg, EventCalendar model_ ) ->
             updateWith EventCalendar EventCalendarMsg <|
-                Pages.EventCalendar.update subMsg eventCalendar
+                Pages.EventCalendar.update subMsg model_
 
-        ( ProposeEventMsg subMsg, ProposeEvent proposeEvent ) ->
+        ( SubmitAvailabilityMsg subMsg, SubmitAvailability model_ ) ->
+            updateWith SubmitAvailability SubmitAvailabilityMsg <|
+                Pages.SubmitAvailability.update subMsg model_
+
+        ( ProposeEventMsg subMsg, ProposeEvent model_ ) ->
             updateWith ProposeEvent ProposeEventMsg <|
-                Pages.ProposeEvent.update subMsg proposeEvent
+                Pages.ProposeEvent.update subMsg model_
 
         ( _, _ ) ->
             ( model, Cmd.none )
@@ -179,6 +189,10 @@ handleUrlChange route model =
             updateWith EventCalendar EventCalendarMsg <|
                 Pages.EventCalendar.init session
 
+        ( Route.SubmitAvailability _, True ) ->
+            updateWith SubmitAvailability SubmitAvailabilityMsg <|
+                Pages.SubmitAvailability.init session
+
         ( Route.ProposeEvent, True ) ->
             updateWith ProposeEvent ProposeEventMsg <|
                 Pages.ProposeEvent.init session
@@ -200,23 +214,27 @@ view model =
         Redirect _ ->
             { title = "", body = [] }
 
-        Login login ->
-            viewWith LoginMsg <| Pages.Login.view login
+        Login model_ ->
+            viewWith LoginMsg <| Pages.Login.view model_
 
-        Home home ->
-            viewWith HomeMsg <| Pages.Home.view home
+        Home model_ ->
+            viewWith HomeMsg <| Pages.Home.view model_
 
-        WeeklyFreeTimes weeklyFreeTimes ->
+        WeeklyFreeTimes model_ ->
             viewWith WeeklyFreeTimesMsg <|
-                Pages.WeeklyFreeTimes.view weeklyFreeTimes
+                Pages.WeeklyFreeTimes.view model_
 
-        EventCalendar eventCalendar ->
+        EventCalendar model_ ->
             viewWith EventCalendarMsg <|
-                Pages.EventCalendar.view eventCalendar
+                Pages.EventCalendar.view model_
 
-        ProposeEvent proposeEvent ->
+        SubmitAvailability model_ ->
+            viewWith SubmitAvailabilityMsg <|
+                Pages.SubmitAvailability.view model_
+
+        ProposeEvent model_ ->
             viewWith ProposeEventMsg <|
-                Pages.ProposeEvent.view proposeEvent
+                Pages.ProposeEvent.view model_
 
 
 viewWith : (subMsg -> Msg) -> Document subMsg -> Document Msg
@@ -239,22 +257,26 @@ subscriptions model =
         Redirect _ ->
             Sub.none
 
-        Login login ->
+        Login model_ ->
             Sub.map LoginMsg <|
-                Pages.Login.subscriptions login
+                Pages.Login.subscriptions model_
 
-        Home home ->
+        Home model_ ->
             Sub.map HomeMsg <|
-                Pages.Home.subscriptions home
+                Pages.Home.subscriptions model_
 
-        WeeklyFreeTimes weeklyFreeTimes ->
+        WeeklyFreeTimes model_ ->
             Sub.map WeeklyFreeTimesMsg <|
-                Pages.WeeklyFreeTimes.subscriptions weeklyFreeTimes
+                Pages.WeeklyFreeTimes.subscriptions model_
 
-        EventCalendar eventCalendar ->
+        EventCalendar model_ ->
             Sub.map EventCalendarMsg <|
-                Pages.EventCalendar.subscriptions eventCalendar
+                Pages.EventCalendar.subscriptions model_
 
-        ProposeEvent proposeEvent ->
+        SubmitAvailability model_ ->
+            Sub.map SubmitAvailabilityMsg <|
+                Pages.SubmitAvailability.subscriptions model_
+
+        ProposeEvent model_ ->
             Sub.map ProposeEventMsg <|
-                Pages.ProposeEvent.subscriptions proposeEvent
+                Pages.ProposeEvent.subscriptions model_
