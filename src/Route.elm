@@ -4,7 +4,8 @@ import Browser.Navigation as Nav
 import Html exposing (Html, text)
 import Material
 import Material.Button as Button
-import ProposeEvent.Messaging as PEMessaging exposing (ProposedEvent)
+import ProposeEvent.Messaging as PEMessaging
+import ProposeEvent.ProposeEvent exposing (ProposedEvent)
 import Url exposing (Url)
 import Url.Builder as Builder
 import Url.Parser as Parser exposing ((<?>), Parser)

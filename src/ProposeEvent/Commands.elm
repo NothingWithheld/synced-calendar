@@ -6,6 +6,7 @@ module ProposeEvent.Commands exposing
 
 import Http
 import ProposeEvent.Messaging as PEMessaging
+import ProposeEvent.ProposeEvent exposing (ProposedEvent)
 import Utils exposing (NoData)
 
 
@@ -38,7 +39,7 @@ submitEventProposal onSubmitResult userId recipientId fromDate toDate name descr
 
 
 requestProposedEventsBy :
-    (Result Http.Error (List PEMessaging.ProposedEvent) -> msg)
+    (Result Http.Error (List ProposedEvent) -> msg)
     -> String
     -> Cmd msg
 requestProposedEventsBy onResult userId =
@@ -49,7 +50,7 @@ requestProposedEventsBy onResult userId =
 
 
 requestProposedEventsFor :
-    (Result Http.Error (List PEMessaging.ProposedEvent) -> msg)
+    (Result Http.Error (List ProposedEvent) -> msg)
     -> String
     -> Cmd msg
 requestProposedEventsFor onResult userId =

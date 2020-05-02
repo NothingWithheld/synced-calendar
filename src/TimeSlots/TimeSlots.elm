@@ -2,7 +2,7 @@ module TimeSlots.TimeSlots exposing (..)
 
 import Browser.Dom as Dom
 import EventCreation.EventCreation as EC
-import Utils exposing (applyTwice, getMinMax)
+import Utils exposing (applyTwice, getListItemAt, getMinMax)
 
 
 scrollableTimeSlotsId : String
@@ -10,9 +10,10 @@ scrollableTimeSlotsId =
     "scrollable-time-slots"
 
 
-type Calendar a b
+type Calendar a b c
     = WeeklyFreeTimes a
     | Events b
+    | SubmitAvailability c
 
 
 type alias WithLoadingWeeklyFreeTimes a =
@@ -27,20 +28,24 @@ type alias WithLoadingConfirmedEventsFor a =
     { a | loadingConfirmedEventsFor : Bool }
 
 
-type alias WithLoadingNonConflictingFreeTimes a =
-    { a | loadingNonConflictingFreeTimes : Bool }
-
-
 type alias WithLoadingTSPositions a =
     { a | loadingTSPositions : Bool }
 
 
+type alias WithLoadingAvailableTimes a =
+    { a | loadingAvailableTimes : Bool }
+
+
 type alias WithLoadingAllExceptTSPositions a =
-    WithLoadingWeeklyFreeTimes (WithLoadingConfirmedEventsBy (WithLoadingConfirmedEventsFor (WithLoadingNonConflictingFreeTimes a)))
+    WithLoadingWeeklyFreeTimes (WithLoadingConfirmedEventsBy (WithLoadingConfirmedEventsFor (WithLoadingAvailableTimes a)))
+
+
+type alias WithLoadingConfirmedEvents a =
+    WithLoadingConfirmedEventsBy (WithLoadingConfirmedEventsFor a)
 
 
 type alias WithLoadingAll a =
-    WithLoadingWeeklyFreeTimes (WithLoadingConfirmedEventsBy (WithLoadingConfirmedEventsFor (WithLoadingNonConflictingFreeTimes (WithLoadingTSPositions a))))
+    WithLoadingWeeklyFreeTimes (WithLoadingConfirmedEventsBy (WithLoadingConfirmedEventsFor (WithLoadingTSPositions (WithLoadingAvailableTimes a))))
 
 
 isLoading : WithLoadingAll a -> Bool
@@ -48,8 +53,14 @@ isLoading model =
     model.loadingWeeklyFreeTimes
         || model.loadingConfirmedEventsBy
         || model.loadingConfirmedEventsFor
-        || model.loadingNonConflictingFreeTimes
         || model.loadingTSPositions
+        || model.loadingAvailableTimes
+
+
+isLoadingConfirmedEvents : WithLoadingConfirmedEvents a -> Bool
+isLoadingConfirmedEvents model =
+    model.loadingConfirmedEventsBy
+        || model.loadingConfirmedEventsFor
 
 
 
@@ -280,6 +291,75 @@ doesTSSelectionIntersectSelectedTimeSlots currentTimeSlotDetails timeSlotSelecti
 
         _ ->
             False
+
+
+getNonConflictingPartsOfTimeSlot : WithTimeSlotPositions a -> List SelectedTimeSlotDetails -> TimeSlot -> List TimeSlot
+getNonConflictingPartsOfTimeSlot model currentTimeSlotDetails ({ dayNum } as timeSlot) =
+    let
+        nonConflictingRanges =
+            getNonConflictingRangesOfTimeSlot currentTimeSlotDetails timeSlot
+    in
+    List.filterMap
+        (\( startSlot, endSlot ) -> getTimeSlotFromSlotNums model dayNum startSlot endSlot)
+        nonConflictingRanges
+
+
+getTimeSlotFromSlotNums : WithTimeSlotPositions a -> DayNum -> SlotNum -> SlotNum -> Maybe TimeSlot
+getTimeSlotFromSlotNums model dayNum startSlot endSlot =
+    let
+        startBound =
+            getListItemAt startSlot model.timeSlotPositions
+
+        endBound =
+            getListItemAt endSlot model.timeSlotPositions
+    in
+    Maybe.map2 (TimeSlot dayNum) startBound endBound
+
+
+getNonConflictingRangesOfTimeSlot : List SelectedTimeSlotDetails -> TimeSlot -> List ( SlotNum, SlotNum )
+getNonConflictingRangesOfTimeSlot currentTimeSlotDetails { dayNum, startBound, endBound } =
+    let
+        startSlotNum =
+            startBound.slotNum
+
+        endSlotNum =
+            endBound.slotNum
+
+        nonConflictingSlotNums =
+            List.filter
+                (not
+                    << (applyTwice <|
+                            intersectsCurrentlySelectedTimeSlots
+                                currentTimeSlotDetails
+                                dayNum
+                       )
+                )
+            <|
+                List.range startSlotNum endSlotNum
+
+        nonConflictingRangeDetails =
+            List.foldl
+                (\slotNum { curRange, nonConflictingRanges } ->
+                    case curRange of
+                        Just ( start, end ) ->
+                            if slotNum + 1 == end then
+                                { curRange = Just ( start, end + 1 ), nonConflictingRanges = nonConflictingRanges }
+
+                            else
+                                { curRange = Just ( slotNum, slotNum ), nonConflictingRanges = ( start, end ) :: nonConflictingRanges }
+
+                        Nothing ->
+                            { curRange = Just ( slotNum, slotNum ), nonConflictingRanges = [] }
+                )
+                { curRange = Nothing, nonConflictingRanges = [] }
+                nonConflictingSlotNums
+    in
+    case nonConflictingRangeDetails.curRange of
+        Just range ->
+            range :: nonConflictingRangeDetails.nonConflictingRanges
+
+        Nothing ->
+            nonConflictingRangeDetails.nonConflictingRanges
 
 
 getUnselectedTimeSlotRange : List SelectedTimeSlotDetails -> DayNum -> SlotNum -> SlotNum -> Maybe ( SlotNum, SlotNum )

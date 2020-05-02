@@ -1,6 +1,5 @@
 module ProposeEvent.Messaging exposing
-    ( ProposedEvent
-    , getEventProposalQueryString
+    ( getEventProposalQueryString
     , noDataDecoder
     , proposedEventListDecoder
     , proposedEventQueryDecoder
@@ -10,6 +9,7 @@ module ProposeEvent.Messaging exposing
 import Date exposing (Date)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Decode.Pipeline exposing (required)
+import ProposeEvent.ProposeEvent exposing (ProposedEvent)
 import TimeSlots.Time as TSTime
 import Url.Builder as Builder exposing (QueryParameter)
 import Url.Parser.Query as Query
@@ -46,17 +46,6 @@ getEventProposalQueryString recipientId fromDate toDate name description =
 slashesToDashesDate : String -> String
 slashesToDashesDate date =
     String.replace "/" "-" date
-
-
-type alias ProposedEvent =
-    { title : String
-    , description : String
-    , creatorId : String
-    , eventId : Int
-    , recipientIds : List String
-    , fromDate : Date
-    , toDate : Date
-    }
 
 
 proposedEventListDecoder : Decoder (List ProposedEvent)

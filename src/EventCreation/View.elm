@@ -137,10 +137,7 @@ viewUserRequestForm model ({ noOp } as updates) eventDetails =
                     EC.SetWeeklyFreeTime _ ->
                         viewWeeklyFreeTimesForm model updates intersectsTimeSlots
 
-                    EC.UnsetAvailableTime ->
-                        viewWeeklyFreeTimesForm model updates intersectsTimeSlots
-
-                    EC.SetAvailableTime ->
+                    EC.AvailableTime _ ->
                         viewWeeklyFreeTimesForm model updates intersectsTimeSlots
 
                     EC.UnsetConfirmedEvent confirmedEventDetails ->

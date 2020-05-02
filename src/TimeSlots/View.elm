@@ -50,6 +50,7 @@ viewCalendarHeading :
                 , moveWeekForward : msg
                 , moveWeekBackward : msg
             }
+            d
     -> Html msg
 viewCalendarHeading model updates =
     case updates of
@@ -78,6 +79,9 @@ viewCalendarHeading model updates =
                 , viewTimeZoneSelect model updates_
                 , viewWeekHeadingItems model updates_
                 ]
+
+        SubmitAvailability _ ->
+            text ""
 
 
 viewTimeZoneSelect :
@@ -376,6 +380,7 @@ viewScrollableTimeSlots :
             { c
                 | editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
             }
+            d
     -> Html msg
 viewScrollableTimeSlots model updates =
     let
@@ -418,6 +423,9 @@ viewScrollableTimeSlots model updates =
                     when isSelectingTimeSlots <| Options.onMouseUp handleTimeSlotMouseUp
 
                 Events _ ->
+                    nop
+
+                SubmitAvailability _ ->
                     nop
             ]
             (viewTimeSlotTimes
@@ -476,6 +484,7 @@ viewSingleDayTimeSlots :
             { c
                 | editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
             }
+            d
     -> ( TS.DayNum, Maybe Posix )
     -> Html msg
 viewSingleDayTimeSlots model updates ( dayNum, maybeDate ) =
@@ -521,6 +530,9 @@ viewSingleDayTimeSlots model updates ( dayNum, maybeDate ) =
 
             Events _ ->
                 nop
+
+            SubmitAvailability _ ->
+                nop
         ]
         (List.append
             [ div
@@ -539,7 +551,7 @@ viewSingleDayTimeSlots model updates ( dayNum, maybeDate ) =
 
 
 viewTimeSlot :
-    Calendar { a | startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg } b
+    Calendar { a | startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg } b c
     -> Int
     -> Int
     -> Html msg
@@ -554,6 +566,9 @@ viewTimeSlot updates dayNum slotNum =
 
             Events _ ->
                 nop
+
+            SubmitAvailability _ ->
+                nop
         , Options.id (TS.getTimeSlotId dayNum slotNum)
         ]
         []
@@ -564,6 +579,7 @@ viewSelectedTimeSlot :
         { b
             | editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
         }
+        c
     -> TS.SelectedTimeSlotDetails
     -> Html msg
 viewSelectedTimeSlot updates selectedTimeSlotDetails =
@@ -600,6 +616,9 @@ viewSelectedTimeSlot updates selectedTimeSlotDetails =
 
             Events { editTimeSlotSelection } ->
                 Options.onClick <| editTimeSlotSelection selectedTimeSlotDetails
+
+            SubmitAvailability _ ->
+                nop
         ]
         [ viewTimeSlotDuration selectedTimeSlot hasSingleSlotHeight ]
 

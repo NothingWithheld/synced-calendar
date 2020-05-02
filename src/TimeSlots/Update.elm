@@ -26,6 +26,7 @@ import EventCreation.EventCreation as EC
 import EventCreation.Update as ECUpdate
 import Flip
 import Http
+import ProposeEvent.ProposeEvent as PE
 import Session exposing (WithSession)
 import Task
 import Time exposing (Posix)
@@ -116,6 +117,7 @@ updateTimeZone :
                 , setSavedConfirmedEvFor :
                     Result Http.Error (List TSMessaging.ServerConfirmedEvent) -> msg
             }
+            c
     -> String
     -> ( TS.WithLoadingAllExceptTSPositions (WithSession (TS.WithSelectedTimeSlots a)), Cmd msg )
 updateTimeZone model updates timeZoneLabel =
@@ -131,6 +133,9 @@ updateTimeZone model updates timeZoneLabel =
 
                         Events _ ->
                             False
+
+                        SubmitAvailability _ ->
+                            True
                 , loadingConfirmedEventsBy =
                     case updates of
                         WeeklyFreeTimes _ ->
@@ -140,12 +145,18 @@ updateTimeZone model updates timeZoneLabel =
                             -- Server Bug -> sends same result for By and For
                             -- possibly sends results only to creator
                             False
+
+                        SubmitAvailability _ ->
+                            True
                 , loadingConfirmedEventsFor =
                     case updates of
                         WeeklyFreeTimes _ ->
                             False
 
                         Events _ ->
+                            True
+
+                        SubmitAvailability _ ->
                             True
               }
             , case updates of
@@ -168,6 +179,9 @@ updateTimeZone model updates timeZoneLabel =
                             (Session.getUserId newSession)
                             (Session.getOffset newSession)
                         ]
+
+                SubmitAvailability _ ->
+                    Cmd.none
             )
 
         Nothing ->
@@ -188,6 +202,7 @@ setTimeSlotPositions :
                 , setSavedConfirmedEvFor :
                     Result Http.Error (List TSMessaging.ServerConfirmedEvent) -> msg
             }
+            c
     -> Result Dom.Error (List Dom.Element)
     -> ( TS.WithTimeSlotPositions (TS.WithLoadingTSPositions (WithSession a)), Cmd msg )
 setTimeSlotPositions model updates result =
@@ -217,6 +232,9 @@ setTimeSlotPositions model updates result =
                             (Session.getUserId model.session)
                             (Session.getOffset model.session)
                         ]
+
+                SubmitAvailability _ ->
+                    Cmd.none
             )
     in
     defaultOnError ( model, Cmd.none ) result updateModelWithTSPositions
@@ -350,6 +368,13 @@ setSavedConfirmedEventsBy model result =
 
         Err _ ->
             ( model, Cmd.none )
+
+
+
+-- Set available times from weekly free times
+
+
+setAvailableTimesFromWFT : PE.WithProposedEvent (WithSession (TS.WithSelectedTimeSlots (TS.WithLoadingAvailableTimes a))) -> ( PE.WithProposedEvent (WithSession (TS.WithSelectedTimeSlots (TS.WithLoadingAvailableTimes a))), Cmd msg )
 
 
 

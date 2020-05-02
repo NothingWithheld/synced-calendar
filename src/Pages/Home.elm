@@ -11,7 +11,7 @@ import Material.Elevation as Elevation
 import Material.Options exposing (css, styled, when)
 import Material.Typography as Typography
 import ProposeEvent.Commands exposing (requestProposedEventsBy, requestProposedEventsFor)
-import ProposeEvent.Messaging exposing (ProposedEvent)
+import ProposeEvent.ProposeEvent exposing (ProposedEvent)
 import Route
 import Session exposing (Session)
 import Utils exposing (limitToNChars)
