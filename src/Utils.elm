@@ -67,6 +67,15 @@ useWithoutCmdMsg fn =
     Flip.flip Tuple.pair Cmd.none << fn
 
 
+limitToNChars : Int -> String -> String
+limitToNChars n input =
+    if String.length input <= n then
+        input
+
+    else
+        String.left n input ++ "..."
+
+
 getMinMax : Int -> Int -> ( Int, Int )
 getMinMax a b =
     if a < b then

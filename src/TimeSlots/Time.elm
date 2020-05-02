@@ -239,7 +239,7 @@ stringToDate iso =
 
 dateToString : Date -> String
 dateToString date =
-    Date.format "MM-dd-y" date
+    Date.format "MM-dd-yyyy" date
 
 
 dateToDayNum : Date -> TS.DayNum
