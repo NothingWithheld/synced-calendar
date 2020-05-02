@@ -27,7 +27,7 @@ instance ToJSON FreeTimeEntryData where
         ]
 
 instance ToJSON AvailableTimeEntryData where 
-    toJSON (AvailableTimeEntryData entryId eventId userId date (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _) spanMultiple) =
+    toJSON (AvailableTimeEntryData entryId userId eventId date (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _) spanMultiple) =
         object [
             "id" .= entryId,
             "userId" .= userId, 
@@ -238,17 +238,20 @@ deleteAvailableTimeEntryR entryIdText = do
 
 createAvailableFromFree :: [FreeTimeEntry] -> Day -> Day -> Key ProposedEvent -> [AvailableTimeEntry]
 createAvailableFromFree entries fromDate toDate eventId
-    | fromDate == toDate = []
+    | fromDate > toDate = []
     | otherwise =  (createAvailableFromFreeHelper entries fromDate eventId) Import.++ 
         (createAvailableFromFree entries (addDays 1 fromDate) toDate eventId)
 
 createAvailableFromFreeHelper :: [FreeTimeEntry] -> Day -> Key ProposedEvent -> [AvailableTimeEntry]
 createAvailableFromFreeHelper [] _ _ = []
 createAvailableFromFreeHelper ((FreeTimeEntry userId day fromTime toTime spanMultiple):xs) date eventId = 
-    case (toLower $ pack $ show $ dateWeekDay (dayToDateTime date)) == day of 
-        True -> [AvailableTimeEntry userId eventId date fromTime toTime spanMultiple] Import.++ 
+    case ((toLower $ pack $ show $ dateWeekDay (dayToDateTime date)) == day && spanMultiple == False, 
+        (toLower $ pack $ show $ dateWeekDay (dayToDateTime (addDays (-1) date))) == day && spanMultiple == True) of 
+        (True, False) -> [AvailableTimeEntry userId eventId date fromTime toTime spanMultiple] Import.++ 
             createAvailableFromFreeHelper xs date eventId
-        False -> createAvailableFromFreeHelper xs date eventId
+        (False, True) -> [AvailableTimeEntry userId eventId (addDays (-1) date) fromTime toTime spanMultiple] Import.++ 
+            createAvailableFromFreeHelper xs date eventId
+        (_, _) -> createAvailableFromFreeHelper xs date eventId
 
 iterateConfirmedEvents :: [AvailableTimeEntry] -> [Handler.Event.ConfirmedEventData] -> [AvailableTimeEntry]
 iterateConfirmedEvents entries [] = entries 
@@ -259,23 +262,65 @@ iterateAvailableTimeEntries [] _ = []
 iterateAvailableTimeEntries (x:xs) confirmed_event = (splitFreeTime x confirmed_event) Import.++ (iterateAvailableTimeEntries xs confirmed_event)
 
 splitFreeTime :: AvailableTimeEntry -> Handler.Event.ConfirmedEventData -> [AvailableTimeEntry]
-splitFreeTime entry@(AvailableTimeEntry userId eventId dateA fromTimeA toTimeA spanMultiple) 
-    (Handler.Event.ConfirmedEventData _ _ _ _ _ _ dateC fromTimeC toTimeC _) = do 
-    case (dateA == dateC, 
-        fromTimeC <= fromTimeA && toTimeC >= toTimeA,
-        fromTimeC <= fromTimeA && toTimeC < toTimeA && toTimeC > fromTimeA,
-        fromTimeC > fromTimeA && toTimeC >= toTimeA && fromTimeC < toTimeA,
-        fromTimeC > fromTimeA && toTimeC < toTimeA,
-        spanMultiple) of 
-            (True, True, False, False, False, False) -> [] 
-            (True, False, True, False, False, False) -> 
-                [AvailableTimeEntry userId eventId dateA toTimeC toTimeA spanMultiple] 
-            (True, False, False, True, False, False) -> 
-                [AvailableTimeEntry userId eventId dateA fromTimeA fromTimeC spanMultiple] 
-            (True, False, False, False, True, False) -> 
-                [AvailableTimeEntry userId eventId dateA fromTimeA fromTimeC spanMultiple,
-                AvailableTimeEntry userId eventId dateA toTimeC toTimeA spanMultiple] 
-            _ -> [entry]
+splitFreeTime entry@(AvailableTimeEntry userId eventId dateA fromTimeA toTimeA spanMultipleA) 
+    (Handler.Event.ConfirmedEventData _ _ _ _ _ _ dateC fromTimeC toTimeC spanMultipleC) = do 
+    case (spanMultipleA, spanMultipleC) of 
+        (False, False) -> case 
+            (fromTimeC <= fromTimeA && toTimeC >= toTimeA && dateA == dateC,
+            fromTimeC <= fromTimeA && toTimeC < toTimeA && toTimeC > fromTimeA && dateA == dateC,
+            fromTimeC > fromTimeA && toTimeC >= toTimeA && fromTimeC < toTimeA && dateA == dateC,
+            fromTimeC > fromTimeA && toTimeC < toTimeA && dateA == dateC) of 
+                (True, False, False, False) -> [] 
+                (False, True, False, False) ->
+                    [AvailableTimeEntry userId eventId dateA toTimeC toTimeA spanMultipleA] 
+                (False, False, True, False) ->
+                    [AvailableTimeEntry userId eventId dateA fromTimeA fromTimeC spanMultipleA] 
+                (False, False, False, True) ->
+                    [AvailableTimeEntry userId eventId dateA fromTimeA fromTimeC spanMultipleA,
+                        AvailableTimeEntry userId eventId dateA toTimeC toTimeA spanMultipleA] 
+                _ -> [entry]
+        (True, False) -> case 
+            (fromTimeC <= fromTimeA && toTimeC > fromTimeA && dateA == dateC,
+            toTimeC >= toTimeA && fromTimeC < toTimeA && dateA == (addDays 1 dateC),
+            fromTimeC > fromTimeA && dateA == dateC,
+            toTimeC < toTimeA && dateA == (addDays 1 dateC)) of
+                (True, False, False, False) ->
+                    [AvailableTimeEntry userId eventId dateA toTimeC toTimeA spanMultipleA]
+                (False, True, False, False) ->
+                    [AvailableTimeEntry userId eventId dateA fromTimeA fromTimeC spanMultipleA]
+                (False, False, True, False) ->
+                    [AvailableTimeEntry userId eventId dateA fromTimeA fromTimeC False,
+                        AvailableTimeEntry userId eventId dateA toTimeC toTimeA spanMultipleA]
+                (False, False, False, True) ->
+                    [AvailableTimeEntry userId eventId dateA fromTimeA fromTimeC spanMultipleA,
+                        AvailableTimeEntry userId eventId dateA toTimeC toTimeA False]
+                _ -> [entry]
+        (False, True) -> case 
+            (fromTimeC <= fromTimeA && dateA == dateC,
+            fromTimeC > fromTimeA && fromTimeC < toTimeC && dateA == dateC,
+            toTimeC >= toTimeA && (addDays 1 dateA) == dateC,
+            toTimeC < toTimeA && toTimeC > fromTimeA && (addDays 1 dateA) == dateC) of 
+                (True, False, False, False) -> []
+                (False, True, False, False) -> 
+                    [AvailableTimeEntry userId eventId dateA fromTimeA fromTimeC spanMultipleA]
+                (False, False, True, False) -> []
+                (False, False, False, True) -> 
+                    [AvailableTimeEntry userId eventId dateA toTimeC toTimeA spanMultipleA]
+                _ -> [entry]
+        (True, True) -> case 
+            (fromTimeC <= fromTimeA && toTimeC >= toTimeA && dateA == dateC,
+            fromTimeC > fromTimeA && toTimeC >= toTimeA && dateA == dateC,
+            fromTimeC <= fromTimeA && toTimeC < toTimeA && dateA == dateC,
+            fromTimeC > fromTimeA && toTimeC < toTimeA && dateA == dateC) of 
+                (True, False, False, False) -> []
+                (False, True, False, False) -> 
+                    [AvailableTimeEntry userId eventId dateA fromTimeA fromTimeC False]
+                (False, False, True, False) -> 
+                    [AvailableTimeEntry userId eventId (addDays 1 dateA) toTimeC toTimeA False]
+                (False, False, False, True) -> 
+                    [AvailableTimeEntry userId eventId dateA fromTimeA fromTimeC False,
+                        AvailableTimeEntry userId eventId (addDays 1 dateA) toTimeC toTimeA False]
+                _ -> [entry] -- not possible to reach here
 
 insertEntriesToDatabase :: [AvailableTimeEntry] -> Handler [Entity AvailableTimeEntry]
 insertEntriesToDatabase [] = do return []
@@ -299,5 +344,6 @@ postFreeToAvailableTimeEntryR eventIdText = do
             let potentialAvailableTimeEntries = createAvailableFromFree allFreeTimeEntries fromDate toDate eventId
             let allAvailableTimes = iterateConfirmedEvents potentialAvailableTimeEntries (catMaybes allConfirmedEvents)
             inserted_entries <- insertEntriesToDatabase allAvailableTimes
+            -- returnJson potentialAvailableTimeEntries
             returnJson $ catMaybes $ Import.map (\x -> convertAvailableTimeEntryToLocal x timezone) inserted_entries
         (_, _) -> invalidArgs ["Failed to pass in valid arguments for timezone or route to valid eventId"]
