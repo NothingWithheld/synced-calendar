@@ -48,11 +48,11 @@ convertConfirmedEventToLocal
         let maybeLocalFromTime = Database.convertUTCToLocal fromTime timezone
         let maybeLocalToTime = Database.convertUTCToLocal toTime timezone
         case (maybeLocalFromTime, maybeLocalToTime) of 
-            (Just (fromTimeDayOffset, localFromTime), Just (_, localToTime)) -> do 
+            (Just (fromTimeDayOffset, localFromTime), Just (toTimeDayOffset, localToTime)) -> do 
                 -- The database will hold in the day of fromTime if the event is staggered 
                 -- between to two days 
                 let localDate = addDays fromTimeDayOffset date
-                let newSpanMultiple = if localDate == date then spanMultiple else not spanMultiple
+                let newSpanMultiple = if fromTimeDayOffset == toTimeDayOffset then spanMultiple else not spanMultiple
                 return $ ConfirmedEventData confirmedEventId proposedEventId creatorId recipientId name description localDate localFromTime localToTime newSpanMultiple
             (_, _) -> Nothing
 
@@ -198,11 +198,11 @@ postConfirmedEventCreatorR eventIdText = do
                     let maybeUTCFromTime = Database.convertTextToTime maybeFromTimeText maybeTimezone
                     let maybeUTCToTime = Database.convertTextToTime maybeToTimeText maybeTimezone
                     case (maybeDate, maybeUTCFromTime, maybeUTCToTime, maybeTimezone) of 
-                        (Just date, Just (fromTimeDayOffset, fromTime), Just (_, toTime), Just timezone) -> do 
+                        (Just date, Just (fromTimeDayOffset, fromTime), Just (toTimeDayOffset, toTime), Just timezone) -> do 
                             -- The database will hold in the date of fromTime if the event is staggered 
                             -- between to two days
                             let utcDate = addDays fromTimeDayOffset date
-                            let spanMultiple = if utcDate == date then False else True
+                            let spanMultiple = if fromTimeDayOffset == toTimeDayOffset then False else True
                             let event' = ConfirmedEvent eventId utcDate fromTime toTime spanMultiple
                             (Entity confirmedEventId _) <- runDB $ insertEntity event'
                             runDB $ update eventId [ProposedEventConfirmed =. True]
@@ -226,14 +226,14 @@ putConfirmedEventCreatorR eventIdText = do
     let maybeUTCToTime = Database.convertTextToTime maybeToTimeText maybeTimezone
     let eitherEventId = decimal eventIdText
     case (maybeDate, maybeUTCFromTime, maybeUTCToTime, eitherEventId) of
-        (Just date, Just (fromTimeDayOffset, fromTime), Just (_, toTime), Right (eventIdInt, "")) -> do
+        (Just date, Just (fromTimeDayOffset, fromTime), Just (toTimeDayOffset, toTime), Right (eventIdInt, "")) -> do
             allEventEntries <- runDB $ selectList [ConfirmedEventId ==. toSqlKey (fromIntegral (eventIdInt::Integer))] []
             case allEventEntries of 
                 [Entity eventId (ConfirmedEvent _ _ _ _ spanMultiple)] -> do 
                      -- The database will hold in the date of fromTime if the event is staggered 
                     -- between to two days 
                     let utcDate = addDays fromTimeDayOffset date
-                    let newSpanMultiple = if utcDate == date then spanMultiple else not spanMultiple
+                    let newSpanMultiple = if fromTimeDayOffset == toTimeDayOffset then spanMultiple else not spanMultiple
                     runDB $ update eventId 
                         [
                             ConfirmedEventDate =. utcDate,

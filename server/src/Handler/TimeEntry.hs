@@ -43,13 +43,13 @@ convertFreeTimeEntryToLocal (Entity entryId (FreeTimeEntry userId day fromTime t
     let maybeLocalFromTime = Database.convertUTCToLocal fromTime timezone
     let maybeLocalToTime = Database.convertUTCToLocal toTime timezone
     case (maybeLocalFromTime, maybeLocalToTime) of 
-        (Just (fromTimeDayOffset, localFromTime), Just (_, localToTime)) -> do 
+        (Just (fromTimeDayOffset, localFromTime), Just (toTimeDayOffset, localToTime)) -> do 
             -- The database will hold in the day of fromTime if the event is staggered 
             -- between to two days 
             let maybeLocalDay = Database.updateDayString day fromTimeDayOffset
             case maybeLocalDay of 
                 Just localDay -> do 
-                    let newSpanMultiple = if localDay == day then spanMultiple else not spanMultiple
+                    let newSpanMultiple = if fromTimeDayOffset == toTimeDayOffset then spanMultiple else not spanMultiple
                     return $ FreeTimeEntryData entryId userId localDay localFromTime localToTime newSpanMultiple
                 _ -> Nothing
         (_, _) -> Nothing
@@ -59,11 +59,11 @@ convertAvailableTimeEntryToLocal (Entity entryId (AvailableTimeEntry userId even
     let maybeLocalFromTime = Database.convertUTCToLocal fromTime timezone
     let maybeLocalToTime = Database.convertUTCToLocal toTime timezone
     case (maybeLocalFromTime, maybeLocalToTime) of 
-        (Just (fromTimeDayOffset, localFromTime), Just (_, localToTime)) -> do 
+        (Just (fromTimeDayOffset, localFromTime), Just (toTimeDayOffset, localToTime)) -> do 
             -- The database will hold in the day of fromTime if the event is staggered 
             -- between to two days 
             let localDate = addDays fromTimeDayOffset date
-            let newSpanMultiple = if localDate == date then spanMultiple else not spanMultiple
+            let newSpanMultiple = if fromTimeDayOffset == toTimeDayOffset then spanMultiple else not spanMultiple
             return $ AvailableTimeEntryData entryId userId eventId localDate localFromTime localToTime newSpanMultiple
         (_, _) -> Nothing
 
@@ -90,13 +90,13 @@ postFreeTimeEntryR userIdText = do
     let maybeUTCFromTime = Database.convertTextToTime maybeFromTimeText maybeTimezone
     let maybeUTCToTime = Database.convertTextToTime maybeToTimeText maybeTimezone
     case (maybeUserId, maybeDay, maybeUTCFromTime, maybeUTCToTime, maybeTimezone) of
-        (Just userId, Just day, Just (fromTimeDayOffset, fromTime), Just (_, toTime), Just timezone) -> do
+        (Just userId, Just day, Just (fromTimeDayOffset, fromTime), Just (toTimeDayOffset, toTime), Just timezone) -> do
             -- The database will hold in the day of fromTime if the event is staggered 
             -- between to two days 
             let maybeUtcDay = Database.updateDayString day fromTimeDayOffset
             case maybeUtcDay of 
                 Just utcDay -> do
-                    let spanMultiple = if utcDay == day then False else True
+                    let spanMultiple = if fromTimeDayOffset == toTimeDayOffset then False else True
                     let timeEntry' = FreeTimeEntry userId (toLower utcDay) fromTime toTime spanMultiple
                     insertedEntity <- runDB $ insertEntity timeEntry'
                     let freeTimeEntryData = convertFreeTimeEntryToLocal insertedEntity timezone
@@ -116,7 +116,7 @@ putFreeTimeEntryR entryIdText = do
     let maybeUTCToTime = Database.convertTextToTime maybeToTimeText maybeTimeZone
     let eitherEntryId = decimal entryIdText
     case (maybeDay, maybeUTCFromTime, maybeUTCToTime, eitherEntryId) of
-        (Just day, Just (fromTimeDayOffset, fromTime), Just (_, toTime), Right (entryIdInt, "")) -> do
+        (Just day, Just (fromTimeDayOffset, fromTime), Just (toTimeDayOffset, toTime), Right (entryIdInt, "")) -> do
             allTimeEntries <- runDB $ selectList [FreeTimeEntryId ==. toSqlKey (fromIntegral (entryIdInt::Integer))] []
             case allTimeEntries of 
                 [Entity entryId (FreeTimeEntry _ _ _ _ spanMultiple)] -> do 
@@ -125,7 +125,7 @@ putFreeTimeEntryR entryIdText = do
                     let maybeUtcDay = Database.updateDayString day fromTimeDayOffset
                     case maybeUtcDay of 
                         Just utcDay -> do
-                            let newSpanMultiple = if utcDay == day then spanMultiple else not spanMultiple
+                            let newSpanMultiple = if fromTimeDayOffset == toTimeDayOffset then spanMultiple else not spanMultiple
                             runDB $ update entryId 
                                 [
                                     FreeTimeEntryDay =. (toLower utcDay),
@@ -178,7 +178,7 @@ postAvailableTimeEntryR userIdText = do
     let maybeUTCFromTime = Database.convertTextToTime maybeFromTimeText maybeTimezone
     let maybeUTCToTime = Database.convertTextToTime maybeToTimeText maybeTimezone
     case (maybeUserId, maybeDate, maybeEventId, maybeUTCFromTime, maybeUTCToTime, maybeTimezone) of
-        (Just userId, Just date, Just eventIdText, Just (fromTimeDayOffset, fromTime), Just (_, toTime), Just timezone) -> do
+        (Just userId, Just date, Just eventIdText, Just (fromTimeDayOffset, fromTime), Just (toTimeDayOffset, toTime), Just timezone) -> do
             let eitherEventId = decimal eventIdText
             case eitherEventId of     
                 Right (eventIdInt, "") -> do 
@@ -192,7 +192,7 @@ postAvailableTimeEntryR userIdText = do
                             -- The database will hold in the date of fromTime if the event is staggered 
                             -- between to two days
                             let utcDate = addDays fromTimeDayOffset date
-                            let spanMultiple = if utcDate == date then False else True
+                            let spanMultiple = if fromTimeDayOffset == toTimeDayOffset then False else True
                             let timeEntry' = AvailableTimeEntry userId eventId utcDate fromTime toTime spanMultiple
                             insertedEntity <- runDB $ insertEntity timeEntry'
                             let availableTimeEntryData = convertAvailableTimeEntryToLocal insertedEntity timezone
@@ -214,14 +214,14 @@ putAvailableTimeEntryR entryIdText = do
     let maybeUTCToTime = Database.convertTextToTime maybeToTimeText maybeTimeZone
     let eitherEntryId = decimal entryIdText
     case (maybeDate, maybeUTCFromTime, maybeUTCToTime, eitherEntryId) of
-        (Just date, Just (fromTimeDayOffset, fromTime), Just (_, toTime), Right (entryIdInt, "")) -> do
+        (Just date, Just (fromTimeDayOffset, fromTime), Just (toTimeDayOffset, toTime), Right (entryIdInt, "")) -> do
             allTimeEntries <- runDB $ selectList [AvailableTimeEntryId ==. toSqlKey (fromIntegral (entryIdInt::Integer))] []
             case allTimeEntries of 
                 [Entity entryId (AvailableTimeEntry _ _ _ _ _ spanMultiple)] -> do 
                     -- The database will hold in the date of fromTime if the event is staggered 
                     -- between to two days
                     let utcDate = addDays fromTimeDayOffset date
-                    let newSpanMultiple = if utcDate == date then spanMultiple else not spanMultiple
+                    let newSpanMultiple = if fromTimeDayOffset == toTimeDayOffset then spanMultiple else not spanMultiple
                     runDB $ update entryId 
                         [
                             AvailableTimeEntryDate =. utcDate,
