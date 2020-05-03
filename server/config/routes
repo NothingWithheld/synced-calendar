@@ -10,4 +10,5 @@
 /api/#Text/confirmed-event/creator ConfirmedEventCreatorR GET POST PUT DELETE
 /api/#Text/confirmed-event/recipient ConfirmedEventRecipientR GET
 
+/api/#Text/available-times/multiple AvailableTimeEntryMultipleR POST 
 /api/#Text/free-to-available FreeToAvailableTimeEntryR POST

@@ -129,6 +129,23 @@ As your code changes, your site will be automatically recompiled and redeployed 
 	- from_time (String) -> written in the format of `HH:MM` using military time
 	- to_time (String) -> written in the format of `HH:MM` using military time
 
+- **POST** `/api/{user_id}/available-times/multiple`
+
+	Creates multiple available time entry for a given user and event. User responds to ProposedEvent with availabilites. Response sends in a JSON array object of the newly created `AvailableTimeEntry`.
+
+	user_id (Int) -> unique number that identifies a `User` object
+
+	**x-www-form-urlencoded body**
+	
+	- event_id (Int) -> id that corresponds to a `ProposedEvent` object
+	- dates ([String]) -> list of dates written in the format of `"MM-DD-YYYY"`, separated by commas.
+	Ex: "05-05-2020, 05-6-2020"
+	- timezone (Int) -> offset from UTC time (range: -14 to 12)
+	- from_times ([String]) -> list of times written in the format of `HH:MM` using military time,
+	separated by commas. Ex: "10:00, 13:00"
+	- to_times ([String]) -> written in the format of `HH:MM` using military time,
+	separated by commas. Ex: "10:00, 13:00"
+
 - **PUT** `/api/{id}/available-times`
 
 	Updates an available time entry given its `id`, which is provided in a GET request. 

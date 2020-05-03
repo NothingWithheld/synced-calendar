@@ -67,6 +67,24 @@ convertAvailableTimeEntryToLocal (Entity entryId (AvailableTimeEntry userId even
             return $ AvailableTimeEntryData entryId userId eventId localDate localFromTime localToTime newSpanMultiple
         (_, _) -> Nothing
 
+createAvailableTimeEntry :: (Text, Text, Text, Text, Text, Text) -> Handler (Maybe AvailableTimeEntryData)
+createAvailableTimeEntry (userIdText, eventIdText, dateText, fromTimeText, toTimeText, timezone) = do 
+    maybeUserId <- Database.fetchUserId (Just userIdText)
+    maybeEvent <- Database.fetchProposedEvent (Just eventIdText)
+    let maybeDate = Database.convertTextToDate (Just dateText)
+    let maybeUTCFromTime = Database.convertTextToTime (Just fromTimeText) (Just timezone)
+    let maybeUTCToTime = Database.convertTextToTime (Just toTimeText)  (Just timezone)
+    case (maybeUserId, maybeEvent, maybeDate, maybeUTCFromTime, maybeUTCToTime) of 
+        (Just userId, Just (Entity eventId _), Just date, Just (fromTimeDayOffset, fromTime), Just (toTimeDayOffset, toTime)) -> do
+            -- The database will hold in the date of fromTime if the event is staggered 
+            -- between to two days
+            let utcDate = addDays fromTimeDayOffset date
+            let spanMultiple = if fromTimeDayOffset == toTimeDayOffset then False else True
+            let timeEntry' = AvailableTimeEntry userId eventId utcDate fromTime toTime spanMultiple
+            insertedEntity <- runDB $ insertEntity timeEntry'
+            return $ convertAvailableTimeEntryToLocal insertedEntity timezone
+        _ -> return Nothing
+
 getFreeTimeEntryR :: Text -> Handler Value 
 getFreeTimeEntryR userIdText = do
     maybeUserId <- Database.fetchUserId (Just userIdText)
@@ -202,6 +220,27 @@ postAvailableTimeEntryR userIdText = do
                         _ -> invalidArgs ["Failed to find corresponding ProposedEvent with id: " Import.++ eventIdText]
                 _ -> invalidArgs ["Please provide a valid integer for event_id"]
         (_, _, _, _, _, _) -> invalidArgs ["Failed to parse API params"]
+
+postAvailableTimeEntryMultipleR :: Text -> Handler Value 
+postAvailableTimeEntryMultipleR userIdText = do 
+    maybeEventId <- lookupPostParam "event_id"
+    maybeDatesText <- lookupPostParam "dates"
+    maybeTimezone <- lookupPostParam "timezone"
+    maybeFromTimesText <- lookupPostParam "from_times"
+    maybeToTimesText <- lookupPostParam "to_times"
+    case (maybeDatesText, maybeEventId, maybeFromTimesText, maybeToTimesText, maybeTimezone) of
+        (Just datesText, Just eventIdText, Just fromTimesText, Just toTimesText, Just timezone) -> do
+            let dates = Database.splitStringByCommas datesText
+            let fromTimes = Database.splitStringByCommas fromTimesText 
+            let toTimes = Database.splitStringByCommas toTimesText
+            case Import.length dates == Import.length fromTimes && Import.length dates == Import.length toTimes of 
+                True -> do 
+                    let zipLists = Import.zip3 dates fromTimes toTimes
+                    let arguments = Import.map (\(date, fromTime, toTime) -> (userIdText, eventIdText, date, fromTime, toTime, timezone)) zipLists
+                    unwrapped_events <- Import.mapM createAvailableTimeEntry arguments
+                    returnJson $ catMaybes unwrapped_events
+                False -> invalidArgs ["Please provide the same number of dates, from_times, and to_time"]
+        (_, _, _, _, _) -> invalidArgs ["Failed to parse API params"]
 
 putAvailableTimeEntryR :: Text -> Handler Value 
 putAvailableTimeEntryR entryIdText = do 
