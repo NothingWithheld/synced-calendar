@@ -9,6 +9,7 @@ module TimeSlots.Time exposing
     , isoStringToDate
     , monthToLongString
     , monthToShortString
+    , shiftWeeksToStartDate
     , stringToDate
     , weekdayStrings
     , weekdayToString
@@ -285,3 +286,38 @@ daysFrom startDate endDate =
         (\days -> Date.add Date.Days days startDate)
     <|
         List.range 0 daysBetween
+
+
+shiftWeeksToStartDate : WithSession a -> Posix -> Date -> Int
+shiftWeeksToStartDate model today startDate =
+    let
+        todayDate =
+            Date.fromPosix (Session.getZone model.session) today
+
+        isSameWeekday =
+            Date.weekday todayDate == Date.weekday startDate
+
+        weekDiff =
+            Date.diff Date.Weeks todayDate startDate
+    in
+    if isSameWeekday then
+        weekDiff
+
+    else if weekDiff > 0 then
+        weekDiff + 1
+
+    else if weekDiff < 0 then
+        weekDiff - 1
+
+    else if Date.max todayDate startDate == todayDate then
+        if dateToDayNum todayDate < dateToDayNum startDate then
+            -1
+
+        else
+            0
+
+    else if dateToDayNum startDate < dateToDayNum todayDate then
+        1
+
+    else
+        0

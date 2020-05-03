@@ -58,18 +58,32 @@ import Utils
 
 
 setInitialTime :
-    TSTime.WithTimeDetails a
+    TSTime.WithTimeDetails (PE.WithProposedEvent (WithSession a))
+    -> Calendar b c d
     -> Result Never Posix
-    -> ( TSTime.WithTimeDetails a, Cmd msg )
-setInitialTime model result =
+    -> ( TSTime.WithTimeDetails (PE.WithProposedEvent (WithSession a)), Cmd msg )
+setInitialTime model updates result =
     case result of
         Ok currentDay ->
-            ( { model
-                | timeDetails =
-                    WithTime { currentDay = currentDay, weekOffset = 0 }
-              }
-            , Cmd.none
-            )
+            case ( updates, model.proposedEvent ) of
+                ( SubmitAvailability _, Just { fromDate } ) ->
+                    ( { model
+                        | timeDetails =
+                            WithTime
+                                { currentDay = currentDay
+                                , weekOffset = TSTime.shiftWeeksToStartDate model currentDay fromDate
+                                }
+                      }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( { model
+                        | timeDetails =
+                            WithTime { currentDay = currentDay, weekOffset = 0 }
+                      }
+                    , Cmd.none
+                    )
 
         Err _ ->
             ( model, Cmd.none )
@@ -296,7 +310,7 @@ setSavedWeeklyTimeSlots model updates result =
             in
             case updates of
                 SubmitAvailability _ ->
-                    if TS.isFinishedLoadingForAvailableEvents updatedModel  then
+                    if TS.isFinishedLoadingForAvailableEvents updatedModel then
                         setAvailableTimesFromWFT updatedModel
 
                     else
