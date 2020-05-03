@@ -489,11 +489,27 @@ viewSingleDayTimeSlots :
     -> Html msg
 viewSingleDayTimeSlots model updates ( dayNum, maybeDate ) =
     let
+        wFTFilterFunc eventDetails =
+            case updates of
+                SubmitAvailability _ ->
+                    case eventDetails of
+                        EC.SetWeeklyFreeTime _ ->
+                            False
+
+                        _ ->
+                            True
+
+                _ ->
+                    True
+
         selectedTimeSlotsForThisDayNum =
             List.filter ((\timeSlot -> timeSlot.dayNum == dayNum) << TS.getTimeSlotFromDetails) model.selectedTimeSlots
 
+        withoutWFTIfApplies =
+            List.filter (wFTFilterFunc << TS.getEventDetailsFromDetails) selectedTimeSlotsForThisDayNum
+
         selectedTimeSlotsForThisDay =
-            Maybe.withDefault selectedTimeSlotsForThisDayNum <|
+            Maybe.withDefault withoutWFTIfApplies <|
                 Maybe.map
                     (\date ->
                         List.filter
@@ -505,7 +521,7 @@ viewSingleDayTimeSlots model updates ( dayNum, maybeDate ) =
                              )
                                 << TS.getEventDetailsFromDetails
                             )
-                            selectedTimeSlotsForThisDayNum
+                            withoutWFTIfApplies
                     )
                     maybeDate
 

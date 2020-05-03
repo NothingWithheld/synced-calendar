@@ -189,9 +189,9 @@ handleUrlChange route model =
             updateWith EventCalendar EventCalendarMsg <|
                 Pages.EventCalendar.init session
 
-        ( Route.SubmitAvailability _, True ) ->
+        ( Route.SubmitAvailability proposedEvent, True ) ->
             updateWith SubmitAvailability SubmitAvailabilityMsg <|
-                Pages.SubmitAvailability.init session
+                Pages.SubmitAvailability.init session proposedEvent
 
         ( Route.ProposeEvent, True ) ->
             updateWith ProposeEvent ProposeEventMsg <|

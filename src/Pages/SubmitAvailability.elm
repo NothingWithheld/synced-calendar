@@ -44,14 +44,14 @@ type alias Model =
     }
 
 
-init : Session -> ( Model, Cmd Msg )
-init session =
+init : Session -> ProposedEvent -> ( Model, Cmd Msg )
+init session proposedEvent =
     ( { session = session
       , timeDetails = WithoutTime
       , loadingWeeklyFreeTimes = True
-      , loadingConfirmedEventsBy = False
-      , loadingConfirmedEventsFor = False
-      , loadingAvailableTimes = False
+      , loadingConfirmedEventsBy = True
+      , loadingConfirmedEventsFor = True
+      , loadingAvailableTimes = True
       , loadingTSPositions = True
       , timeSlotPositions = []
       , timeSlotsElement = Nothing
@@ -60,7 +60,7 @@ init session =
       , selectedTimeSlots = []
       , isDiscardConfirmationModalOpen = False
       , mdc = Material.defaultModel
-      , proposedEvent = Nothing
+      , proposedEvent = Just proposedEvent
       , alreadySubmittedAvailability = False
       }
     , Cmd.batch
