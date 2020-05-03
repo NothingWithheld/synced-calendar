@@ -84,6 +84,8 @@ type Msg
     = NoOp
       -- TimeSlots
     | SetInitialTime (Result Never Posix)
+    | MoveWeekForward
+    | MoveWeekBackward
     | SetTimeSlotPositions (Result Dom.Error (List Dom.Element))
     | SetSavedConfirmedEventsBy (Result Http.Error (List TSMessaging.ServerConfirmedEvent))
     | SetSavedConfirmedEventsFor (Result Http.Error (List TSMessaging.ServerConfirmedEvent))
@@ -127,6 +129,12 @@ update msg model =
         -- TimeSlots
         SetInitialTime result ->
             TSUpdate.setInitialTime model (SubmitAvailability {}) result
+
+        MoveWeekForward ->
+            TSUpdate.moveWeekForward model
+
+        MoveWeekBackward ->
+            TSUpdate.moveWeekBackward model
 
         SetTimeSlotPositions result ->
             TSUpdate.setTimeSlotPositions model
@@ -235,14 +243,16 @@ view model =
             [ styled div
                 []
                 [ viewCalendarHeading model
-                    (WeeklyFreeTimes
+                    (SubmitAvailability
                         { onMdc = Mdc
                         , onTimeZoneSelect = UpdateTimeZone
+                        , moveWeekBackward = MoveWeekBackward
+                        , moveWeekForward = MoveWeekForward
                         }
                     )
                 , viewDayHeadings model
                 , viewScrollableTimeSlots model
-                    (WeeklyFreeTimes
+                    (SubmitAvailability
                         { editTimeSlotSelection = EditTimeSlotSelection
                         , handleTimeSlotMouseMove = HandleTimeSlotMouseMove
                         , handleTimeSlotMouseUp = HandleTimeSlotMouseUp
