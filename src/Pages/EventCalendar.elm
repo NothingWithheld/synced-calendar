@@ -128,7 +128,7 @@ update msg model =
 
         -- TimeSlots
         SetInitialTime result ->
-            TSUpdate.setInitialTime model result
+            TSUpdate.setInitialTime model (Events {}) result
 
         MoveWeekForward ->
             TSUpdate.moveWeekForward model

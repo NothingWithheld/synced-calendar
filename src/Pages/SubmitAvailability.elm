@@ -11,7 +11,8 @@ import Material
 import Material.Options exposing (css, styled)
 import ProposeEvent.ProposeEvent exposing (ProposedEvent)
 import Session exposing (Session)
-import TimeSlots.Commands exposing (requestTimeSlotPositions, requestTimeSlotsElement)
+import Time exposing (Posix)
+import TimeSlots.Commands exposing (requestCurrentDay, requestTimeSlotPositions, requestTimeSlotsElement)
 import TimeSlots.Messaging as TSMessaging
 import TimeSlots.Time exposing (TimeDetails(..))
 import TimeSlots.TimeSlots as TS exposing (Calendar(..))
@@ -49,7 +50,10 @@ init session proposedEvent =
     ( { session = session
       , timeDetails = WithoutTime
       , loadingWeeklyFreeTimes = True
-      , loadingConfirmedEventsBy = True
+
+      -- Server Bug -> sends same result for By and For
+      -- possibly sends results only to creator
+      , loadingConfirmedEventsBy = False
       , loadingConfirmedEventsFor = True
       , loadingAvailableTimes = True
       , loadingTSPositions = True
@@ -67,6 +71,7 @@ init session proposedEvent =
         [ Material.init Mdc
         , requestTimeSlotPositions SetTimeSlotPositions
         , requestTimeSlotsElement SetTimeSlotsElement
+        , requestCurrentDay SetInitialTime
         ]
     )
 
@@ -78,7 +83,10 @@ init session proposedEvent =
 type Msg
     = NoOp
       -- TimeSlots
+    | SetInitialTime (Result Never Posix)
     | SetTimeSlotPositions (Result Dom.Error (List Dom.Element))
+    | SetSavedConfirmedEventsBy (Result Http.Error (List TSMessaging.ServerConfirmedEvent))
+    | SetSavedConfirmedEventsFor (Result Http.Error (List TSMessaging.ServerConfirmedEvent))
     | UpdateTimeZone String
     | SetTimeSlotsElement (Result Dom.Error Dom.Element)
     | SetSavedWeeklyTimeSlots (Result Http.Error (List TSMessaging.ServerTimeSlot))
@@ -117,8 +125,24 @@ update msg model =
             Material.update Mdc msg_ model
 
         -- TimeSlots
+        SetInitialTime result ->
+            TSUpdate.setInitialTime model (SubmitAvailability {}) result
+
         SetTimeSlotPositions result ->
-            TSUpdate.setTimeSlotPositions model (WeeklyFreeTimes SetSavedWeeklyTimeSlots) result
+            TSUpdate.setTimeSlotPositions model
+                (SubmitAvailability
+                    { setSavedConfirmedEvBy = SetSavedConfirmedEventsBy
+                    , setSavedConfirmedEvFor = SetSavedConfirmedEventsFor
+                    , setSavedWeeklyTS = SetSavedWeeklyTimeSlots
+                    }
+                )
+                result
+
+        SetSavedConfirmedEventsBy result ->
+            TSUpdate.setSavedConfirmedEventsBy model (SubmitAvailability {}) result
+
+        SetSavedConfirmedEventsFor result ->
+            TSUpdate.setSavedConfirmedEventsFor model (SubmitAvailability {}) result
 
         UpdateTimeZone timeZoneLabel ->
             TSUpdate.updateTimeZone model (WeeklyFreeTimes SetSavedWeeklyTimeSlots) timeZoneLabel

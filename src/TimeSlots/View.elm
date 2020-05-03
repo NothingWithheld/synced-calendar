@@ -1,6 +1,7 @@
 module TimeSlots.View exposing (viewCalendarHeading, viewDayHeadings, viewScrollableTimeSlots)
 
 import Constants
+import Date
 import EventCreation.EventCreation as EC
 import Html exposing (Html, div, text)
 import Html.Entity as Entity
@@ -12,6 +13,7 @@ import Material.Menu
 import Material.Options as Options exposing (css, nop, styled, when)
 import Material.Select as Select
 import Material.Typography as Typography
+import ProposeEvent.ProposeEvent as PE
 import Route
 import Session exposing (WithSession)
 import Time exposing (Posix)
@@ -368,7 +370,7 @@ viewTimeSlotTimes =
 
 
 viewScrollableTimeSlots :
-    TS.WithLoadingAll (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TSTime.WithTimeDetails (WithSession a))))
+    TS.WithLoadingAll (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TSTime.WithTimeDetails (WithSession (PE.WithProposedEvent a)))))
     ->
         Calendar
             { b
@@ -473,7 +475,7 @@ viewTimeSlotTime hour =
 
 
 viewSingleDayTimeSlots :
-    TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (WithSession a))
+    TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (WithSession (PE.WithProposedEvent a)))
     ->
         Calendar
             { b
@@ -535,6 +537,16 @@ viewSingleDayTimeSlots model updates ( dayNum, maybeDate ) =
 
                 _ ->
                     False
+
+        isOutsideEventRange =
+            case ( model.proposedEvent, maybeDate ) of
+                ( Just { fromDate, toDate }, Just date ) ->
+                    not <|
+                        Date.isBetween fromDate toDate <|
+                            Date.fromPosix (Session.getZone model.session) date
+
+                _ ->
+                    False
     in
     styled div
         [ css "flex-grow" "1"
@@ -550,30 +562,30 @@ viewSingleDayTimeSlots model updates ( dayNum, maybeDate ) =
             SubmitAvailability _ ->
                 nop
         ]
-        (List.append
-            [ div
-                []
-                (List.map
-                    (viewTimeSlot updates dayNum)
-                    TS.slotNumRange
-                )
-            , viewCurrentlySelectingTimeSlot model dayNum
-            ]
+        ([ div
+            []
             (List.map
+                (viewTimeSlot updates isOutsideEventRange dayNum)
+                TS.slotNumRange
+            )
+         , viewCurrentlySelectingTimeSlot model dayNum
+         ]
+            ++ List.map
                 (viewSelectedTimeSlot updates)
                 selectedTimeSlotsForThisDay
-            )
         )
 
 
 viewTimeSlot :
     Calendar { a | startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg } b c
+    -> Bool
     -> Int
     -> Int
     -> Html msg
-viewTimeSlot updates dayNum slotNum =
+viewTimeSlot updates isOutsideEventRange dayNum slotNum =
     styled div
         [ css "border-right" "1px solid #829AB1"
+        , when isOutsideEventRange <| css "background-color" Constants.disabledColor
         , when (modBy 4 slotNum == 3) (css "border-bottom" "1px solid #829AB1")
         , css "height" "16px"
         , case updates of
