@@ -83,14 +83,14 @@ getFreeTimeEntryR userIdText = do
 postFreeTimeEntryR :: Text -> Handler Value 
 postFreeTimeEntryR userIdText = do 
     maybeDay <- lookupPostParam "day"
-    maybeTimeZone <- lookupPostParam "timezone"
+    maybeTimezone <- lookupPostParam "timezone"
     maybeFromTimeText <- lookupPostParam "from_time"
     maybeToTimeText <- lookupPostParam "to_time"
     maybeUserId <- Database.fetchUserId (Just userIdText)
-    let maybeUTCFromTime = Database.convertTextToTime maybeFromTimeText maybeTimeZone
-    let maybeUTCToTime = Database.convertTextToTime maybeToTimeText maybeTimeZone
-    case (maybeUserId, maybeDay, maybeUTCFromTime, maybeUTCToTime) of
-        (Just userId, Just day, Just (fromTimeDayOffset, fromTime), Just (_, toTime)) -> do
+    let maybeUTCFromTime = Database.convertTextToTime maybeFromTimeText maybeTimezone
+    let maybeUTCToTime = Database.convertTextToTime maybeToTimeText maybeTimezone
+    case (maybeUserId, maybeDay, maybeUTCFromTime, maybeUTCToTime, maybeTimezone) of
+        (Just userId, Just day, Just (fromTimeDayOffset, fromTime), Just (_, toTime), Just timezone) -> do
             -- The database will hold in the day of fromTime if the event is staggered 
             -- between to two days 
             let maybeUtcDay = Database.updateDayString day fromTimeDayOffset
@@ -98,10 +98,13 @@ postFreeTimeEntryR userIdText = do
                 Just utcDay -> do
                     let spanMultiple = if utcDay == day then False else True
                     let timeEntry' = FreeTimeEntry userId (toLower utcDay) fromTime toTime spanMultiple
-                    (Entity entryId _) <- runDB $ insertEntity timeEntry'
-                    returnJson $ FreeTimeEntryData entryId userId (toLower utcDay) fromTime toTime spanMultiple
+                    insertedEntity <- runDB $ insertEntity timeEntry'
+                    let freeTimeEntryData = convertFreeTimeEntryToLocal insertedEntity timezone
+                    case freeTimeEntryData of
+                        Just entity -> returnJson $ entity
+                        Nothing -> invalidArgs ["Created in database, failed to convert back to local time"]
                 _ -> invalidArgs ["Failed to parse day, from_time and/or to_time params"]
-        (_, _, _, _) -> invalidArgs ["Failed to parse day, from_time and/or to_time params"]
+        (_, _, _, _, _) -> invalidArgs ["Failed to parse day, from_time and/or to_time params"]
 
 putFreeTimeEntryR :: Text -> Handler Value 
 putFreeTimeEntryR entryIdText = do
@@ -167,15 +170,15 @@ postAvailableTimeEntryR :: Text -> Handler Value
 postAvailableTimeEntryR userIdText = do 
     maybeEventId <- lookupPostParam "event_id"
     maybeDateText <- lookupPostParam "date"
-    maybeTimeZone <- lookupPostParam "timezone"
+    maybeTimezone <- lookupPostParam "timezone"
     maybeFromTimeText <- lookupPostParam "from_time"
     maybeToTimeText <- lookupPostParam "to_time"
     maybeUserId <- Database.fetchUserId (Just userIdText)
     let maybeDate = Database.convertTextToDate maybeDateText
-    let maybeUTCFromTime = Database.convertTextToTime maybeFromTimeText maybeTimeZone
-    let maybeUTCToTime = Database.convertTextToTime maybeToTimeText maybeTimeZone
-    case (maybeUserId, maybeDate, maybeEventId, maybeUTCFromTime, maybeUTCToTime) of
-        (Just userId, Just date, Just eventIdText, Just (fromTimeDayOffset, fromTime), Just (_, toTime)) -> do
+    let maybeUTCFromTime = Database.convertTextToTime maybeFromTimeText maybeTimezone
+    let maybeUTCToTime = Database.convertTextToTime maybeToTimeText maybeTimezone
+    case (maybeUserId, maybeDate, maybeEventId, maybeUTCFromTime, maybeUTCToTime, maybeTimezone) of
+        (Just userId, Just date, Just eventIdText, Just (fromTimeDayOffset, fromTime), Just (_, toTime), Just timezone) -> do
             let eitherEventId = decimal eventIdText
             case eitherEventId of     
                 Right (eventIdInt, "") -> do 
@@ -191,11 +194,14 @@ postAvailableTimeEntryR userIdText = do
                             let utcDate = addDays fromTimeDayOffset date
                             let spanMultiple = if utcDate == date then False else True
                             let timeEntry' = AvailableTimeEntry userId eventId utcDate fromTime toTime spanMultiple
-                            (Entity entryId _) <- runDB $ insertEntity timeEntry'
-                            returnJson $ AvailableTimeEntryData entryId userId eventId utcDate fromTime toTime spanMultiple
+                            insertedEntity <- runDB $ insertEntity timeEntry'
+                            let availableTimeEntryData = convertAvailableTimeEntryToLocal insertedEntity timezone
+                            case availableTimeEntryData of
+                                Just entity -> returnJson $ entity
+                                Nothing -> invalidArgs ["Created in database, failed to convert back to local time"]
                         _ -> invalidArgs ["Failed to find corresponding ProposedEvent with id: " Import.++ eventIdText]
                 _ -> invalidArgs ["Please provide a valid integer for event_id"]
-        (_, _, _, _, _) -> invalidArgs ["Failed to parse API params"]
+        (_, _, _, _, _, _) -> invalidArgs ["Failed to parse API params"]
 
 putAvailableTimeEntryR :: Text -> Handler Value 
 putAvailableTimeEntryR entryIdText = do 

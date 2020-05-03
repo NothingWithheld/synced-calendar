@@ -42,7 +42,7 @@ instance ToJSON ProposedEventData where
             "confirmed" .= confirmed 
         ]
 
-convertConfirmedEventToLocal :: ConfirmedEventData -> Text -> Maybe (ConfirmedEventData)
+convertConfirmedEventToLocal :: ConfirmedEventData -> Text -> Maybe ConfirmedEventData
 convertConfirmedEventToLocal 
     (ConfirmedEventData confirmedEventId proposedEventId creatorId recipientId name description date fromTime toTime spanMultiple) timezone = do 
         let maybeLocalFromTime = Database.convertUTCToLocal fromTime timezone
@@ -197,8 +197,8 @@ postConfirmedEventCreatorR eventIdText = do
                     let maybeDate = Database.convertTextToDate maybeDateText
                     let maybeUTCFromTime = Database.convertTextToTime maybeFromTimeText maybeTimezone
                     let maybeUTCToTime = Database.convertTextToTime maybeToTimeText maybeTimezone
-                    case (maybeDate, maybeUTCFromTime, maybeUTCToTime) of 
-                        (Just date, Just (fromTimeDayOffset, fromTime), Just (_, toTime)) -> do 
+                    case (maybeDate, maybeUTCFromTime, maybeUTCToTime, maybeTimezone) of 
+                        (Just date, Just (fromTimeDayOffset, fromTime), Just (_, toTime), Just timezone) -> do 
                             -- The database will hold in the date of fromTime if the event is staggered 
                             -- between to two days
                             let utcDate = addDays fromTimeDayOffset date
@@ -206,8 +206,12 @@ postConfirmedEventCreatorR eventIdText = do
                             let event' = ConfirmedEvent eventId utcDate fromTime toTime spanMultiple
                             (Entity confirmedEventId _) <- runDB $ insertEntity event'
                             runDB $ update eventId [ProposedEventConfirmed =. True]
-                            returnJson $ ConfirmedEventData confirmedEventId eventId creatorId recipientId name description date fromTime toTime spanMultiple
-                        (_, _, _) -> invalidArgs ["Failed to parse date, from_time and/or to_time"]
+                            let confirmedEventData = ConfirmedEventData confirmedEventId eventId creatorId recipientId name description date fromTime toTime spanMultiple
+                            let localConfirmedEventData = convertConfirmedEventToLocal confirmedEventData timezone
+                            case localConfirmedEventData of
+                                Just entity -> returnJson $ entity
+                                Nothing -> invalidArgs ["Created in database, failed to convert back to local time"]
+                        (_, _, _, _) -> invalidArgs ["Failed to parse date, from_time and/or to_time"]
                 _ -> invalidArgs ["Failed to find event with id: " Import.++ eventIdText]
         _ -> invalidArgs ["Failed to find event with id: " Import.++ eventIdText]
 
