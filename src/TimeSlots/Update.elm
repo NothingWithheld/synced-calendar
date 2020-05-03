@@ -22,6 +22,7 @@ module TimeSlots.Update exposing
     )
 
 import Browser.Dom as Dom
+import Date exposing (Date)
 import EventCreation.EventCreation as EC
 import EventCreation.Update as ECUpdate
 import Flip
@@ -40,7 +41,7 @@ import TimeSlots.Commands
         , updateWeeklyTimeSlot
         )
 import TimeSlots.Messaging as TSMessaging
-import TimeSlots.Time as TSTime exposing (TimeDetails(..))
+import TimeSlots.Time as TSTime
 import TimeSlots.TimeSlots as TS exposing (Calendar(..))
 import Utils
     exposing
@@ -69,7 +70,7 @@ setInitialTime model updates result =
                 ( SubmitAvailability _, Just { fromDate } ) ->
                     ( { model
                         | timeDetails =
-                            WithTime
+                            Just
                                 { currentDay = currentDay
                                 , weekOffset = TSTime.shiftWeeksToStartDate model currentDay fromDate
                                 }
@@ -80,7 +81,7 @@ setInitialTime model updates result =
                 _ ->
                     ( { model
                         | timeDetails =
-                            WithTime { currentDay = currentDay, weekOffset = 0 }
+                            Just { currentDay = currentDay, weekOffset = 0 }
                       }
                     , Cmd.none
                     )
@@ -92,32 +93,32 @@ setInitialTime model updates result =
 moveWeekForward : TSTime.WithTimeDetails a -> ( TSTime.WithTimeDetails a, Cmd msg )
 moveWeekForward model =
     case model.timeDetails of
-        WithTime timeDetails ->
+        Just timeDetails ->
             ( { model
                 | timeDetails =
-                    WithTime
+                    Just
                         { timeDetails | weekOffset = timeDetails.weekOffset + 1 }
               }
             , Cmd.none
             )
 
-        WithoutTime ->
+        Nothing ->
             ( model, Cmd.none )
 
 
 moveWeekBackward : TSTime.WithTimeDetails a -> ( TSTime.WithTimeDetails a, Cmd msg )
 moveWeekBackward model =
     case model.timeDetails of
-        WithTime timeDetails ->
+        Just timeDetails ->
             ( { model
                 | timeDetails =
-                    WithTime
+                    Just
                         { timeDetails | weekOffset = timeDetails.weekOffset - 1 }
               }
             , Cmd.none
             )
 
-        WithoutTime ->
+        Nothing ->
             ( model, Cmd.none )
 
 
@@ -161,7 +162,9 @@ updateTimeZone model updates timeZoneLabel =
                             False
 
                         SubmitAvailability _ ->
-                            True
+                            -- Server Bug -> sends same result for By and For
+                            -- possibly sends results only to creator
+                            False
                 , loadingConfirmedEventsFor =
                     case updates of
                         WeeklyFreeTimes _ ->
@@ -729,12 +732,13 @@ setSelectedTimeSlotAfterEditing model result =
 
 
 setOneHourSelection :
-    TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a))
+    TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions (TSTime.WithTimeDetails (WithSession a))))
+    -> Calendar b c d
     -> (EC.EventDetails -> Result Dom.Error Dom.Element -> msg)
     -> TS.DayNum
     -> TS.SlotNum
-    -> ( TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a)), Cmd msg )
-setOneHourSelection model promptEventDetails dayNum slotNum =
+    -> ( TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions (TSTime.WithTimeDetails (WithSession a)))), Cmd msg )
+setOneHourSelection model updates promptEventDetails dayNum slotNum =
     let
         halfHourAdjustedSlotNum =
             2 * (slotNum // 2)
@@ -758,6 +762,16 @@ setOneHourSelection model promptEventDetails dayNum slotNum =
                         model.timeSlotPositions
                 )
                 unselectedTSRange
+
+        initialEventDetails =
+            case updates of
+                SubmitAvailability _ ->
+                    Maybe.withDefault EC.UnsetWeeklyFreeTime <|
+                        Maybe.map EC.AvailableTime <|
+                            TSTime.dayNumToDate model dayNum
+
+                _ ->
+                    EC.UnsetWeeklyFreeTime
     in
     case maybeBounds of
         Just ( maybeStart, maybeEnd ) ->
@@ -772,7 +786,7 @@ setOneHourSelection model promptEventDetails dayNum slotNum =
                                     , endBound = endBound
                                     }
                         }
-                        EC.UnsetWeeklyFreeTime
+                        initialEventDetails
                         promptEventDetails
 
                 ( _, _ ) ->
@@ -783,16 +797,28 @@ setOneHourSelection model promptEventDetails dayNum slotNum =
 
 
 handleTimeSlotMouseUp :
-    TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a))
+    TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions (TSTime.WithTimeDetails (WithSession a))))
+    -> Calendar b c d
     -> (EC.EventDetails -> Result Dom.Error Dom.Element -> msg)
-    -> ( TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions a)), Cmd msg )
-handleTimeSlotMouseUp model promptEventDetails =
+    -> ( TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions (TSTime.WithTimeDetails (WithSession a)))), Cmd msg )
+handleTimeSlotMouseUp model updates promptEventDetails =
+    let
+        initialEventDetails dayNum =
+            case updates of
+                SubmitAvailability _ ->
+                    Maybe.withDefault EC.UnsetWeeklyFreeTime <|
+                        Maybe.map EC.AvailableTime <|
+                            TSTime.dayNumToDate model dayNum
+
+                _ ->
+                    EC.UnsetWeeklyFreeTime
+    in
     case model.timeSlotSelection of
         TS.InitialPressNoMove { dayNum, startBound } ->
-            setOneHourSelection model promptEventDetails dayNum startBound.slotNum
+            setOneHourSelection model updates promptEventDetails dayNum startBound.slotNum
 
-        TS.CurrentlySelecting _ ->
-            ECUpdate.initiateUserPromptForEventDetails model EC.UnsetWeeklyFreeTime promptEventDetails
+        TS.CurrentlySelecting { dayNum } ->
+            ECUpdate.initiateUserPromptForEventDetails model (initialEventDetails dayNum) promptEventDetails
 
         _ ->
             ( model, Cmd.none )

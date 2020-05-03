@@ -1,7 +1,7 @@
 module TimeSlots.View exposing (viewCalendarHeading, viewDayHeadings, viewScrollableTimeSlots)
 
 import Constants
-import Date
+import Date exposing (Date)
 import EventCreation.EventCreation as EC
 import Html exposing (Html, div, text)
 import Html.Entity as Entity
@@ -17,7 +17,7 @@ import ProposeEvent.ProposeEvent as PE
 import Route
 import Session exposing (WithSession)
 import Time exposing (Posix)
-import TimeSlots.Time as TSTime exposing (TimeDetails(..))
+import TimeSlots.Time as TSTime
 import TimeSlots.TimeSlots as TS exposing (Calendar(..))
 import Utils exposing (WithMdc)
 
@@ -150,7 +150,7 @@ viewWeekHeadingItems :
     -> Html msg
 viewWeekHeadingItems model updates =
     case model.timeDetails of
-        WithTime { currentDay, weekOffset } ->
+        Just { currentDay, weekOffset } ->
             styled div
                 [ css "margin-left" "12px"
                 , css "display" "flex"
@@ -161,7 +161,7 @@ viewWeekHeadingItems model updates =
                 , viewMonthHeading model currentDay weekOffset
                 ]
 
-        WithoutTime ->
+        Nothing ->
             text ""
 
 
@@ -261,12 +261,12 @@ viewDayHeadings model =
     let
         dayHeadings =
             case model.timeDetails of
-                WithTime { currentDay, weekOffset } ->
+                Just { currentDay, weekOffset } ->
                     List.map
                         (viewDayHeading << viewDayHeadingCopyForDate model currentDay)
                         (TSTime.getDaysInThatWeek model currentDay weekOffset)
 
-                WithoutTime ->
+                Nothing ->
                     List.map
                         (viewDayHeading << viewDayHeadingCopyForWeekday)
                         TSTime.weekdayStrings
@@ -419,10 +419,10 @@ viewScrollableTimeSlots model updates =
 
         thatWeekDates =
             case model.timeDetails of
-                WithTime { currentDay, weekOffset } ->
+                Just { currentDay, weekOffset } ->
                     List.map Just <| TSTime.getDaysInThatWeek model currentDay weekOffset
 
-                WithoutTime ->
+                Nothing ->
                     List.repeat 7 Nothing
     in
     styled div

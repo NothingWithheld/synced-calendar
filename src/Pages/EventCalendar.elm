@@ -19,7 +19,7 @@ import TimeSlots.Commands
         , requestTimeSlotsElement
         )
 import TimeSlots.Messaging as TSMessaging
-import TimeSlots.Time exposing (TimeDetails(..))
+import TimeSlots.Time as TSTime
 import TimeSlots.TimeSlots as TS exposing (Calendar(..))
 import TimeSlots.Update as TSUpdate
 import TimeSlots.View exposing (viewCalendarHeading, viewDayHeadings, viewScrollableTimeSlots)
@@ -32,7 +32,7 @@ import Utils exposing (NoData)
 
 type alias Model =
     { session : Session
-    , timeDetails : TimeDetails
+    , timeDetails : TSTime.TimeDetails
     , loadingWeeklyFreeTimes : Bool
     , loadingConfirmedEventsBy : Bool
     , loadingConfirmedEventsFor : Bool
@@ -53,7 +53,7 @@ type alias Model =
 init : Session -> ( Model, Cmd Msg )
 init session =
     ( { session = session
-      , timeDetails = WithoutTime
+      , timeDetails = Nothing
       , loadingWeeklyFreeTimes = False
 
       -- Server Bug -> sends same result for By and For

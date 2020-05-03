@@ -13,7 +13,7 @@ import ProposeEvent.ProposeEvent exposing (ProposedEvent)
 import Session exposing (Session)
 import TimeSlots.Commands exposing (requestTimeSlotPositions, requestTimeSlotsElement)
 import TimeSlots.Messaging as TSMessaging
-import TimeSlots.Time exposing (TimeDetails(..))
+import TimeSlots.Time as TSTime
 import TimeSlots.TimeSlots as TS exposing (Calendar(..))
 import TimeSlots.Update as TSUpdate
 import TimeSlots.View exposing (viewCalendarHeading, viewDayHeadings, viewScrollableTimeSlots)
@@ -26,7 +26,7 @@ import Utils exposing (NoData)
 
 type alias Model =
     { session : Session
-    , timeDetails : TimeDetails
+    , timeDetails : TSTime.TimeDetails
     , loadingWeeklyFreeTimes : Bool
     , loadingConfirmedEventsBy : Bool
     , loadingConfirmedEventsFor : Bool
@@ -47,7 +47,7 @@ type alias Model =
 init : Session -> ( Model, Cmd Msg )
 init session =
     ( { session = session
-      , timeDetails = WithoutTime
+      , timeDetails = Nothing
       , loadingWeeklyFreeTimes = True
       , loadingConfirmedEventsBy = False
       , loadingConfirmedEventsFor = False
@@ -151,7 +151,7 @@ update msg model =
             TSUpdate.setSelectedTimeSlotAfterEditing model result
 
         HandleTimeSlotMouseUp ->
-            TSUpdate.handleTimeSlotMouseUp model PromptUserForEventDetails
+            TSUpdate.handleTimeSlotMouseUp model (WeeklyFreeTimes {}) PromptUserForEventDetails
 
         EditTimeSlotSelection selectedTimeslotDetails ->
             TSUpdate.editTimeSlotSelection model PromptUserForEventDetails selectedTimeslotDetails

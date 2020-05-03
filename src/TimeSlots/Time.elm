@@ -1,8 +1,9 @@
 module TimeSlots.Time exposing
-    ( TimeDetails(..)
+    ( TimeDetails
     , WithTimeDetails
     , dateToDayNum
     , dateToString
+    , dayNumToDate
     , daysFrom
     , getDaysInThatWeek
     , isSameDay
@@ -23,12 +24,11 @@ import TimeSlots.TimeSlots as TS
 import Utils exposing (getListItemAt)
 
 
-type TimeDetails
-    = WithTime
+type alias TimeDetails =
+    Maybe
         { currentDay : Posix
         , weekOffset : Int
         }
-    | WithoutTime
 
 
 type alias WithTimeDetails a =
@@ -321,3 +321,23 @@ shiftWeeksToStartDate model today startDate =
 
     else
         0
+
+
+dayNumToDate : WithTimeDetails (WithSession a) -> TS.DayNum -> Maybe Date
+dayNumToDate model dayNum =
+    let
+        mapFunc { currentDay, weekOffset } =
+            let
+                currentDate =
+                    Date.fromPosix (Session.getZone model.session) currentDay
+
+                currentDateDayNum =
+                    dateToDayNum currentDate
+
+                dayNumDiff =
+                    dayNum - currentDateDayNum
+            in
+            Date.add Date.Weeks weekOffset <|
+                Date.add Date.Days dayNumDiff currentDate
+    in
+    Maybe.map mapFunc model.timeDetails
