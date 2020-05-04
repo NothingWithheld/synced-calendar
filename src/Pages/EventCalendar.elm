@@ -23,7 +23,6 @@ import TimeSlots.Time as TSTime
 import TimeSlots.TimeSlots as TS exposing (Calendar(..))
 import TimeSlots.Update as TSUpdate
 import TimeSlots.View exposing (viewCalendarHeading, viewDayHeadings, viewScrollableTimeSlots)
-import Utils exposing (NoData)
 
 
 
@@ -96,22 +95,10 @@ type Msg
     | SetSavedConfirmedEventsFor (Result Http.Error (List TSMessaging.ServerConfirmedEvent))
     | UpdateTimeZone String
     | SetTimeSlotsElement (Result Dom.Error Dom.Element)
-    | SendSaveTimeSlotRequest
-    | SendUpdateTimeSlotRequest
-    | SetSelectedTimeSlotAfterCreation (Result Http.Error Int)
-    | SetSelectedTimeSlotAfterEditing (Result Http.Error NoData)
     | EditTimeSlotSelection TS.SelectedTimeSlotDetails
-    | SendDeleteTimeSlotRequest
-    | DeleteTimeSlot (Result Http.Error NoData)
       -- EventCreation
     | PromptUserForEventDetails EC.EventDetails (Result Dom.Error Dom.Element)
-    | AdjustEventTitle String
-    | AdjustEventDescription String
-    | ChangeSelectionDayNum String
-    | ChangeSelectionStartSlot String
-    | ChangeSelectionEndSlot String
     | HandleEditingCancel
-    | CloseUserPromptForEventDetails
     | CancelDiscardConfirmationModal
     | SaveEditingTimeSlotWithoutChanges
     | Mdc (Material.Msg Msg)
@@ -163,51 +150,15 @@ update msg model =
         SetTimeSlotsElement result ->
             TSUpdate.setTimeSlotsElement model result
 
-        SendSaveTimeSlotRequest ->
-            TSUpdate.sendSaveTimeSlotRequest model SetSelectedTimeSlotAfterCreation
-
-        SendUpdateTimeSlotRequest ->
-            TSUpdate.sendUpdateTimeSlotRequest model SetSelectedTimeSlotAfterEditing
-
-        SetSelectedTimeSlotAfterCreation result ->
-            TSUpdate.setSelectedTimeSlotAfterCreation model result
-
-        SetSelectedTimeSlotAfterEditing result ->
-            TSUpdate.setSelectedTimeSlotAfterEditing model result
-
         EditTimeSlotSelection selectedTimeslotDetails ->
             TSUpdate.editTimeSlotSelection model PromptUserForEventDetails selectedTimeslotDetails
-
-        SendDeleteTimeSlotRequest ->
-            TSUpdate.sendDeleteTimeSlotRequest model DeleteTimeSlot
-
-        DeleteTimeSlot result ->
-            TSUpdate.deleteTimeSlot model result
 
         -- EventCreation
         PromptUserForEventDetails eventDetails result ->
             ECUpdate.promptUserForEventDetails model eventDetails result
 
-        AdjustEventTitle title ->
-            ECUpdate.adjustEventTitle model title
-
-        AdjustEventDescription description ->
-            ECUpdate.adjustEventDescription model description
-
-        ChangeSelectionDayNum dayNum ->
-            ECUpdate.changeSelectionDayNum model PromptUserForEventDetails dayNum
-
-        ChangeSelectionStartSlot startSlot ->
-            ECUpdate.changeSelectionStartSlot model PromptUserForEventDetails startSlot
-
-        ChangeSelectionEndSlot endSlot ->
-            ECUpdate.changeSelectionEndSlot model endSlot
-
         HandleEditingCancel ->
             ECUpdate.handleEditingCancel model
-
-        CloseUserPromptForEventDetails ->
-            ECUpdate.closeUserPromptForEventDetails model
 
         CancelDiscardConfirmationModal ->
             ECUpdate.cancelDiscardConfirmationModal model
@@ -250,19 +201,12 @@ view model =
                 }
             ]
         , viewUserRequest model
-            { changeSelectionDayNum = ChangeSelectionDayNum
-            , changeSelectionStartSlot = ChangeSelectionStartSlot
-            , changeSelectionEndSlot = ChangeSelectionEndSlot
-            , onMdc = Mdc
-            , closeUserPromptForEventDetails = CloseUserPromptForEventDetails
-            , sendSaveTimeSlotRequest = SendSaveTimeSlotRequest
-            , sendDeleteTimeSlotRequest = SendDeleteTimeSlotRequest
-            , handleEditingCancel = HandleEditingCancel
-            , sendUpdateTimeSlotRequest = SendUpdateTimeSlotRequest
-            , adjustEventTitle = AdjustEventTitle
-            , adjustEventDescription = AdjustEventDescription
-            , noOp = NoOp
-            }
+            (Events
+                { onMdc = Mdc
+                , handleEditingCancel = HandleEditingCancel
+                , noOp = NoOp
+                }
+            )
         ]
     }
 

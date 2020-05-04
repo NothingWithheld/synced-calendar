@@ -6,6 +6,7 @@ module TimeSlots.Update exposing
     , handleTimeSlotMouseUp
     , moveWeekBackward
     , moveWeekForward
+    , saveAvailableTimeSlot
     , sendDeleteTimeSlotRequest
     , sendSaveTimeSlotRequest
     , sendUpdateTimeSlotRequest
@@ -22,7 +23,6 @@ module TimeSlots.Update exposing
     )
 
 import Browser.Dom as Dom
-import Date exposing (Date)
 import EventCreation.EventCreation as EC
 import EventCreation.Update as ECUpdate
 import Flip
@@ -507,7 +507,11 @@ setAvailableTimesFromWFT model =
                     List.foldl foldFunc [] <| TSTime.daysFrom fromDate toDate
             in
             ( { model
-                | selectedTimeSlots = availableTimeSlots ++ model.selectedTimeSlots
+                | selectedTimeSlots =
+                    availableTimeSlots
+                        ++ List.filter
+                            (not << isFreeTime << TS.getEventDetailsFromDetails)
+                            model.selectedTimeSlots
                 , loadingAvailableTimes = False
               }
             , Cmd.none
@@ -875,6 +879,42 @@ deleteTimeSlot model result =
     case result of
         Ok _ ->
             ECUpdate.closeUserPromptForEventDetails model
+
+        _ ->
+            ( model, Cmd.none )
+
+
+saveAvailableTimeSlot :
+    EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a))
+    -> ( EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)), Cmd msg )
+saveAvailableTimeSlot model =
+    case ( model.eventCreation, model.timeSlotSelection ) of
+        ( EC.CurrentlyCreatingEvent eventDetails _, TS.EditingSelection selectionBounds _ ) ->
+            let
+                orderedSelectionBounds =
+                    TS.getOrderedTimeSlot selectionBounds
+
+                selectedTimeSlot =
+                    TS.SelectedTimeSlotDetails
+                        orderedSelectionBounds
+                        eventDetails
+
+                intersectsTimeSlots =
+                    TS.doesTSSelectionIntersectSelectedTimeSlots
+                        model.selectedTimeSlots
+                        model.timeSlotSelection
+            in
+            if intersectsTimeSlots then
+                ( model, Cmd.none )
+
+            else
+                ( { model
+                    | selectedTimeSlots = selectedTimeSlot :: model.selectedTimeSlots
+                    , timeSlotSelection = TS.NotSelecting
+                    , eventCreation = EC.NotCreating
+                  }
+                , Cmd.none
+                )
 
         _ ->
             ( model, Cmd.none )

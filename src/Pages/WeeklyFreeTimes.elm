@@ -95,8 +95,6 @@ type Msg
     | DeleteTimeSlot (Result Http.Error NoData)
       -- EventCreation
     | PromptUserForEventDetails EC.EventDetails (Result Dom.Error Dom.Element)
-    | AdjustEventTitle String
-    | AdjustEventDescription String
     | ChangeSelectionDayNum String
     | ChangeSelectionStartSlot String
     | ChangeSelectionEndSlot String
@@ -166,12 +164,6 @@ update msg model =
         PromptUserForEventDetails eventDetails result ->
             ECUpdate.promptUserForEventDetails model eventDetails result
 
-        AdjustEventTitle title ->
-            ECUpdate.adjustEventTitle model title
-
-        AdjustEventDescription description ->
-            ECUpdate.adjustEventDescription model description
-
         ChangeSelectionDayNum dayNum ->
             ECUpdate.changeSelectionDayNum model PromptUserForEventDetails dayNum
 
@@ -233,19 +225,19 @@ view model =
                 }
             ]
         , viewUserRequest model
-            { changeSelectionDayNum = ChangeSelectionDayNum
-            , changeSelectionStartSlot = ChangeSelectionStartSlot
-            , changeSelectionEndSlot = ChangeSelectionEndSlot
-            , onMdc = Mdc
-            , closeUserPromptForEventDetails = CloseUserPromptForEventDetails
-            , sendSaveTimeSlotRequest = SendSaveTimeSlotRequest
-            , sendDeleteTimeSlotRequest = SendDeleteTimeSlotRequest
-            , handleEditingCancel = HandleEditingCancel
-            , sendUpdateTimeSlotRequest = SendUpdateTimeSlotRequest
-            , adjustEventTitle = AdjustEventTitle
-            , adjustEventDescription = AdjustEventDescription
-            , noOp = NoOp
-            }
+            (WeeklyFreeTimes
+                { changeSelectionDayNum = ChangeSelectionDayNum
+                , changeSelectionStartSlot = ChangeSelectionStartSlot
+                , changeSelectionEndSlot = ChangeSelectionEndSlot
+                , onMdc = Mdc
+                , closeUserPromptForEventDetails = CloseUserPromptForEventDetails
+                , saveTimeSlot = SendSaveTimeSlotRequest
+                , deleteTimeSlot = SendDeleteTimeSlotRequest
+                , handleEditingCancel = HandleEditingCancel
+                , updateTimeSlot = SendUpdateTimeSlotRequest
+                , noOp = NoOp
+                }
+            )
         ]
     }
 

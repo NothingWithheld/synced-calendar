@@ -18,7 +18,6 @@ import TimeSlots.Time as TSTime
 import TimeSlots.TimeSlots as TS exposing (Calendar(..))
 import TimeSlots.Update as TSUpdate
 import TimeSlots.View exposing (viewCalendarHeading, viewDayHeadings, viewScrollableTimeSlots)
-import Utils exposing (NoData)
 
 
 
@@ -95,18 +94,11 @@ type Msg
     | StartSelectingTimeSlot TS.DayNum TS.SlotNum
     | HandleTimeSlotMouseMove TS.PointerPosition
     | AdjustTimeSlotSelection TS.PointerPosition (Result Dom.Error Dom.Viewport)
-    | SendSaveTimeSlotRequest
-    | SendUpdateTimeSlotRequest
-    | SetSelectedTimeSlotAfterCreation (Result Http.Error Int)
-    | SetSelectedTimeSlotAfterEditing (Result Http.Error NoData)
     | HandleTimeSlotMouseUp
     | EditTimeSlotSelection TS.SelectedTimeSlotDetails
-    | SendDeleteTimeSlotRequest
-    | DeleteTimeSlot (Result Http.Error NoData)
+    | SaveAvailableTimeSlot
       -- EventCreation
     | PromptUserForEventDetails EC.EventDetails (Result Dom.Error Dom.Element)
-    | AdjustEventTitle String
-    | AdjustEventDescription String
     | ChangeSelectionDayNum String
     | ChangeSelectionStartSlot String
     | ChangeSelectionEndSlot String
@@ -170,39 +162,18 @@ update msg model =
         AdjustTimeSlotSelection pointerPosition result ->
             TSUpdate.adjustTimeSlotSelection model pointerPosition result
 
-        SendSaveTimeSlotRequest ->
-            TSUpdate.sendSaveTimeSlotRequest model SetSelectedTimeSlotAfterCreation
-
-        SendUpdateTimeSlotRequest ->
-            TSUpdate.sendUpdateTimeSlotRequest model SetSelectedTimeSlotAfterEditing
-
-        SetSelectedTimeSlotAfterCreation result ->
-            TSUpdate.setSelectedTimeSlotAfterCreation model result
-
-        SetSelectedTimeSlotAfterEditing result ->
-            TSUpdate.setSelectedTimeSlotAfterEditing model result
-
         HandleTimeSlotMouseUp ->
             TSUpdate.handleTimeSlotMouseUp model (SubmitAvailability {}) PromptUserForEventDetails
 
         EditTimeSlotSelection selectedTimeslotDetails ->
             TSUpdate.editTimeSlotSelection model PromptUserForEventDetails selectedTimeslotDetails
 
-        SendDeleteTimeSlotRequest ->
-            TSUpdate.sendDeleteTimeSlotRequest model DeleteTimeSlot
-
-        DeleteTimeSlot result ->
-            TSUpdate.deleteTimeSlot model result
+        SaveAvailableTimeSlot ->
+            TSUpdate.saveAvailableTimeSlot model
 
         -- EventCreation
         PromptUserForEventDetails eventDetails result ->
             ECUpdate.promptUserForEventDetails model eventDetails result
-
-        AdjustEventTitle title ->
-            ECUpdate.adjustEventTitle model title
-
-        AdjustEventDescription description ->
-            ECUpdate.adjustEventDescription model description
 
         ChangeSelectionDayNum dayNum ->
             ECUpdate.changeSelectionDayNum model PromptUserForEventDetails dayNum
@@ -267,19 +238,19 @@ view model =
                 }
             ]
         , viewUserRequest model
-            { changeSelectionDayNum = ChangeSelectionDayNum
-            , changeSelectionStartSlot = ChangeSelectionStartSlot
-            , changeSelectionEndSlot = ChangeSelectionEndSlot
-            , onMdc = Mdc
-            , closeUserPromptForEventDetails = CloseUserPromptForEventDetails
-            , sendSaveTimeSlotRequest = SendSaveTimeSlotRequest
-            , sendDeleteTimeSlotRequest = SendDeleteTimeSlotRequest
-            , handleEditingCancel = HandleEditingCancel
-            , sendUpdateTimeSlotRequest = SendUpdateTimeSlotRequest
-            , adjustEventTitle = AdjustEventTitle
-            , adjustEventDescription = AdjustEventDescription
-            , noOp = NoOp
-            }
+            (SubmitAvailability
+                { changeSelectionDayNum = ChangeSelectionDayNum
+                , changeSelectionStartSlot = ChangeSelectionStartSlot
+                , changeSelectionEndSlot = ChangeSelectionEndSlot
+                , onMdc = Mdc
+                , closeUserPromptForEventDetails = CloseUserPromptForEventDetails
+                , saveTimeSlot = SaveAvailableTimeSlot
+                , deleteTimeSlot = CloseUserPromptForEventDetails
+                , handleEditingCancel = HandleEditingCancel
+                , updateTimeSlot = SaveAvailableTimeSlot
+                , noOp = NoOp
+                }
+            )
         ]
     }
 

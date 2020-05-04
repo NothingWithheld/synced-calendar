@@ -26,22 +26,50 @@ import Utils exposing (WithMdc, getListItemAt)
 viewUserRequest :
     WithMdc msg (EC.WithEventCreation (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a)))
     ->
-        { b
-            | changeSelectionDayNum : String -> msg
-            , changeSelectionStartSlot : String -> msg
-            , changeSelectionEndSlot : String -> msg
-            , onMdc : Material.Msg msg -> msg
-            , closeUserPromptForEventDetails : msg
-            , sendSaveTimeSlotRequest : msg
-            , sendDeleteTimeSlotRequest : msg
-            , handleEditingCancel : msg
-            , sendUpdateTimeSlotRequest : msg
-            , adjustEventTitle : String -> msg
-            , adjustEventDescription : String -> msg
-            , noOp : msg
-        }
+        Calendar
+            { b
+                | changeSelectionDayNum : String -> msg
+                , changeSelectionStartSlot : String -> msg
+                , changeSelectionEndSlot : String -> msg
+                , onMdc : Material.Msg msg -> msg
+                , closeUserPromptForEventDetails : msg
+                , saveTimeSlot : msg
+                , deleteTimeSlot : msg
+                , handleEditingCancel : msg
+                , updateTimeSlot : msg
+                , noOp : msg
+            }
+            { c
+                | noOp : msg
+                , handleEditingCancel : msg
+                , onMdc : Material.Msg msg -> msg
+            }
+            { d
+                | changeSelectionDayNum : String -> msg
+                , changeSelectionStartSlot : String -> msg
+                , changeSelectionEndSlot : String -> msg
+                , onMdc : Material.Msg msg -> msg
+                , closeUserPromptForEventDetails : msg
+                , saveTimeSlot : msg
+                , deleteTimeSlot : msg
+                , handleEditingCancel : msg
+                , updateTimeSlot : msg
+                , noOp : msg
+            }
     -> Html msg
-viewUserRequest model ({ handleEditingCancel } as updates) =
+viewUserRequest model updates =
+    let
+        handleEditingCancel =
+            case updates of
+                WeeklyFreeTimes updates_ ->
+                    updates_.handleEditingCancel
+
+                Events updates_ ->
+                    updates_.handleEditingCancel
+
+                SubmitAvailability updates_ ->
+                    updates_.handleEditingCancel
+    in
     case model.eventCreation of
         EC.NotCreating ->
             text ""
@@ -81,23 +109,39 @@ viewUserRequest model ({ handleEditingCancel } as updates) =
 viewUserRequestForm :
     WithMdc msg (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a))
     ->
-        { b
-            | changeSelectionDayNum : String -> msg
-            , changeSelectionStartSlot : String -> msg
-            , changeSelectionEndSlot : String -> msg
-            , onMdc : Material.Msg msg -> msg
-            , closeUserPromptForEventDetails : msg
-            , sendSaveTimeSlotRequest : msg
-            , sendDeleteTimeSlotRequest : msg
-            , handleEditingCancel : msg
-            , sendUpdateTimeSlotRequest : msg
-            , adjustEventTitle : String -> msg
-            , adjustEventDescription : String -> msg
-            , noOp : msg
-        }
+        Calendar
+            { b
+                | changeSelectionDayNum : String -> msg
+                , changeSelectionStartSlot : String -> msg
+                , changeSelectionEndSlot : String -> msg
+                , onMdc : Material.Msg msg -> msg
+                , closeUserPromptForEventDetails : msg
+                , saveTimeSlot : msg
+                , deleteTimeSlot : msg
+                , handleEditingCancel : msg
+                , updateTimeSlot : msg
+                , noOp : msg
+            }
+            { c
+                | noOp : msg
+                , handleEditingCancel : msg
+                , onMdc : Material.Msg msg -> msg
+            }
+            { d
+                | changeSelectionDayNum : String -> msg
+                , changeSelectionStartSlot : String -> msg
+                , changeSelectionEndSlot : String -> msg
+                , onMdc : Material.Msg msg -> msg
+                , closeUserPromptForEventDetails : msg
+                , saveTimeSlot : msg
+                , deleteTimeSlot : msg
+                , handleEditingCancel : msg
+                , updateTimeSlot : msg
+                , noOp : msg
+            }
     -> EC.EventDetails
     -> Html msg
-viewUserRequestForm model ({ noOp } as updates) eventDetails =
+viewUserRequestForm model updates eventDetails =
     let
         intersectsTimeSlots =
             TS.doesTSSelectionIntersectSelectedTimeSlots
@@ -114,6 +158,17 @@ viewUserRequestForm model ({ noOp } as updates) eventDetails =
 
                 _ ->
                     Nothing
+
+        noOp =
+            case updates of
+                WeeklyFreeTimes updates_ ->
+                    updates_.noOp
+
+                Events updates_ ->
+                    updates_.noOp
+
+                SubmitAvailability updates_ ->
+                    updates_.noOp
     in
     case maybeTimeSlot of
         Just timeSlot ->
@@ -130,28 +185,31 @@ viewUserRequestForm model ({ noOp } as updates) eventDetails =
                         }
                     )
                 ]
-                (case eventDetails of
-                    EC.UnsetWeeklyFreeTime ->
-                        viewWeeklyFreeTimesForm model updates intersectsTimeSlots
+                (case ( eventDetails, updates ) of
+                    ( EC.UnsetWeeklyFreeTime, WeeklyFreeTimes updates_ ) ->
+                        viewChangeTimeSlotForm model updates_ intersectsTimeSlots
 
-                    EC.SetWeeklyFreeTime _ ->
-                        viewWeeklyFreeTimesForm model updates intersectsTimeSlots
+                    ( EC.SetWeeklyFreeTime _, WeeklyFreeTimes updates_ ) ->
+                        viewChangeTimeSlotForm model updates_ intersectsTimeSlots
 
-                    EC.AvailableTime _ ->
-                        viewWeeklyFreeTimesForm model updates intersectsTimeSlots
+                    ( EC.AvailableTime _, SubmitAvailability udpates_ ) ->
+                        viewChangeTimeSlotForm model udpates_ intersectsTimeSlots
 
-                    EC.UnsetConfirmedEvent confirmedEventDetails ->
-                        viewConfirmedEventForm model updates timeSlot confirmedEventDetails
+                    ( EC.UnsetConfirmedEvent confirmedEventDetails, Events udpates_ ) ->
+                        viewConfirmedEventForm model udpates_ timeSlot confirmedEventDetails
 
-                    EC.ConfirmedEvent confirmedEventDetails ->
-                        viewConfirmedEventForm model updates timeSlot confirmedEventDetails
+                    ( EC.ConfirmedEvent confirmedEventDetails, Events udpates_ ) ->
+                        viewConfirmedEventForm model udpates_ timeSlot confirmedEventDetails
+
+                    _ ->
+                        []
                 )
 
         Nothing ->
             text ""
 
 
-viewWeeklyFreeTimesForm :
+viewChangeTimeSlotForm :
     WithMdc msg (TS.WithTimeSlotSelection a)
     ->
         { b
@@ -160,14 +218,14 @@ viewWeeklyFreeTimesForm :
             , changeSelectionEndSlot : String -> msg
             , onMdc : Material.Msg msg -> msg
             , closeUserPromptForEventDetails : msg
-            , sendSaveTimeSlotRequest : msg
-            , sendDeleteTimeSlotRequest : msg
+            , saveTimeSlot : msg
+            , deleteTimeSlot : msg
             , handleEditingCancel : msg
-            , sendUpdateTimeSlotRequest : msg
+            , updateTimeSlot : msg
         }
     -> Bool
     -> List (Html msg)
-viewWeeklyFreeTimesForm model updates intersectsTimeSlots =
+viewChangeTimeSlotForm model updates intersectsTimeSlots =
     case model.timeSlotSelection of
         TS.CurrentlySelecting _ ->
             [ viewTimeChangeSelects model updates
@@ -256,7 +314,7 @@ viewEventDetailsForm :
     ->
         { b
             | closeUserPromptForEventDetails : msg
-            , sendSaveTimeSlotRequest : msg
+            , saveTimeSlot : msg
             , onMdc : Material.Msg msg -> msg
             , changeSelectionDayNum : String -> msg
             , changeSelectionStartSlot : String -> msg
@@ -294,12 +352,12 @@ viewInitialCreationActionButtons :
     ->
         { b
             | closeUserPromptForEventDetails : msg
-            , sendSaveTimeSlotRequest : msg
+            , saveTimeSlot : msg
             , onMdc : Material.Msg msg -> msg
         }
     -> Bool
     -> Html msg
-viewInitialCreationActionButtons model { closeUserPromptForEventDetails, sendSaveTimeSlotRequest, onMdc } intersectsTimeSlots =
+viewInitialCreationActionButtons model { closeUserPromptForEventDetails, saveTimeSlot, onMdc } intersectsTimeSlots =
     Card.actions [ css "display" "flex", css "flex-direction" "row-reverse" ]
         [ Card.actionButtons []
             [ Button.view onMdc
@@ -317,7 +375,7 @@ viewInitialCreationActionButtons model { closeUserPromptForEventDetails, sendSav
                 [ Card.actionButton
                 , Button.ripple
                 , Button.unelevated
-                , Options.onClick sendSaveTimeSlotRequest
+                , Options.onClick saveTimeSlot
                 , when intersectsTimeSlots Button.disabled
                 ]
                 [ text "Submit" ]
@@ -329,16 +387,16 @@ viewEditingActionButtons :
     WithMdc msg a
     ->
         { b
-            | sendDeleteTimeSlotRequest : msg
+            | deleteTimeSlot : msg
             , handleEditingCancel : msg
-            , sendUpdateTimeSlotRequest : msg
+            , updateTimeSlot : msg
             , onMdc : Material.Msg msg -> msg
         }
     -> Bool
     -> Html msg
 viewEditingActionButtons model updates intersectsTimeSlots =
     let
-        { sendDeleteTimeSlotRequest, handleEditingCancel, sendUpdateTimeSlotRequest, onMdc } =
+        { deleteTimeSlot, handleEditingCancel, updateTimeSlot, onMdc } =
             updates
     in
     Card.actions [ css "display" "flex", css "flex-direction" "row-reverse" ]
@@ -348,7 +406,7 @@ viewEditingActionButtons model updates intersectsTimeSlots =
                 model.mdc
                 [ IconButton.icon1 "delete"
                 , IconButton.label1 "Delete this time slot"
-                , Options.onClick sendDeleteTimeSlotRequest
+                , Options.onClick deleteTimeSlot
                 ]
                 []
             , Button.view onMdc
@@ -366,7 +424,7 @@ viewEditingActionButtons model updates intersectsTimeSlots =
                 [ Card.actionButton
                 , Button.ripple
                 , Button.unelevated
-                , Options.onClick sendUpdateTimeSlotRequest
+                , Options.onClick updateTimeSlot
                 , when intersectsTimeSlots Button.disabled
                 ]
                 [ text "Submit" ]

@@ -1,7 +1,7 @@
 module TimeSlots.View exposing (viewCalendarHeading, viewDayHeadings, viewScrollableTimeSlots)
 
 import Constants
-import Date exposing (Date)
+import Date
 import EventCreation.EventCreation as EC
 import Html exposing (Html, div, text)
 import Html.Entity as Entity
@@ -515,27 +515,11 @@ viewSingleDayTimeSlots :
     -> Html msg
 viewSingleDayTimeSlots model updates ( dayNum, maybeDate ) =
     let
-        wFTFilterFunc eventDetails =
-            case updates of
-                SubmitAvailability _ ->
-                    case eventDetails of
-                        EC.SetWeeklyFreeTime _ ->
-                            False
-
-                        _ ->
-                            True
-
-                _ ->
-                    True
-
         selectedTimeSlotsForThisDayNum =
             List.filter ((\timeSlot -> timeSlot.dayNum == dayNum) << TS.getTimeSlotFromDetails) model.selectedTimeSlots
 
-        withoutWFTIfApplies =
-            List.filter (wFTFilterFunc << TS.getEventDetailsFromDetails) selectedTimeSlotsForThisDayNum
-
         selectedTimeSlotsForThisDay =
-            Maybe.withDefault withoutWFTIfApplies <|
+            Maybe.withDefault selectedTimeSlotsForThisDayNum <|
                 Maybe.map
                     (\date ->
                         List.filter
@@ -547,7 +531,7 @@ viewSingleDayTimeSlots model updates ( dayNum, maybeDate ) =
                              )
                                 << TS.getEventDetailsFromDetails
                             )
-                            withoutWFTIfApplies
+                            selectedTimeSlotsForThisDayNum
                     )
                     maybeDate
 
