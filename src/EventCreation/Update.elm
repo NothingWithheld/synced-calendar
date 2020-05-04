@@ -14,7 +14,10 @@ module EventCreation.Update exposing
 
 import Browser.Dom as Dom
 import EventCreation.EventCreation as EC
+import ProposeEvent.ProposeEvent as PE
+import Session exposing (WithSession)
 import Task
+import TimeSlots.Time as TSTime
 import TimeSlots.TimeSlots as TS
 import Utils exposing (getListItemAt)
 
@@ -141,10 +144,10 @@ adjustEventDescription model description =
 
 
 changeSelectionDayNum :
-    TS.WithTimeSlotSelection a
+    TS.WithTimeSlotSelection (PE.WithProposedEvent (TSTime.WithTimeDetails (WithSession a)))
     -> (EC.EventDetails -> Result Dom.Error Dom.Element -> msg)
     -> String
-    -> ( TS.WithTimeSlotSelection a, Cmd msg )
+    -> ( TS.WithTimeSlotSelection (PE.WithProposedEvent (TSTime.WithTimeDetails (WithSession a))), Cmd msg )
 changeSelectionDayNum model promptEventDetails dayNumStr =
     let
         maybeDayNum =
@@ -152,29 +155,74 @@ changeSelectionDayNum model promptEventDetails dayNumStr =
     in
     case ( model.timeSlotSelection, maybeDayNum ) of
         ( TS.CurrentlySelecting selectionBounds, Just dayNum ) ->
-            initiateUserPromptForEventDetails
-                { model
-                    | timeSlotSelection =
-                        TS.CurrentlySelecting
-                            { selectionBounds
-                                | dayNum = dayNum
-                            }
-                }
-                EC.UnsetWeeklyFreeTime
-                promptEventDetails
+            case model.proposedEvent of
+                Just _ ->
+                    let
+                        maybeDate =
+                            TSTime.dayNumToDate model dayNum
+
+                        mapFunc date =
+                            initiateUserPromptForEventDetails
+                                { model
+                                    | timeSlotSelection =
+                                        TS.CurrentlySelecting
+                                            { selectionBounds
+                                                | dayNum = dayNum
+                                            }
+                                }
+                                (EC.AvailableTime date)
+                                promptEventDetails
+                    in
+                    Maybe.withDefault ( model, Cmd.none ) <|
+                        Maybe.map mapFunc maybeDate
+
+                Nothing ->
+                    initiateUserPromptForEventDetails
+                        { model
+                            | timeSlotSelection =
+                                TS.CurrentlySelecting
+                                    { selectionBounds
+                                        | dayNum = dayNum
+                                    }
+                        }
+                        EC.UnsetWeeklyFreeTime
+                        promptEventDetails
 
         ( TS.EditingSelection selectionBounds previousDetails, Just dayNum ) ->
-            initiateUserPromptForEventDetails
-                { model
-                    | timeSlotSelection =
-                        TS.EditingSelection
-                            { selectionBounds
-                                | dayNum = dayNum
-                            }
-                            previousDetails
-                }
-                (TS.getEventDetailsFromDetails previousDetails)
-                promptEventDetails
+            case model.proposedEvent of
+                Just _ ->
+                    let
+                        maybeDate =
+                            TSTime.dayNumToDate model dayNum
+
+                        mapFunc date =
+                            initiateUserPromptForEventDetails
+                                { model
+                                    | timeSlotSelection =
+                                        TS.EditingSelection
+                                            { selectionBounds
+                                                | dayNum = dayNum
+                                            }
+                                            previousDetails
+                                }
+                                (EC.AvailableTime date)
+                                promptEventDetails
+                    in
+                    Maybe.withDefault ( model, Cmd.none ) <|
+                        Maybe.map mapFunc maybeDate
+
+                Nothing ->
+                    initiateUserPromptForEventDetails
+                        { model
+                            | timeSlotSelection =
+                                TS.EditingSelection
+                                    { selectionBounds
+                                        | dayNum = dayNum
+                                    }
+                                    previousDetails
+                        }
+                        (TS.getEventDetailsFromDetails previousDetails)
+                        promptEventDetails
 
         ( _, _ ) ->
             ( model, Cmd.none )
