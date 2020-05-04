@@ -495,7 +495,7 @@ viewTimeSlotTime hour =
 
 
 viewSingleDayTimeSlots :
-    TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (WithSession (EC.WithEventCreation (PE.WithProposedEvent a))))
+    TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (WithSession (EC.WithEventCreation (PE.WithProposedEvent (TSTime.WithTimeDetails a)))))
     ->
         Calendar
             { b
@@ -709,7 +709,7 @@ viewTimeSlotDuration { startBound, endBound } hasSingleSlotHeight =
 
 
 viewCurrentlySelectingTimeSlot :
-    TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots (EC.WithEventCreation (PE.WithProposedEvent a)))
+    TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots (EC.WithEventCreation (PE.WithProposedEvent (TSTime.WithTimeDetails (WithSession a)))))
     -> TS.DayNum
     -> Html msg
 viewCurrentlySelectingTimeSlot model dayNum =
@@ -725,7 +725,7 @@ viewCurrentlySelectingTimeSlot model dayNum =
 
 
 viewUserChangingTimeSlot :
-    TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots (EC.WithEventCreation (PE.WithProposedEvent a)))
+    TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots (EC.WithEventCreation (PE.WithProposedEvent (TSTime.WithTimeDetails (WithSession a)))))
     -> TS.TimeSlot
     -> TS.DayNum
     -> Html msg
@@ -743,9 +743,12 @@ viewUserChangingTimeSlot model timeSlotSelection dayNum =
         dayNumCurrentlySelected =
             timeSlotSelection.dayNum
 
+        selectedTimeSlotsThatWeek =
+            TSTime.getSelectedTimeSlotsInThatWeek model
+
         intersectsTimeSlots =
             TS.doesTSSelectionIntersectSelectedTimeSlots
-                model.selectedTimeSlots
+                selectedTimeSlotsThatWeek
                 model.timeSlotSelection
 
         invalidSelection =

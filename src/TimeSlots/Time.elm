@@ -6,6 +6,7 @@ module TimeSlots.Time exposing
     , dayNumToDate
     , daysFrom
     , getDaysInThatWeek
+    , getSelectedTimeSlotsInThatWeek
     , isSameDay
     , isoStringToDate
     , monthToLongString
@@ -18,6 +19,7 @@ module TimeSlots.Time exposing
     )
 
 import Date exposing (Date)
+import EventCreation.EventCreation as EC
 import Session exposing (WithSession)
 import Time exposing (Month(..), Posix, Weekday(..))
 import TimeSlots.TimeSlots as TS
@@ -341,3 +343,36 @@ dayNumToDate model dayNum =
                 Date.add Date.Days dayNumDiff currentDate
     in
     Maybe.map mapFunc model.timeDetails
+
+
+
+-- gets weekly free time time slots + time slots in the specified week
+
+
+getSelectedTimeSlotsInThatWeek : WithTimeDetails (WithSession (TS.WithSelectedTimeSlots a)) -> List TS.SelectedTimeSlotDetails
+getSelectedTimeSlotsInThatWeek model =
+    case model.timeDetails of
+        Just { currentDay, weekOffset } ->
+            case
+                List.map (Date.fromPosix (Session.getZone model.session)) <|
+                    getDaysInThatWeek model currentDay weekOffset
+            of
+                [ sundayDate, _, _, _, _, _, saturdayDate ] ->
+                    let
+                        filterFunc maybeDate =
+                            case maybeDate of
+                                Just date ->
+                                    Date.isBetween sundayDate saturdayDate date
+
+                                Nothing ->
+                                    True
+                    in
+                    List.filter
+                        (filterFunc << EC.getDateFromDetails << TS.getEventDetailsFromDetails)
+                        model.selectedTimeSlots
+
+                _ ->
+                    model.selectedTimeSlots
+
+        Nothing ->
+            model.selectedTimeSlots

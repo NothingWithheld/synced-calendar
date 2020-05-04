@@ -16,6 +16,8 @@ import Material.Select as Select
 import Material.TextField as TextField
 import Material.Typography as Typography
 import ProposeEvent.ProposeEvent as PE
+import Session exposing (WithSession)
+import TimeSlots.Time as TSTime
 import TimeSlots.TimeSlots as TS exposing (Calendar(..))
 import Utils exposing (WithMdc, getListItemAt)
 
@@ -25,7 +27,7 @@ import Utils exposing (WithMdc, getListItemAt)
 
 
 viewUserRequest :
-    WithMdc msg (EC.WithEventCreation (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots (PE.WithProposedEvent a))))
+    WithMdc msg (EC.WithEventCreation (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots (PE.WithProposedEvent (TSTime.WithTimeDetails (WithSession a))))))
     ->
         Calendar
             { b
@@ -108,7 +110,7 @@ viewUserRequest model updates =
 
 
 viewUserRequestForm :
-    WithMdc msg (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots (PE.WithProposedEvent a)))
+    WithMdc msg (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots (PE.WithProposedEvent (TSTime.WithTimeDetails (WithSession a)))))
     ->
         Calendar
             { b
@@ -144,9 +146,12 @@ viewUserRequestForm :
     -> Html msg
 viewUserRequestForm model updates eventDetails =
     let
+        selectedTimeSlotsThatWeek =
+            TSTime.getSelectedTimeSlotsInThatWeek model
+
         intersectsTimeSlots =
             TS.doesTSSelectionIntersectSelectedTimeSlots
-                model.selectedTimeSlots
+                selectedTimeSlotsThatWeek
                 model.timeSlotSelection
 
         invalidSelection =
