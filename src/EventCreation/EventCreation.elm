@@ -60,6 +60,12 @@ areEventCreationsEqual eventDetailsA eventDetailsB =
         ( SetWeeklyFreeTime eventA, SetWeeklyFreeTime eventB ) ->
             eventA == eventB
 
+        ( AvailableTime dateA, AvailableTime dateB ) ->
+            dateA == dateB
+
+        ( UnsetConfirmedEvent eventA, UnsetConfirmedEvent eventB ) ->
+            eventA == eventB
+
         ( ConfirmedEvent eventA, ConfirmedEvent eventB ) ->
             eventA == eventB
 
