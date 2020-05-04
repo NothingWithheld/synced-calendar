@@ -888,8 +888,8 @@ saveAvailableTimeSlot :
     EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a))
     -> ( EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)), Cmd msg )
 saveAvailableTimeSlot model =
-    case ( model.eventCreation, model.timeSlotSelection ) of
-        ( EC.CurrentlyCreatingEvent eventDetails _, TS.EditingSelection selectionBounds _ ) ->
+    let
+        updateFunc selectionBounds eventDetails =
             let
                 orderedSelectionBounds =
                     TS.getOrderedTimeSlot selectionBounds
@@ -915,6 +915,13 @@ saveAvailableTimeSlot model =
                   }
                 , Cmd.none
                 )
+    in
+    case ( model.eventCreation, model.timeSlotSelection ) of
+        ( EC.CurrentlyCreatingEvent eventDetails _, TS.CurrentlySelecting selectionBounds ) ->
+            updateFunc selectionBounds eventDetails
+
+        ( EC.CurrentlyCreatingEvent eventDetails _, TS.EditingSelection selectionBounds _ ) ->
+            updateFunc selectionBounds eventDetails
 
         _ ->
             ( model, Cmd.none )
