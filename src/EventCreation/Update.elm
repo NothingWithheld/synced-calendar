@@ -229,10 +229,10 @@ changeSelectionDayNum model promptEventDetails dayNumStr =
 
 
 changeSelectionStartSlot :
-    TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a)
+    TS.WithTimeSlotPositions (TS.WithTimeSlotSelection (EC.WithEventCreation a))
     -> (EC.EventDetails -> Result Dom.Error Dom.Element -> msg)
     -> String
-    -> ( TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a), Cmd msg )
+    -> ( TS.WithTimeSlotPositions (TS.WithTimeSlotSelection (EC.WithEventCreation a)), Cmd msg )
 changeSelectionStartSlot model promptEventDetails startSlotStr =
     let
         maybeStartSlotNum =
@@ -260,14 +260,14 @@ changeSelectionStartSlot model promptEventDetails startSlotStr =
                 <|
                     Maybe.map2 (TS.useTSPositionsForSelectionBounds model dayNum) newStartBound newEndBound
     in
-    case model.timeSlotSelection of
-        TS.CurrentlySelecting selectionBounds ->
+    case ( model.timeSlotSelection, model.eventCreation ) of
+        ( TS.CurrentlySelecting selectionBounds, EC.CurrentlyCreatingEvent eventDetails _ ) ->
             Maybe.withDefault ( model, Cmd.none ) <|
-                Maybe.map (updateFunc selectionBounds EC.UnsetWeeklyFreeTime) maybeStartSlotNum
+                Maybe.map (updateFunc selectionBounds eventDetails) maybeStartSlotNum
 
-        TS.EditingSelection selectionBounds prevDetails ->
+        ( TS.EditingSelection selectionBounds _, EC.CurrentlyCreatingEvent eventDetails _ ) ->
             Maybe.withDefault ( model, Cmd.none ) <|
-                Maybe.map (updateFunc selectionBounds (TS.getEventDetailsFromDetails prevDetails)) maybeStartSlotNum
+                Maybe.map (updateFunc selectionBounds eventDetails) maybeStartSlotNum
 
         _ ->
             ( model, Cmd.none )
