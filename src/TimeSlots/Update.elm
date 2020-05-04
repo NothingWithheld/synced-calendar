@@ -456,10 +456,8 @@ setAvailableTimesFromWFT model =
     let
         isConfirmedEventForDate date eventDetails =
             case eventDetails of
-                EC.ConfirmedEvent _ ->
-                    Maybe.withDefault False <|
-                        Maybe.map ((==) date) <|
-                            EC.getDateFromDetails eventDetails
+                EC.ConfirmedEvent proposedEvent ->
+                    date == proposedEvent.date
 
                 _ ->
                     False

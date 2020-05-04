@@ -7,6 +7,7 @@ import Html exposing (Html, div, text)
 import Html.Entity as Entity
 import Json.Decode as Decode exposing (field, float)
 import Material
+import Material.Button as Button
 import Material.Card as Card
 import Material.IconButton as IconButton
 import Material.Menu
@@ -39,7 +40,7 @@ onTimeSlotMouseMove handleTimeSlotMouseMove =
 
 
 viewCalendarHeading :
-    WithMdc msg (WithSession (TS.WithLoadingAll (TSTime.WithTimeDetails a)))
+    WithMdc msg (WithSession (TS.WithLoadingAll (TSTime.WithTimeDetails (PE.WithAlreadySubmittedAvailability (TS.WithSelectedTimeSlots a)))))
     ->
         Calendar
             { b
@@ -92,12 +93,18 @@ viewCalendarHeading model updates =
                 [ css "height" "10vh"
                 , css "display" "flex"
                 , css "padding-left" "12px"
+                , css "padding-right" "12px"
+                , css "justify-content" "space-between"
                 , css "align-items" "center"
                 ]
-                [ Route.viewHomeButton model onMdc
-                , styled div [ css "width" "12px" ] []
-                , viewTimeZoneSelect model updates_
-                , viewWeekHeadingItems model updates_
+                [ styled div
+                    [ css "display" "flex", css "align-items" "center" ]
+                    [ Route.viewHomeButton model onMdc
+                    , styled div [ css "width" "12px" ] []
+                    , viewTimeZoneSelect model updates_
+                    , viewWeekHeadingItems model updates_
+                    ]
+                , viewSubmitAvailabilityButton model updates_
                 ]
 
 
@@ -250,6 +257,42 @@ viewMonthHeading model currentDay weekOffset =
 
         _ ->
             text ""
+
+
+viewSubmitAvailabilityButton :
+    WithMdc msg (PE.WithAlreadySubmittedAvailability (TS.WithSelectedTimeSlots a))
+    -> { b | onMdc : Material.Msg msg -> msg }
+    -> Html msg
+viewSubmitAvailabilityButton model { onMdc } =
+    let
+        isAvailableTS eventDetails =
+            case eventDetails of
+                EC.AvailableTime _ ->
+                    True
+
+                _ ->
+                    False
+
+        availableTimeSlots =
+            List.filter
+                (isAvailableTS << TS.getEventDetailsFromDetails)
+                model.selectedTimeSlots
+
+        isDisabled =
+            (List.length availableTimeSlots == 0)
+                || model.alreadySubmittedAvailability
+    in
+    styled div
+        []
+        [ Button.view onMdc
+            "submit-availability-button"
+            model.mdc
+            [ Button.ripple
+            , Button.unelevated
+            , when isDisabled Button.disabled
+            ]
+            [ text "Submit Availability" ]
+        ]
 
 
 

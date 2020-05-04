@@ -1,4 +1,8 @@
-module ProposeEvent.ProposeEvent exposing (ProposedEvent, WithProposedEvent)
+module ProposeEvent.ProposeEvent exposing
+    ( ProposedEvent
+    , WithAlreadySubmittedAvailability
+    , WithProposedEvent
+    )
 
 import Date exposing (Date)
 
@@ -17,5 +21,10 @@ type alias ProposedEvent =
 type alias WithProposedEvent a =
     { a
         | proposedEvent : Maybe ProposedEvent
-        , alreadySubmittedAvailability : Bool
+    }
+
+
+type alias WithAlreadySubmittedAvailability a =
+    { a
+        | alreadySubmittedAvailability : Bool
     }
