@@ -350,7 +350,7 @@ getNonConflictingRangesOfTimeSlot currentTimeSlotDetails { dayNum, startBound, e
                 (\slotNum { curRange, nonConflictingRanges } ->
                     case curRange of
                         Just ( start, end ) ->
-                            if slotNum + 1 == end then
+                            if slotNum == end + 1 then
                                 { curRange = Just ( start, end + 1 ), nonConflictingRanges = nonConflictingRanges }
 
                             else

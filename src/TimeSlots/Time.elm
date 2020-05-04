@@ -280,7 +280,7 @@ daysFrom : Date -> Date -> List Date
 daysFrom startDate endDate =
     let
         daysBetween =
-            Date.diff Date.Days endDate startDate
+            Date.diff Date.Days startDate endDate
     in
     List.map
         (\days -> Date.add Date.Days days startDate)
