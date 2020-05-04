@@ -213,6 +213,9 @@ viewUserRequestForm model updates eventDetails =
                     ( EC.AvailableTime _, SubmitAvailability udpates_ ) ->
                         viewChangeTimeSlotForm model udpates_ invalidSelection
 
+                    ( EC.ConfirmedEvent confirmedEventDetails, SubmitAvailability udpates_ ) ->
+                        viewConfirmedEventForm model udpates_ timeSlot confirmedEventDetails
+
                     ( EC.UnsetConfirmedEvent confirmedEventDetails, Events udpates_ ) ->
                         viewConfirmedEventForm model udpates_ timeSlot confirmedEventDetails
 
