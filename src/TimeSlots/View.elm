@@ -385,7 +385,7 @@ viewTimeSlotTimes =
 
 
 viewScrollableTimeSlots :
-    TS.WithLoadingAll (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TSTime.WithTimeDetails (WithSession (PE.WithProposedEvent a)))))
+    TS.WithLoadingAll (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TSTime.WithTimeDetails (WithSession (EC.WithEventCreation (PE.WithProposedEvent a))))))
     ->
         Calendar
             { b
@@ -495,7 +495,7 @@ viewTimeSlotTime hour =
 
 
 viewSingleDayTimeSlots :
-    TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (WithSession (PE.WithProposedEvent a)))
+    TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (WithSession (EC.WithEventCreation (PE.WithProposedEvent a))))
     ->
         Calendar
             { b
@@ -709,7 +709,7 @@ viewTimeSlotDuration { startBound, endBound } hasSingleSlotHeight =
 
 
 viewCurrentlySelectingTimeSlot :
-    TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a)
+    TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots (EC.WithEventCreation (PE.WithProposedEvent a)))
     -> TS.DayNum
     -> Html msg
 viewCurrentlySelectingTimeSlot model dayNum =
@@ -725,7 +725,7 @@ viewCurrentlySelectingTimeSlot model dayNum =
 
 
 viewUserChangingTimeSlot :
-    TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a)
+    TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots (EC.WithEventCreation (PE.WithProposedEvent a)))
     -> TS.TimeSlot
     -> TS.DayNum
     -> Html msg
@@ -747,10 +747,27 @@ viewUserChangingTimeSlot model timeSlotSelection dayNum =
             TS.doesTSSelectionIntersectSelectedTimeSlots
                 model.selectedTimeSlots
                 model.timeSlotSelection
+
+        invalidSelection =
+            case model.eventCreation of
+                EC.CurrentlyCreatingEvent eventDetails _ ->
+                    case ( eventDetails, model.proposedEvent ) of
+                        ( EC.AvailableTime date, Just { fromDate, toDate } ) ->
+                            (not <| Date.isBetween fromDate toDate date)
+                                || intersectsTimeSlots
+
+                        ( EC.AvailableTime _, Nothing ) ->
+                            True
+
+                        _ ->
+                            intersectsTimeSlots
+
+                _ ->
+                    intersectsTimeSlots
     in
     if dayNum == dayNumCurrentlySelected then
         Card.view
-            [ if intersectsTimeSlots then
+            [ if invalidSelection then
                 css "background-color" "#D64545"
 
               else

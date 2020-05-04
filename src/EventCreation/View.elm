@@ -15,6 +15,7 @@ import Material.Options as Options exposing (css, styled, when)
 import Material.Select as Select
 import Material.TextField as TextField
 import Material.Typography as Typography
+import ProposeEvent.ProposeEvent as PE
 import TimeSlots.TimeSlots as TS exposing (Calendar(..))
 import Utils exposing (WithMdc, getListItemAt)
 
@@ -24,7 +25,7 @@ import Utils exposing (WithMdc, getListItemAt)
 
 
 viewUserRequest :
-    WithMdc msg (EC.WithEventCreation (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a)))
+    WithMdc msg (EC.WithEventCreation (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots (PE.WithProposedEvent a))))
     ->
         Calendar
             { b
@@ -107,7 +108,7 @@ viewUserRequest model updates =
 
 
 viewUserRequestForm :
-    WithMdc msg (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots a))
+    WithMdc msg (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots (PE.WithProposedEvent a)))
     ->
         Calendar
             { b
@@ -148,6 +149,18 @@ viewUserRequestForm model updates eventDetails =
                 model.selectedTimeSlots
                 model.timeSlotSelection
 
+        invalidSelection =
+            case ( eventDetails, model.proposedEvent ) of
+                ( EC.AvailableTime date, Just { fromDate, toDate } ) ->
+                    (not <| Date.isBetween fromDate toDate date)
+                        || intersectsTimeSlots
+
+                ( EC.AvailableTime _, Nothing ) ->
+                    True
+
+                _ ->
+                    intersectsTimeSlots
+
         maybeTimeSlot =
             case model.timeSlotSelection of
                 TS.CurrentlySelecting ts ->
@@ -173,7 +186,7 @@ viewUserRequestForm model updates eventDetails =
     case maybeTimeSlot of
         Just timeSlot ->
             Card.view
-                [ when intersectsTimeSlots <| css "border" "2px solid #D64545"
+                [ when invalidSelection <| css "border" "2px solid #D64545"
                 , css "width" (String.fromFloat EC.eventDetailsPromptWidth ++ "px")
                 , css "padding" "12px 8px 0px"
                 , css "box-shadow" "0 24px 38px 3px rgba(0,0,0,0.14), 0 9px 46px 8px rgba(0,0,0,0.12), 0 11px 15px -7px rgba(0,0,0,0.2)"
@@ -187,13 +200,13 @@ viewUserRequestForm model updates eventDetails =
                 ]
                 (case ( eventDetails, updates ) of
                     ( EC.UnsetWeeklyFreeTime, WeeklyFreeTimes updates_ ) ->
-                        viewChangeTimeSlotForm model updates_ intersectsTimeSlots
+                        viewChangeTimeSlotForm model updates_ invalidSelection
 
                     ( EC.SetWeeklyFreeTime _, WeeklyFreeTimes updates_ ) ->
-                        viewChangeTimeSlotForm model updates_ intersectsTimeSlots
+                        viewChangeTimeSlotForm model updates_ invalidSelection
 
                     ( EC.AvailableTime _, SubmitAvailability udpates_ ) ->
-                        viewChangeTimeSlotForm model udpates_ intersectsTimeSlots
+                        viewChangeTimeSlotForm model udpates_ invalidSelection
 
                     ( EC.UnsetConfirmedEvent confirmedEventDetails, Events udpates_ ) ->
                         viewConfirmedEventForm model udpates_ timeSlot confirmedEventDetails
@@ -225,16 +238,16 @@ viewChangeTimeSlotForm :
         }
     -> Bool
     -> List (Html msg)
-viewChangeTimeSlotForm model updates intersectsTimeSlots =
+viewChangeTimeSlotForm model updates invalidSelection =
     case model.timeSlotSelection of
         TS.CurrentlySelecting _ ->
             [ viewTimeChangeSelects model updates
-            , viewInitialCreationActionButtons model updates intersectsTimeSlots
+            , viewInitialCreationActionButtons model updates invalidSelection
             ]
 
         TS.EditingSelection _ _ ->
             [ viewTimeChangeSelects model updates
-            , viewEditingActionButtons model updates intersectsTimeSlots
+            , viewEditingActionButtons model updates invalidSelection
             ]
 
         _ ->
@@ -325,7 +338,7 @@ viewEventDetailsForm :
     -> EC.ConfirmedEventDetails
     -> Bool
     -> List (Html msg)
-viewEventDetailsForm model ({ onMdc, adjustEventTitle, adjustEventDescription } as updates) eventItems intersectsTimeSlots =
+viewEventDetailsForm model ({ onMdc, adjustEventTitle, adjustEventDescription } as updates) eventItems invalidSelection =
     [ TextField.view onMdc
         "event-title"
         model.mdc
@@ -343,7 +356,7 @@ viewEventDetailsForm model ({ onMdc, adjustEventTitle, adjustEventDescription } 
         , Options.onInput adjustEventDescription
         ]
         []
-    , viewInitialCreationActionButtons model updates intersectsTimeSlots
+    , viewInitialCreationActionButtons model updates invalidSelection
     ]
 
 
@@ -357,7 +370,7 @@ viewInitialCreationActionButtons :
         }
     -> Bool
     -> Html msg
-viewInitialCreationActionButtons model { closeUserPromptForEventDetails, saveTimeSlot, onMdc } intersectsTimeSlots =
+viewInitialCreationActionButtons model { closeUserPromptForEventDetails, saveTimeSlot, onMdc } invalidSelection =
     Card.actions [ css "display" "flex", css "flex-direction" "row-reverse" ]
         [ Card.actionButtons []
             [ Button.view onMdc
@@ -376,7 +389,7 @@ viewInitialCreationActionButtons model { closeUserPromptForEventDetails, saveTim
                 , Button.ripple
                 , Button.unelevated
                 , Options.onClick saveTimeSlot
-                , when intersectsTimeSlots Button.disabled
+                , when invalidSelection Button.disabled
                 ]
                 [ text "Submit" ]
             ]
@@ -394,7 +407,7 @@ viewEditingActionButtons :
         }
     -> Bool
     -> Html msg
-viewEditingActionButtons model updates intersectsTimeSlots =
+viewEditingActionButtons model updates invalidSelection =
     let
         { deleteTimeSlot, handleEditingCancel, updateTimeSlot, onMdc } =
             updates
@@ -425,7 +438,7 @@ viewEditingActionButtons model updates intersectsTimeSlots =
                 , Button.ripple
                 , Button.unelevated
                 , Options.onClick updateTimeSlot
-                , when intersectsTimeSlots Button.disabled
+                , when invalidSelection Button.disabled
                 ]
                 [ text "Submit" ]
             ]
