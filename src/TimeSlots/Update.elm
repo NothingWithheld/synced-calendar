@@ -885,8 +885,8 @@ deleteTimeSlot model result =
 
 
 saveAvailableTimeSlot :
-    EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a))
-    -> ( EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection a)), Cmd msg )
+    EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TSTime.WithTimeDetails (WithSession a))))
+    -> ( EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TSTime.WithTimeDetails (WithSession a)))), Cmd msg )
 saveAvailableTimeSlot model =
     let
         updateFunc selectionBounds eventDetails =
@@ -899,9 +899,12 @@ saveAvailableTimeSlot model =
                         orderedSelectionBounds
                         eventDetails
 
+                selectedTimeSlotsThatWeek =
+                    TSTime.getSelectedTimeSlotsInThatWeek model
+
                 intersectsTimeSlots =
                     TS.doesTSSelectionIntersectSelectedTimeSlots
-                        model.selectedTimeSlots
+                        selectedTimeSlotsThatWeek
                         model.timeSlotSelection
             in
             if intersectsTimeSlots then
