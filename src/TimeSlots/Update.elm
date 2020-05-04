@@ -454,10 +454,12 @@ setAvailableTimesFromWFT :
     -> ( TS.WithTimeSlotPositions (PE.WithProposedEvent (TS.WithSelectedTimeSlots (TS.WithLoadingAvailableTimes a))), Cmd msg )
 setAvailableTimesFromWFT model =
     let
-        isConfirmedEvent eventDetails =
+        isConfirmedEventForDate date eventDetails =
             case eventDetails of
                 EC.ConfirmedEvent _ ->
-                    True
+                    Maybe.withDefault False <|
+                        Maybe.map ((==) date) <|
+                            EC.getDateFromDetails eventDetails
 
                 _ ->
                     False
@@ -469,11 +471,6 @@ setAvailableTimesFromWFT model =
 
                 _ ->
                     False
-
-        confirmedEventTimeSlots =
-            List.filter
-                (isConfirmedEvent << TS.getEventDetailsFromDetails)
-                model.selectedTimeSlots
 
         weeklyFreeTimeTimeSlots =
             List.filter
@@ -490,9 +487,14 @@ setAvailableTimesFromWFT model =
                         ((==) dayNumForDate << .dayNum << TS.getTimeSlotFromDetails)
                         weeklyFreeTimeTimeSlots
 
+                confirmedEventTSsForDate =
+                    List.filter
+                        (isConfirmedEventForDate date << TS.getEventDetailsFromDetails)
+                        model.selectedTimeSlots
+
                 nonConflictingTSs =
                     List.concatMap
-                        (TS.getNonConflictingPartsOfTimeSlot model confirmedEventTimeSlots << TS.getTimeSlotFromDetails)
+                        (TS.getNonConflictingPartsOfTimeSlot model confirmedEventTSsForDate << TS.getTimeSlotFromDetails)
                         wfTimesForDayNum
             in
             List.map
