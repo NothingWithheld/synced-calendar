@@ -15,6 +15,17 @@ salt = "3s18bst5ebf"
 getUserR :: Handler Value 
 getUserR = do 
     maybeEmail <- lookupGetParam "email"
+    case maybeEmail of 
+        Just email -> do 
+            potentialUsers <- runDB $ selectList [UserEmail ==. email] []
+            case potentialUsers of 
+                [Entity userId _] -> return $ object ["userId" .= userId]
+                _ -> invalidArgs ["Failed to find user with email: " Import.++ email]
+        _ -> invalidArgs ["Failed to find parameter email"]
+
+getUserLoginR :: Handler Value 
+getUserLoginR = do 
+    maybeEmail <- lookupGetParam "email"
     maybePassword <- lookupGetParam "password"
     case (maybeEmail, maybePassword) of 
         (Just email, Just password) -> do 
@@ -25,8 +36,8 @@ getUserR = do
                 _ -> invalidArgs ["Failed to login user sucessfully"]
         (_, _) -> invalidArgs ["Failed to login user sucessfully"]
         
-postUserR :: Handler Value 
-postUserR = do 
+postUserLoginR :: Handler Value 
+postUserLoginR = do 
     maybeEmail <- lookupPostParam "email"
     maybePassword <- lookupPostParam "password"
     case (maybeEmail, maybePassword) of 
