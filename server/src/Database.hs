@@ -4,6 +4,7 @@
 module Database where 
 
 import Import
+import Database.Persist.Sql (toSqlKey)
 import Data.List 
 import Data.Time.LocalTime
 import Data.Dates
@@ -96,3 +97,39 @@ updateDayString dayString dayOffset = do
             let nextIndexOfDay = (indexOfDay + (fromInteger dayOffset)) `mod` (Import.length days)
             return $ days !! nextIndexOfDay
         _ -> Nothing
+
+fetchUserId :: Maybe Text -> Handler (Maybe UserId)
+fetchUserId (Just userIdText) = do 
+    let eitherUserId = decimal userIdText
+    case eitherUserId of
+        Right (userIdInt, "") -> do
+            potentialUsers <- runDB $ selectList [UserId ==. toSqlKey (fromIntegral (userIdInt::Integer))] []
+            case potentialUsers of
+                [Entity userId _] -> return $ Just userId 
+                _ -> return Nothing 
+        _ -> return Nothing 
+fetchUserId Nothing = do return $ Nothing
+
+fetchProposedEvent :: Maybe Text -> Handler (Maybe (Entity ProposedEvent))
+fetchProposedEvent (Just eventIdText) = do 
+    let eitherEventId = decimal eventIdText
+    case eitherEventId of 
+        Right (eventIdInt, "") -> do
+            allProposedEvents <- runDB $ 
+                selectList [
+                    ProposedEventId ==. toSqlKey (fromIntegral (eventIdInt::Integer)),
+                    ProposedEventConfirmed <-. [False]
+                ] []
+            case allProposedEvents of 
+                [x] -> return $ Just x
+                _ -> return Nothing 
+        _ -> return Nothing 
+fetchProposedEvent Nothing = do return $ Nothing
+
+formatDate :: Day -> Text 
+formatDate date = let dateSplit = T.splitOn "-" (pack $ show date) 
+    in dateSplit!!1 Import.++ "-" Import.++ dateSplit!!2 Import.++ "-" Import.++ dateSplit!!0
+
+splitStringByCommas :: Text -> [Text]
+splitStringByCommas "" = []
+splitStringByCommas s = T.splitOn "," (T.filter (/=' ') s)

@@ -1,28 +1,30 @@
 -- By default this file is used by `persistFileWith` in Model.hs (which is imported by Foundation.hs)
 -- Syntax for this file here: https://github.com/yesodweb/persistent/blob/master/docs/Persistent-entity-syntax.md
 
-User
+User json
     email Text
     password Text
     registered Bool
     UniqueEmail email
     deriving Show
 AvailableTimeEntry json
-    userId Text
+    userId UserId
     eventId ProposedEventId
     date Day
     fromTime TimeOfDay
     toTime TimeOfDay
+    spanMultiple Bool
     deriving Show Eq
 FreeTimeEntry json
-    userId Text
+    userId UserId
     day Text
     fromTime TimeOfDay
     toTime TimeOfDay
+    spanMultiple Bool
     deriving Show Eq
 ProposedEvent json 
-    creatorId Text
-    recipientId Text 
+    creatorId UserId
+    recipientId UserId 
     name Text Maybe 
     description Text Maybe
     fromDate Day 
@@ -33,6 +35,7 @@ ConfirmedEvent json
     proposedEventId ProposedEventId
     date Day 
     fromTime TimeOfDay 
-    toTime TimeOfDay 
+    toTime TimeOfDay
+    spanMultiple Bool 
     UniqueProposedEventId proposedEventId
     deriving Show Eq
