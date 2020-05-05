@@ -105,7 +105,7 @@ As your code changes, your site will be automatically recompiled and redeployed 
 	
 	Retrieves available time entries for a given user for a given event. Response sends in a JSON array of data 
 	objects with `id`, `userId`, `eventId`, `date`, `fromTime`, `toTime`, `spanMultiple` variables.
-	`spanMultiple` is a flag that indicates AvailableTimeEntry returned spans two days. `day` variable will 
+	`spanMultiple` is a flag that indicates AvailableTimeEntry returned spans two days. `date` variable will 
 	correspond to `fromTime`. (see POST documentation for possible values of the other variables).
 
 	user_id (Int) -> unique number that identifies a `User` object
@@ -113,6 +113,21 @@ As your code changes, your site will be automatically recompiled and redeployed 
 	**Parameters**
 	
 	- event_id (Int) -> id that corresponds to a `ProposedEvent` object
+	- timezone (Int) -> offset from UTC time (range: -14 to 12)
+
+- **GET** `/api/{user_id}/available-times/multiple`
+	
+	Retrieves available time entries for given events. Response sends in a JSON array of data 
+	objects with `date`, `fromTime`, `toTime`, `spanMultiple` variables. `spanMultiple` is a flag 
+	that indicates AvailableTimeEntry returned spans two days. `date` variable will correspond to `fromTime`. 
+	(see POST documentation for possible values of the other variables). This API returns all 
+	possibile times a creator can schedule a ConfirmedEvent from a ProposedEvent
+
+	user_id (Int) -> unique number that identifies a `User` object
+
+	**Parameters**
+	
+	- event_ids ([Int]) -> ids that corresponds to `ProposedEvent` objects
 	- timezone (Int) -> offset from UTC time (range: -14 to 12)
 
 - **POST** `/api/{user_id}/available-times`

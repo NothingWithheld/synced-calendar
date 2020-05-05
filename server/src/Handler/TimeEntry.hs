@@ -14,6 +14,7 @@ import qualified Handler.Event
 
 data FreeTimeEntryData = FreeTimeEntryData FreeTimeEntryId UserId Text TimeOfDay TimeOfDay Bool
 data AvailableTimeEntryData = AvailableTimeEntryData AvailableTimeEntryId UserId ProposedEventId Day TimeOfDay TimeOfDay Bool
+data CommonAvailableTimeEntryData = CommonAvailableTimeEntryData Day TimeOfDay TimeOfDay Bool 
 
 instance ToJSON FreeTimeEntryData where 
     toJSON (FreeTimeEntryData entryId userId day (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _) spanMultiple) =
@@ -32,6 +33,15 @@ instance ToJSON AvailableTimeEntryData where
             "id" .= entryId,
             "userId" .= userId, 
             "eventId" .= eventId,
+            "date" .= Database.formatDate date,
+            "fromTime" .= ((Database.showWithZeros fromHour) Import.++ ":" Import.++ (Database.showWithZeros fromMinutes)),
+            "toTime" .= ((Database.showWithZeros toHour) Import.++ ":" Import.++ (Database.showWithZeros toMinutes)),
+            "spanMultiple" .= spanMultiple
+        ]
+
+instance ToJSON CommonAvailableTimeEntryData where 
+    toJSON (CommonAvailableTimeEntryData date (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _) spanMultiple) =
+        object [
             "date" .= Database.formatDate date,
             "fromTime" .= ((Database.showWithZeros fromHour) Import.++ ":" Import.++ (Database.showWithZeros fromMinutes)),
             "toTime" .= ((Database.showWithZeros toHour) Import.++ ":" Import.++ (Database.showWithZeros toMinutes)),
@@ -65,6 +75,19 @@ convertAvailableTimeEntryToLocal (Entity entryId (AvailableTimeEntry userId even
             let localDate = addDays fromTimeDayOffset date
             let newSpanMultiple = if fromTimeDayOffset == toTimeDayOffset then spanMultiple else not spanMultiple
             return $ AvailableTimeEntryData entryId userId eventId localDate localFromTime localToTime newSpanMultiple
+        (_, _) -> Nothing
+
+convertCommonAvailableTimeEntryToLocal :: CommonAvailableTimeEntryData -> Text -> Maybe CommonAvailableTimeEntryData
+convertCommonAvailableTimeEntryToLocal (CommonAvailableTimeEntryData date fromTime toTime spanMultiple) timezone = do 
+    let maybeLocalFromTime = Database.convertUTCToLocal fromTime timezone
+    let maybeLocalToTime = Database.convertUTCToLocal toTime timezone
+    case (maybeLocalFromTime, maybeLocalToTime) of 
+        (Just (fromTimeDayOffset, localFromTime), Just (toTimeDayOffset, localToTime)) -> do 
+            -- The database will hold in the day of fromTime if the event is staggered 
+            -- between to two days 
+            let localDate = addDays fromTimeDayOffset date
+            let newSpanMultiple = if fromTimeDayOffset == toTimeDayOffset then spanMultiple else not spanMultiple
+            return $ CommonAvailableTimeEntryData localDate localFromTime localToTime newSpanMultiple
         (_, _) -> Nothing
 
 createAvailableTimeEntry :: (Text, Text, Text, Text, Text, Text) -> Handler (Maybe AvailableTimeEntryData)
@@ -165,6 +188,42 @@ deleteFreeTimeEntryR entryIdText = do
             return Null
         _ -> badMethod
 
+findCommonAvailableTimeEntriesMultiple :: [[AvailableTimeEntry]] -> [CommonAvailableTimeEntryData] -> [CommonAvailableTimeEntryData]
+findCommonAvailableTimeEntriesMultiple [] commonEntries = commonEntries
+findCommonAvailableTimeEntriesMultiple (x:xs) commonEntries = let newCommonEntries = findCommonAvailableTimeEntries2 x commonEntries 
+    in findCommonAvailableTimeEntriesMultiple xs newCommonEntries
+
+findCommonAvailableTimeEntries2 :: [AvailableTimeEntry] -> [CommonAvailableTimeEntryData] -> [CommonAvailableTimeEntryData]
+findCommonAvailableTimeEntries2 _ [] = []
+findCommonAvailableTimeEntries2 entries (x:xs) = (findCommonAvailableTimeEntry entries x) Import.++ (findCommonAvailableTimeEntries2 entries xs)
+
+findCommonAvailableTimeEntry :: [AvailableTimeEntry] -> CommonAvailableTimeEntryData -> [CommonAvailableTimeEntryData]
+findCommonAvailableTimeEntry [] _ = [] 
+findCommonAvailableTimeEntry (x:xs) timeEntry = (findCommonAvailableTimeEntryHelper x timeEntry) Import.++ findCommonAvailableTimeEntry xs timeEntry
+
+findCommonAvailableTimeEntryHelper :: AvailableTimeEntry -> CommonAvailableTimeEntryData -> [CommonAvailableTimeEntryData]
+findCommonAvailableTimeEntryHelper (AvailableTimeEntry _ _ dateX fromTimeX toTimeX spanMultipleX) 
+    (CommonAvailableTimeEntryData dateY fromTimeY toTimeY spanMultipleY) = do 
+        case (spanMultipleX, spanMultipleY) of 
+            (False, False) -> case 
+                (toTimeX <= fromTimeY || fromTimeX >= toTimeY || not (dateX == dateY), -- out of bounds
+                fromTimeX <= fromTimeY && toTimeX <= toTimeY, 
+                fromTimeX <= fromTimeY && toTimeX > toTimeY, 
+                fromTimeX > fromTimeY && toTimeX <= toTimeY,
+                fromTimeX > fromTimeY && toTimeX > toTimeY) of 
+                    (True, False, False, False, False) -> []
+                    (False, True, False, False, False) -> 
+                        [CommonAvailableTimeEntryData dateY fromTimeY toTimeX spanMultipleX]
+                    (False, False, True, False, False) -> 
+                        [CommonAvailableTimeEntryData dateY fromTimeY toTimeY spanMultipleX]
+                    (False, False, False, True, False) -> 
+                        [CommonAvailableTimeEntryData dateY fromTimeX toTimeX spanMultipleX]
+                    (False, False, False, False, True) -> 
+                        [CommonAvailableTimeEntryData dateY fromTimeX toTimeY spanMultipleX]
+                    _ -> [] -- should never get here
+            _ -> []
+
+
 getAvailableTimeEntryR :: Text -> Handler Value 
 getAvailableTimeEntryR userIdText = do 
     maybeEventId <- lookupGetParam "event_id"
@@ -182,6 +241,64 @@ getAvailableTimeEntryR userIdText = do
                         ] []
                     returnJson $ catMaybes $ Import.map (\x -> convertAvailableTimeEntryToLocal x timezone) allTimeEntries
                 _ -> invalidArgs ["Failed to parse event_id params"]
+        (_, _, _) -> invalidArgs ["Failed to parse event_id params"]
+
+fetchAvailableTimeEntriesWithId :: Text -> Handler [Entity AvailableTimeEntry]
+fetchAvailableTimeEntriesWithId eventIdText = do 
+    let eitherEventId = decimal eventIdText
+    case (eitherEventId) of 
+        Right (eventIdInt, "") -> do 
+            allTimeEntries <- runDB $ 
+                selectList [
+                    AvailableTimeEntryEventId ==. toSqlKey (fromIntegral (eventIdInt::Integer))
+                ] []
+            return allTimeEntries
+        _ -> return []
+
+fetchConfirmedProposedEvents :: Maybe (Key User) -> Handler [Entity ProposedEvent]
+fetchConfirmedProposedEvents Nothing = do return []
+fetchConfirmedProposedEvents (Just userId) = do 
+    allProposedEvents <- runDB $ 
+        selectList 
+            [
+                ProposedEventRecipientId ==. userId, 
+                ProposedEventConfirmed ==. True
+            ] []
+    return allProposedEvents
+
+fetchConfirmedEventsData :: [Entity ProposedEvent] -> Handler [Maybe Handler.Event.ConfirmedEventData]
+fetchConfirmedEventsData proposedEvents = do 
+    confirmedEvents <- Import.mapM Handler.Event.getConfirmedEventFromProposedEvent proposedEvents
+    return confirmedEvents
+
+findUserIdFromAvailableTimeEntry :: [Entity AvailableTimeEntry] -> Maybe (Key User) 
+findUserIdFromAvailableTimeEntry [] = Nothing
+findUserIdFromAvailableTimeEntry ((Entity _ (AvailableTimeEntry userId _ _ _ _ _)):_) = Just userId
+
+getAvailableTimeEntryMultipleR :: Text -> Handler Value 
+getAvailableTimeEntryMultipleR creatorIdText = do 
+    maybeEventIds <- lookupGetParam "event_ids"
+    maybeTimeZone <- lookupGetParam "timezone"
+    maybeCreatorId <- Database.fetchUserId (Just creatorIdText)
+    case (maybeCreatorId, maybeEventIds, maybeTimeZone) of 
+        (Just _, Just eventIdsText, Just timezone) -> do 
+            let eventIdsList = Database.splitStringByCommas eventIdsText
+            availableTimeEntriesList <- Import.mapM fetchAvailableTimeEntriesWithId eventIdsList 
+            let userIdsList = Import.map findUserIdFromAvailableTimeEntry availableTimeEntriesList
+            proposedEventsList <- Import.mapM fetchConfirmedProposedEvents userIdsList
+            confirmedEventsList <- Import.mapM fetchConfirmedEventsData proposedEventsList
+            -- returnJson availableTimeEntriesList
+            let zippedFcn = (\entries events -> iterateConfirmedEvents entries (catMaybes events))
+            let availableTimeEntriesNoEntitiesList = Import.map (\entries -> Import.map (\(Entity _ x) -> x) entries) availableTimeEntriesList
+            let availableTimesEntriesListNoConflicts = Import.zipWith zippedFcn availableTimeEntriesNoEntitiesList confirmedEventsList
+            let mappedFcn = (\(AvailableTimeEntry _ _ date fromTime toTime spanMultiple) -> CommonAvailableTimeEntryData date fromTime toTime spanMultiple) 
+            case Import.length availableTimesEntriesListNoConflicts of 
+                0 -> returnJson $ object []
+                _ -> do 
+                    let commonEntriesFirst = Import.map mappedFcn (availableTimesEntriesListNoConflicts !! 0)
+                    let commonEntries = findCommonAvailableTimeEntriesMultiple availableTimesEntriesListNoConflicts commonEntriesFirst
+                    let commonEntriesLocal = Import.map (\x -> convertCommonAvailableTimeEntryToLocal x timezone) commonEntries
+                    returnJson $ commonEntriesLocal
         (_, _, _) -> invalidArgs ["Failed to parse event_id params"]
 
 postAvailableTimeEntryR :: Text -> Handler Value 
@@ -300,11 +417,11 @@ createAvailableFromFreeHelper ((FreeTimeEntry userId day fromTime toTime spanMul
 
 iterateConfirmedEvents :: [AvailableTimeEntry] -> [Handler.Event.ConfirmedEventData] -> [AvailableTimeEntry]
 iterateConfirmedEvents entries [] = entries 
-iterateConfirmedEvents entries (x:xs) = let new_entries = iterateAvailableTimeEntries entries x in iterateConfirmedEvents new_entries xs
+iterateConfirmedEvents entries (x:xs) = let newEntries = iterateAvailableTimeEntries entries x in iterateConfirmedEvents newEntries xs
 
 iterateAvailableTimeEntries :: [AvailableTimeEntry] -> Handler.Event.ConfirmedEventData -> [AvailableTimeEntry]
 iterateAvailableTimeEntries [] _ = []
-iterateAvailableTimeEntries (x:xs) confirmed_event = (splitFreeTime x confirmed_event) Import.++ (iterateAvailableTimeEntries xs confirmed_event)
+iterateAvailableTimeEntries (x:xs) confirmedEvent = (splitFreeTime x confirmedEvent) Import.++ (iterateAvailableTimeEntries xs confirmedEvent)
 
 splitFreeTime :: AvailableTimeEntry -> Handler.Event.ConfirmedEventData -> [AvailableTimeEntry]
 splitFreeTime entry@(AvailableTimeEntry userId eventId dateA fromTimeA toTimeA spanMultipleA) 
