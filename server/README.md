@@ -116,7 +116,7 @@ As your code changes, your site will be automatically recompiled and redeployed 
 	`spanMultiple` is a flag that indicates AvailableTimeEntry returned spans two days. `date` variable will 
 	correspond to `fromTime`. (see POST documentation for possible values of the other variables).
 
-	user_id (Int) -> unique number that identifies a `User` object
+	user_id (Int) -> unique number that identifies a `User` object (recipient of event)
 
 	**Parameters**
 	
@@ -131,7 +131,7 @@ As your code changes, your site will be automatically recompiled and redeployed 
 	(see POST documentation for possible values of the other variables). This API returns all 
 	possibile times a creator can schedule a ConfirmedEvent from a ProposedEvent
 
-	user_id (Int) -> unique number that identifies a `User` object
+	user_id (Int) -> unique number that identifies a `User` object (creator of events)
 
 	**Parameters**
 	
@@ -142,7 +142,7 @@ As your code changes, your site will be automatically recompiled and redeployed 
 
 	Creates an available time entry for a given user and event. User responds to ProposedEvent with availabilites. Response sends in a JSON object of the newly created `AvailableTimeEntry`.
 
-	user_id (Int) -> unique number that identifies a `User` object
+	user_id (Int) -> unique number that identifies a `User` object (recipient of event)
 
 	**x-www-form-urlencoded body**
 	
@@ -156,7 +156,7 @@ As your code changes, your site will be automatically recompiled and redeployed 
 
 	Creates multiple available time entry for a given user and event. User responds to ProposedEvent with availabilites. Response sends in a JSON array object of the newly created `AvailableTimeEntry`.
 
-	user_id (Int) -> unique number that identifies a `User` object
+	user_id (Int) -> unique number that identifies a `User` object (recipient of event)
 
 	**x-www-form-urlencoded body**
 	
