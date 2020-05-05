@@ -66,12 +66,19 @@ getConfirmedEventFromProposedEvent
             _ -> return $ Nothing
 
 createProposedEvent :: (Text, Text, Maybe Text, Maybe Text, Day, Day) -> Handler (Maybe ProposedEventData)
-createProposedEvent (recipientIdText, creatorIdText, maybeName, maybeDescription, fromDate, toDate) = do 
+createProposedEvent (recipientEmail, creatorIdText, maybeName, maybeDescription, fromDate, toDate) = do 
     let confirmed = False
     maybeCreatorId <- Database.fetchUserId (Just creatorIdText)
-    maybeRecipientId <- Database.fetchUserId (Just recipientIdText)
+    maybeRecipientId <- Database.fetchUserIdByEmail (Just recipientEmail)
     case (maybeCreatorId, maybeRecipientId) of 
         (Just creatorId, Just recipientId) -> do 
+            let event' = ProposedEvent creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
+            (Entity eventId _) <- runDB $ insertEntity event'
+            return $ Just $ ProposedEventData eventId creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
+        (Just creatorId, Nothing) -> do 
+            -- create a user for the email, but have registred be False
+            let newUser' = User recipientEmail Nothing False
+            Entity recipientId _ <- runDB $ insertEntity newUser'
             let event' = ProposedEvent creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
             (Entity eventId _) <- runDB $ insertEntity event'
             return $ Just $ ProposedEventData eventId creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
@@ -93,17 +100,17 @@ getProposedEventCreatorR creatorIdText = do
 
 postProposedEventCreatorR :: Text -> Handler Value 
 postProposedEventCreatorR creatorIdText = do 
-    maybeRecipientIdsText <- lookupPostParam "recipient_ids"
+    maybeRecipientEmailsText <- lookupPostParam "recipient_emails"
     maybeName <- lookupPostParam "name"
     maybeDescription <- lookupPostParam "description"
     maybeFromDateText <- lookupPostParam "from_date"
     maybeToDateText <- lookupPostParam "to_date"
     let maybeFromDate = Database.convertTextToDate maybeFromDateText
     let maybeToDate = Database.convertTextToDate maybeToDateText
-    case (maybeRecipientIdsText, maybeFromDate, maybeToDate) of
-        (Just recipientIdsText, Just fromDate, Just toDate) -> do
-            let recipientIds = Database.splitStringByCommas recipientIdsText
-            let arguments = Import.map (\x -> (x, creatorIdText, maybeName, maybeDescription, fromDate, toDate)) recipientIds
+    case (maybeRecipientEmailsText, maybeFromDate, maybeToDate) of
+        (Just recipientEmailsText, Just fromDate, Just toDate) -> do
+            let recipientEmails = Database.splitStringByCommas recipientEmailsText
+            let arguments = Import.map (\x -> (x, creatorIdText, maybeName, maybeDescription, fromDate, toDate)) recipientEmails
             unwrapped_events <- Import.mapM createProposedEvent arguments
             returnJson $ catMaybes unwrapped_events
         (_, _, _) -> invalidArgs ["Failed to parse arguments. Check API documentation for valid formatting"]

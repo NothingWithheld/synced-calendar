@@ -110,6 +110,14 @@ fetchUserId (Just userIdText) = do
         _ -> return Nothing 
 fetchUserId Nothing = do return $ Nothing
 
+fetchUserIdByEmail :: Maybe Text -> Handler (Maybe UserId)
+fetchUserIdByEmail (Just userEmailText) = do 
+    potentialUsers <- runDB $ selectList [UserEmail ==. userEmailText] []
+    case potentialUsers of
+        [Entity userId _] -> return $ Just userId 
+        _ -> return Nothing 
+fetchUserIdByEmail Nothing = do return $ Nothing
+
 fetchProposedEvent :: Maybe Text -> Handler (Maybe (Entity ProposedEvent))
 fetchProposedEvent (Just eventIdText) = do 
     let eitherEventId = decimal eventIdText

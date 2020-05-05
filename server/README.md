@@ -35,8 +35,16 @@ stack exec -- yesod devel
 As your code changes, your site will be automatically recompiled and redeployed to localhost.
 
 ## API
-### User 
+### User
 - **GET** `/api/user`
+
+	Returns the `user_id` of a given user if email corresponds to a user in the database
+
+	**Parameters**
+
+	- email (String) -> Unique string to identify user
+
+- **GET** `/api/user/login`
 
 	Returns the `user_id` of a given user if email and password corresponds to a user
 	in the database
@@ -46,7 +54,7 @@ As your code changes, your site will be automatically recompiled and redeployed 
 	- email (String) -> Unique string to identify user
 	- password (String) -> String that only the user should know and have, so user can log in again
 
-- **POST** `/api/user`
+- **POST** `/api/user/login`
 
 	Creates a new user given an email and password. Only one user can be created per email.
 
@@ -207,7 +215,8 @@ As your code changes, your site will be automatically recompiled and redeployed 
 
 	**x-www-form-urlencoded body**
 	
-	- recipient_ids ([Int]) -> list of unique number that identifies a `User` object, format value like "1,2,3"
+	- recipient_emails ([String]) -> list of emails that identify users, email does not have to link to user at the moment; user 
+	of the email can create account later to fill out `AvailableTimeEntry` for event
 	- from_date (String) ->  written in the format of `MM-DD-YYYY`
 	- to_date (String) -> written in the format of `MM-DD-YYYY`
 	- name (Maybe String) -> optional string parameter to name the event
