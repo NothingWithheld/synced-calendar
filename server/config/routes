@@ -11,4 +11,4 @@
 /api/#Text/confirmed-event/recipient ConfirmedEventRecipientR GET
 
 /api/#Text/available-times/multiple AvailableTimeEntryMultipleR GET POST 
-/api/#Text/free-to-available FreeToAvailableTimeEntryR POST
+/api/#Text/free-to-available FreeToAvailableTimeEntryR GET

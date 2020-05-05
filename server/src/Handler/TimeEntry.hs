@@ -77,6 +77,19 @@ convertAvailableTimeEntryToLocal (Entity entryId (AvailableTimeEntry userId even
             return $ AvailableTimeEntryData entryId userId eventId localDate localFromTime localToTime newSpanMultiple
         (_, _) -> Nothing
 
+convertAvailableTimeEntryNoEntityLocal :: AvailableTimeEntry -> Text -> Maybe AvailableTimeEntry
+convertAvailableTimeEntryNoEntityLocal (AvailableTimeEntry userId eventId date fromTime toTime spanMultiple) timezone = do 
+    let maybeLocalFromTime = Database.convertUTCToLocal fromTime timezone
+    let maybeLocalToTime = Database.convertUTCToLocal toTime timezone
+    case (maybeLocalFromTime, maybeLocalToTime) of 
+        (Just (fromTimeDayOffset, localFromTime), Just (toTimeDayOffset, localToTime)) -> do 
+            -- The database will hold in the day of fromTime if the event is staggered 
+            -- between to two days 
+            let localDate = addDays fromTimeDayOffset date
+            let newSpanMultiple = if fromTimeDayOffset == toTimeDayOffset then spanMultiple else not spanMultiple
+            return $ AvailableTimeEntry userId eventId localDate localFromTime localToTime newSpanMultiple
+        (_, _) -> Nothing
+
 convertCommonAvailableTimeEntryToLocal :: CommonAvailableTimeEntryData -> Text -> Maybe CommonAvailableTimeEntryData
 convertCommonAvailableTimeEntryToLocal (CommonAvailableTimeEntryData date fromTime toTime spanMultiple) timezone = do 
     let maybeLocalFromTime = Database.convertUTCToLocal fromTime timezone
@@ -491,10 +504,10 @@ insertEntriesToDatabase (x:xs) = do
     recursed_entities <- insertEntriesToDatabase xs 
     return $ [insertedEntity] Import.++ recursed_entities
 
-postFreeToAvailableTimeEntryR :: Text -> Handler Value 
-postFreeToAvailableTimeEntryR eventIdText = do 
+getFreeToAvailableTimeEntryR :: Text -> Handler Value 
+getFreeToAvailableTimeEntryR eventIdText = do 
     fetchProposedEvent <- Database.fetchProposedEvent (Just eventIdText)
-    maybeTimeZone <- lookupPostParam "timezone"
+    maybeTimeZone <- lookupGetParam "timezone"
     case (fetchProposedEvent, maybeTimeZone) of 
         (Just (Entity eventId (ProposedEvent _ userId _ _ fromDate toDate False)), Just timezone) -> do 
             allEntityFreeTimeEntries <- runDB $ selectList [FreeTimeEntryUserId ==. userId] []
@@ -505,7 +518,5 @@ postFreeToAvailableTimeEntryR eventIdText = do
             let allFreeTimeEntries = Import.map (\(Entity _ a) -> a) allEntityFreeTimeEntries
             let potentialAvailableTimeEntries = createAvailableFromFree allFreeTimeEntries fromDate toDate eventId
             let allAvailableTimes = iterateConfirmedEvents potentialAvailableTimeEntries (catMaybes allConfirmedEvents)
-            inserted_entries <- insertEntriesToDatabase allAvailableTimes
-            -- returnJson potentialAvailableTimeEntries
-            returnJson $ catMaybes $ Import.map (\x -> convertAvailableTimeEntryToLocal x timezone) inserted_entries
+            returnJson $ catMaybes $ Import.map (\x -> convertAvailableTimeEntryNoEntityLocal x timezone) allAvailableTimes
         (_, _) -> invalidArgs ["Failed to pass in valid arguments for timezone or route to valid eventId"]

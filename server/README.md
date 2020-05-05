@@ -291,13 +291,19 @@ As your code changes, your site will be automatically recompiled and redeployed 
 	id (Int) -> Unique number that identifies a `ProposedEvent`
 
 ### Misc
-- **POST** `/api/{id}/free-to-available`
+- **GET** `/api/{id}/free-to-available`
 
-	Creates AvailableTimeEntry for the `recipient_id` of the `ProposedEvent`. Finds `FreeTimeEntry` and `ConfirmedEvent`
-	of `recipient_id` and returns array of `AvailableTimeEntry` that are within recipient's `FreeTimeEntry` blocks, but do not 
-	conflict with `ConfirmedEvent`.
+	Gets time entries for the `recipient_id` of the `ProposedEvent`. Finds `FreeTimeEntry` and `ConfirmedEvent`
+	of `recipient_id` and returns array of time entries with variables `userId`, `eventId`, `date`, `fromTime`, 
+	`toTime`, and `spanMultiple` that are within recipient's `FreeTimeEntry` blocks, but do not conflict 
+	with `ConfirmedEvent`. This doesn't save time entries in database. Client needs to make POST requests to 
+	`/{user_id}/available-times` or `{user_id}/available-times/multiple` if user wants to save these returned 
+	time entries.
 
 	id (Int) -> Unique number that identifies a `ProposedEvent`
+
+	**Parameters**
+	- timezone (Int) -> offset from UTC time (range: -14 to 12)
 
 ## Database relationships
 - FreeTimeEntry, AvailableTimeEntry, ProposedEvent, ConfirmedEvent fields of user ids must correspond to a `User` object. 
