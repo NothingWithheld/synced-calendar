@@ -13,15 +13,15 @@ import Utils exposing (NoData)
 submitEventProposal :
     (Result Http.Error NoData -> msg)
     -> String
-    -> String
+    -> List String
     -> Maybe String
     -> Maybe String
     -> String
     -> String
     -> Cmd msg
-submitEventProposal onSubmitResult userId recipientId fromDate toDate name description =
+submitEventProposal onSubmitResult userId recipientEmails fromDate toDate name description =
     case
-        PEMessaging.getEventProposalQueryString recipientId
+        PEMessaging.getEventProposalQueryString recipientEmails
             fromDate
             toDate
             name

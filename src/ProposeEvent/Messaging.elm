@@ -22,18 +22,18 @@ noDataDecoder =
 
 
 getEventProposalQueryString :
-    String
+    List String
     -> Maybe String
     -> Maybe String
     -> String
     -> String
     -> Maybe String
-getEventProposalQueryString recipientId fromDate toDate name description =
+getEventProposalQueryString recipientEmails fromDate toDate name description =
     let
         mapFunc fromDateString toDateString =
             String.dropLeft 1 <|
                 Builder.toQuery
-                    [ Builder.string "recipient_id" recipientId
+                    [ Builder.string "recipient_emails" <| String.join "," recipientEmails
                     , Builder.string "from_date" <| slashesToDashesDate fromDateString
                     , Builder.string "to_date" <| slashesToDashesDate toDateString
                     , Builder.string "name" name

@@ -29,7 +29,7 @@ type alias Model =
     , title : String
     , invalidTitle : Bool
     , description : String
-    , recipientIds : List String
+    , recipientEmails : List String
     , recipientToBeAdded : String
     , invalidRecipient : Bool
     , noRecipientAfterSubmission : Bool
@@ -47,7 +47,7 @@ init session =
       , title = ""
       , invalidTitle = False
       , description = ""
-      , recipientIds = []
+      , recipientEmails = []
       , recipientToBeAdded = ""
       , invalidRecipient = False
       , noRecipientAfterSubmission = False
@@ -106,7 +106,7 @@ update msg model =
                     model.recipientToBeAdded
 
                 alreadyIncluded =
-                    List.member recipientId model.recipientIds
+                    List.member recipientId model.recipientEmails
 
                 isSelf =
                     recipientId == Session.getUserId model.session
@@ -116,7 +116,7 @@ update msg model =
 
             else
                 ( { model
-                    | recipientIds = recipientId :: model.recipientIds
+                    | recipientEmails = recipientId :: model.recipientEmails
                     , recipientToBeAdded = ""
                     , noRecipientAfterSubmission = False
                   }
@@ -125,10 +125,10 @@ update msg model =
 
         RemoveRecipient recipientIdToRemove ->
             ( { model
-                | recipientIds =
+                | recipientEmails =
                     List.filter
                         ((/=) recipientIdToRemove)
-                        model.recipientIds
+                        model.recipientEmails
               }
             , Cmd.none
             )
@@ -154,35 +154,33 @@ update msg model =
                 userId =
                     Session.getUserId model.session
             in
-            case model.recipientIds of
-                firstRecipientId :: _ ->
-                    if not invalidTitle && not invalidDates then
-                        ( model
-                        , submitEventProposal OnSubmitResult
-                            userId
-                            firstRecipientId
-                            model.fromDate
-                            model.toDate
-                            model.title
-                            model.description
-                        )
+            if List.length model.recipientEmails == 0 then
+                ( { model
+                    | invalidTitle = invalidTitle
+                    , invalidDates = invalidDates
+                    , noRecipientAfterSubmission = True
+                  }
+                , Cmd.none
+                )
 
-                    else
-                        ( { model
-                            | invalidTitle = invalidTitle
-                            , invalidDates = invalidDates
-                          }
-                        , Cmd.none
-                        )
+            else if not invalidTitle && not invalidDates then
+                ( model
+                , submitEventProposal OnSubmitResult
+                    userId
+                    model.recipientEmails
+                    model.fromDate
+                    model.toDate
+                    model.title
+                    model.description
+                )
 
-                _ ->
-                    ( { model
-                        | invalidTitle = invalidTitle
-                        , invalidDates = invalidDates
-                        , noRecipientAfterSubmission = True
-                      }
-                    , Cmd.none
-                    )
+            else
+                ( { model
+                    | invalidTitle = invalidTitle
+                    , invalidDates = invalidDates
+                  }
+                , Cmd.none
+                )
 
         OnSubmitResult result ->
             case result of
@@ -391,7 +389,7 @@ viewRightOfFold model =
             ]
         , Chip.chipset [ Chip.input ] <|
             List.map (viewRecipientChip model)
-                model.recipientIds
+                model.recipientEmails
         ]
 
 
