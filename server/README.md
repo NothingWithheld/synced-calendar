@@ -125,7 +125,7 @@ As your code changes, your site will be automatically recompiled and redeployed 
 
 - **GET** `/api/{user_id}/available-times/multiple`
 	
-	Retrieves available time entries for given users of an event. Response sends in a JSON array of data 
+	Retrieves available time entries for given events. Response sends in a JSON array of data 
 	objects with `date`, `fromTime`, `toTime`, `spanMultiple` variables. `spanMultiple` is a flag 
 	that indicates AvailableTimeEntry returned spans two days. `date` variable will correspond to `fromTime`. 
 	(see POST documentation for possible values of the other variables). This API returns all 
