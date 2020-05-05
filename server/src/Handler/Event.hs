@@ -75,6 +75,13 @@ createProposedEvent (recipientEmail, creatorIdText, maybeName, maybeDescription,
             let event' = ProposedEvent creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
             (Entity eventId _) <- runDB $ insertEntity event'
             return $ Just $ ProposedEventData eventId creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
+        (Just creatorId, Nothing) -> do 
+            -- create a user for the email, but have registred be False
+            let newUser' = User recipientEmail Nothing False
+            Entity recipientId _ <- runDB $ insertEntity newUser'
+            let event' = ProposedEvent creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
+            (Entity eventId _) <- runDB $ insertEntity event'
+            return $ Just $ ProposedEventData eventId creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
         (_, _) -> return Nothing
 
 getProposedEventCreatorR :: Text -> Handler Value

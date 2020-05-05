@@ -214,7 +214,8 @@ As your code changes, your site will be automatically recompiled and redeployed 
 
 	**x-www-form-urlencoded body**
 	
-	- recipient_emails ([String]) -> list of emails that identify users
+	- recipient_emails ([String]) -> list of emails that identify users, email does not have to link to user at the moment; user 
+	of the email can create account later to fill out `AvailableTimeEntry` for event
 	- from_date (String) ->  written in the format of `MM-DD-YYYY`
 	- to_date (String) -> written in the format of `MM-DD-YYYY`
 	- name (Maybe String) -> optional string parameter to name the event

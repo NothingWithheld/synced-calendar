@@ -3,7 +3,7 @@
 
 User json
     email Text
-    password Text
+    password Text Maybe
     registered Bool
     UniqueEmail email
     deriving Show
