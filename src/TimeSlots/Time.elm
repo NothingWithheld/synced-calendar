@@ -398,6 +398,17 @@ militaryToSlotNum isEndSlot militaryTime =
             Maybe.withDefault Nothing <|
                 Maybe.map2 (hoursMinutesToSlotNum isEndSlot) hours minutes
 
+        [ hourString, minuteString, _ ] ->
+            let
+                hours =
+                    String.toInt hourString
+
+                minutes =
+                    String.toInt minuteString
+            in
+            Maybe.withDefault Nothing <|
+                Maybe.map2 (hoursMinutesToSlotNum isEndSlot) hours minutes
+
         _ ->
             Nothing
 

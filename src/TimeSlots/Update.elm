@@ -978,7 +978,6 @@ submitAvailableTimes model ackAvailbleTimesSubmission =
                 , saveAvailableTimes
                     model
                     ackAvailbleTimesSubmission
-                    (Session.getUserId model.session)
                     eventId
                     availableTimeDetails
                 )

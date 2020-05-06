@@ -1,6 +1,10 @@
-module AvailableTime.Messaging exposing (getMultipleAvailableTimesQueryString)
+module AvailableTime.Messaging exposing
+    ( availableTimeDetailsListDecoder
+    , getMultipleAvailableTimesQueryString
+    )
 
 import AvailableTime.AvailableTime exposing (AvailableTimeDetails)
+import Json.Decode as Decode exposing (Decoder)
 import Session exposing (WithSession)
 import TimeSlots.Time as TSTime
 import Url.Builder as Builder
@@ -45,3 +49,16 @@ getMultipleAvailableTimesQueryString model eventId availableTimes =
                 String.join "," <|
                     List.map .toTime serverAvailableTimes
             ]
+
+
+availableTimeDetailsListDecoder : Decoder (List AvailableTimeDetails)
+availableTimeDetailsListDecoder =
+    Decode.map (List.filterMap identity) <| Decode.list availableTimeDetailsDecoder
+
+
+availableTimeDetailsDecoder : Decoder (Maybe AvailableTimeDetails)
+availableTimeDetailsDecoder =
+    Decode.map3 (Maybe.map3 AvailableTimeDetails)
+        (Decode.map TSTime.isoStringToDate <| Decode.field "date" Decode.string)
+        (Decode.map (TSTime.militaryToSlotNum False) <| Decode.field "fromTime" Decode.string)
+        (Decode.map (TSTime.militaryToSlotNum True) <| Decode.field "toTime" Decode.string)
