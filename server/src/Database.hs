@@ -118,21 +118,23 @@ fetchUserIdByEmail (Just userEmailText) = do
         _ -> return Nothing 
 fetchUserIdByEmail Nothing = do return $ Nothing
 
-fetchProposedEventInvitation :: Maybe Text -> Handler (Maybe (Entity ProposedEventInvitation))
-fetchProposedEventInvitation (Just eventIdText) = do 
+fetchProposedEventInvitation :: Maybe Text -> Maybe Text -> Handler (Maybe (Entity ProposedEventInvitation))
+fetchProposedEventInvitation (Just eventIdText) (Just recipientIdText) = do 
+    maybeUserId <- fetchUserId (Just recipientIdText)
     let eitherEventId = decimal eventIdText
-    case eitherEventId of 
-        Right (eventIdInt, "") -> do
+    case (eitherEventId, maybeUserId) of 
+        (Right (eventIdInt, ""), Just recipientId) -> do
             allProposedEventInvitations <- runDB $ 
                 selectList [
-                    ProposedEventInvitationId ==. toSqlKey (fromIntegral (eventIdInt::Integer)),
+                    ProposedEventInvitationRecipientId ==. recipientId,
+                    ProposedEventInvitationEventId ==. toSqlKey (fromIntegral (eventIdInt::Integer)),
                     ProposedEventInvitationConfirmed <-. [False]
                 ] []
             case allProposedEventInvitations of 
                 [x] -> return $ Just x
                 _ -> return Nothing 
-        _ -> return Nothing 
-fetchProposedEventInvitation Nothing = do return $ Nothing
+        (_, _) -> return Nothing 
+fetchProposedEventInvitation _ _ = do return $ Nothing
 
 formatDate :: Day -> Text 
 formatDate date = let dateSplit = T.splitOn "-" (pack $ show date) 

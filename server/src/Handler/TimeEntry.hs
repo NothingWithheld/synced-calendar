@@ -4,8 +4,9 @@
 module Handler.TimeEntry where 
 
 import Import 
-import Database.Persist.Sql (toSqlKey)
+import Database.Persist.Sql (toSqlKey, fromSqlKey)
 import Data.Dates
+import Data.HashMap.Strict
 import Data.Time.Calendar
 import Data.Time.LocalTime
 import Data.Text.Read
@@ -13,7 +14,7 @@ import qualified Database
 import qualified Handler.Event
 
 data FreeTimeEntryData = FreeTimeEntryData FreeTimeEntryId UserId Text TimeOfDay TimeOfDay Bool
-data AvailableTimeEntryData = AvailableTimeEntryData AvailableTimeEntryId UserId ProposedEventInvitationId Day TimeOfDay TimeOfDay Bool
+data AvailableTimeEntryData = AvailableTimeEntryData AvailableTimeEntryId UserId EventId Day TimeOfDay TimeOfDay Bool
 data CommonAvailableTimeEntryData = CommonAvailableTimeEntryData Day TimeOfDay TimeOfDay Bool 
 
 instance ToJSON FreeTimeEntryData where 
@@ -106,12 +107,12 @@ convertCommonAvailableTimeEntryToLocal (CommonAvailableTimeEntryData date fromTi
 createAvailableTimeEntry :: (Text, Text, Text, Text, Text, Text) -> Handler (Maybe AvailableTimeEntryData)
 createAvailableTimeEntry (userIdText, eventIdText, dateText, fromTimeText, toTimeText, timezone) = do 
     maybeUserId <- Database.fetchUserId (Just userIdText)
-    maybeEvent <- Database.fetchProposedEventInvitation (Just eventIdText)
+    maybeInvite <- Database.fetchProposedEventInvitation (Just eventIdText) (Just userIdText)
     let maybeDate = Database.convertTextToDate (Just dateText)
     let maybeUTCFromTime = Database.convertTextToTime (Just fromTimeText) (Just timezone)
     let maybeUTCToTime = Database.convertTextToTime (Just toTimeText)  (Just timezone)
-    case (maybeUserId, maybeEvent, maybeDate, maybeUTCFromTime, maybeUTCToTime) of 
-        (Just userId, Just (Entity eventId _), Just date, Just (fromTimeDayOffset, fromTime), Just (toTimeDayOffset, toTime)) -> do
+    case (maybeUserId, maybeInvite, maybeDate, maybeUTCFromTime, maybeUTCToTime) of 
+        (Just userId, Just (Entity _ (ProposedEventInvitation eventId _ _ _ _ _ _ _)), Just date, Just (fromTimeDayOffset, fromTime), Just (toTimeDayOffset, toTime)) -> do
             -- The database will hold in the date of fromTime if the event is staggered 
             -- between to two days
             let utcDate = addDays fromTimeDayOffset date
@@ -180,7 +181,7 @@ putFreeTimeEntryR entryIdText = do
                     case maybeUtcDay of 
                         Just utcDay -> do
                             let newSpanMultiple = if fromTimeDayOffset == toTimeDayOffset then spanMultiple else not spanMultiple
-                            runDB $ update entryId 
+                            runDB $ Import.update entryId 
                                 [
                                     FreeTimeEntryDay =. (toLower utcDay),
                                     FreeTimeEntryFromTime =. fromTime, 
@@ -254,7 +255,7 @@ getAvailableTimeEntryR userIdText = do
                         ] []
                     returnJson $ catMaybes $ Import.map (\x -> convertAvailableTimeEntryToLocal x timezone) allTimeEntries
                 _ -> invalidArgs ["Failed to parse event_id params"]
-        (_, _, _) -> invalidArgs ["Failed to parse event_id params"]
+        (_, _, _) -> invalidArgs ["Failed to parse event_id and/or timezone params"]
 
 fetchAvailableTimeEntriesWithId :: Text -> Handler [Entity AvailableTimeEntry]
 fetchAvailableTimeEntriesWithId eventIdText = do 
@@ -288,20 +289,28 @@ findUserIdFromAvailableTimeEntry :: [Entity AvailableTimeEntry] -> Maybe (Key Us
 findUserIdFromAvailableTimeEntry [] = Nothing
 findUserIdFromAvailableTimeEntry ((Entity _ (AvailableTimeEntry userId _ _ _ _ _)):_) = Just userId
 
+groupAvailableTimeEntriesByRecipient :: [Entity AvailableTimeEntry] -> HashMap Int64 [(Entity AvailableTimeEntry)] -> [[Entity AvailableTimeEntry]]
+groupAvailableTimeEntriesByRecipient [] inviteMap = Data.HashMap.Strict.elems inviteMap
+groupAvailableTimeEntriesByRecipient (invite@(Entity _ (AvailableTimeEntry userId _ _ _ _ _)):xs) inviteMap = do 
+    let value = Data.HashMap.Strict.lookup (fromSqlKey userId) inviteMap 
+    case value of 
+        Just inviteList -> let newMap = Data.HashMap.Strict.insert (fromSqlKey userId) (inviteList Import.++ [invite]) inviteMap in 
+            groupAvailableTimeEntriesByRecipient xs newMap 
+        Nothing -> let newMap = Data.HashMap.Strict.insert (fromSqlKey userId) [invite] inviteMap in
+            groupAvailableTimeEntriesByRecipient xs newMap
+
 getAvailableTimeEntryMultipleR :: Text -> Handler Value 
-getAvailableTimeEntryMultipleR creatorIdText = do 
-    maybeEventIds <- lookupGetParam "event_ids"
+getAvailableTimeEntryMultipleR eventIdText = do 
     maybeTimeZone <- lookupGetParam "timezone"
-    maybeCreatorId <- Database.fetchUserId (Just creatorIdText)
-    case (maybeCreatorId, maybeEventIds, maybeTimeZone) of 
-        (Just _, Just eventIdsText, Just timezone) -> do 
-            let eventIdsList = Database.splitStringByCommas eventIdsText
-            availableTimeEntriesList <- Import.mapM fetchAvailableTimeEntriesWithId eventIdsList 
-            let userIdsList = Import.map findUserIdFromAvailableTimeEntry availableTimeEntriesList
+    case maybeTimeZone of 
+        Just timezone -> do 
+            availableTimeEntriesList <- fetchAvailableTimeEntriesWithId eventIdText 
+            let groupedAvailableTimeEntries = groupAvailableTimeEntriesByRecipient availableTimeEntriesList Data.HashMap.Strict.empty
+            let userIdsList = Import.map findUserIdFromAvailableTimeEntry groupedAvailableTimeEntries
             proposedEventsList <- Import.mapM fetchConfirmedProposedEventInvitations userIdsList
             confirmedEventsList <- Import.mapM fetchConfirmedEventInvitationsData proposedEventsList
             let zippedFcn = (\entries events -> iterateConfirmedEventInvitations entries (catMaybes events))
-            let availableTimeEntriesNoEntitiesList = Import.map (\entries -> Import.map (\(Entity _ x) -> x) entries) availableTimeEntriesList
+            let availableTimeEntriesNoEntitiesList = Import.map (\entries -> Import.map (\(Entity _ x) -> x) entries) groupedAvailableTimeEntries
             let availableTimesEntriesListNoConflicts = Import.zipWith zippedFcn availableTimeEntriesNoEntitiesList confirmedEventsList
             let mappedFcn = (\(AvailableTimeEntry _ _ date fromTime toTime spanMultiple) -> CommonAvailableTimeEntryData date fromTime toTime spanMultiple) 
             case Import.length availableTimesEntriesListNoConflicts of 
@@ -311,7 +320,7 @@ getAvailableTimeEntryMultipleR creatorIdText = do
                     let commonEntries = findCommonAvailableTimeEntriesMultiple availableTimesEntriesListNoConflicts commonEntriesFirst
                     let commonEntriesLocal = Import.map (\x -> convertCommonAvailableTimeEntryToLocal x timezone) commonEntries
                     returnJson $ commonEntriesLocal
-        (_, _, _) -> invalidArgs ["Failed to parse event_id params"]
+        _ -> invalidArgs ["Failed to parse event_id params"]
 
 postAvailableTimeEntryR :: Text -> Handler Value 
 postAvailableTimeEntryR userIdText = do 
@@ -331,11 +340,12 @@ postAvailableTimeEntryR userIdText = do
                 Right (eventIdInt, "") -> do 
                     allProposedEventInvitations <- runDB $ 
                         selectList [
-                            ProposedEventInvitationId ==. toSqlKey (fromIntegral (eventIdInt::Integer)),
+                            ProposedEventInvitationRecipientId ==. userId,
+                            ProposedEventInvitationEventId ==. toSqlKey (fromIntegral (eventIdInt::Integer)),
                             ProposedEventInvitationConfirmed <-. [False]
                         ] []
                     case allProposedEventInvitations of 
-                        [Entity eventId _] -> do
+                        [Entity _ (ProposedEventInvitation eventId _ _ _ _ _ _ _)] -> do
                             -- The database will hold in the date of fromTime if the event is staggered 
                             -- between to two days
                             let utcDate = addDays fromTimeDayOffset date
@@ -390,7 +400,7 @@ putAvailableTimeEntryR entryIdText = do
                     -- between to two days
                     let utcDate = addDays fromTimeDayOffset date
                     let newSpanMultiple = if fromTimeDayOffset == toTimeDayOffset then spanMultiple else not spanMultiple
-                    runDB $ update entryId 
+                    runDB $ Import.update entryId 
                         [
                             AvailableTimeEntryDate =. utcDate,
                             AvailableTimeEntryFromTime =. fromTime, 
@@ -410,13 +420,13 @@ deleteAvailableTimeEntryR entryIdText = do
             return Null
         _ -> badMethod
 
-createAvailableFromFree :: [FreeTimeEntry] -> Day -> Day -> Key ProposedEventInvitation -> [AvailableTimeEntry]
+createAvailableFromFree :: [FreeTimeEntry] -> Day -> Day -> Key Event -> [AvailableTimeEntry]
 createAvailableFromFree entries fromDate toDate eventId
     | fromDate > toDate = []
     | otherwise =  (createAvailableFromFreeHelper entries fromDate eventId) Import.++ 
         (createAvailableFromFree entries (addDays 1 fromDate) toDate eventId)
 
-createAvailableFromFreeHelper :: [FreeTimeEntry] -> Day -> Key ProposedEventInvitation -> [AvailableTimeEntry]
+createAvailableFromFreeHelper :: [FreeTimeEntry] -> Day -> Key Event -> [AvailableTimeEntry]
 createAvailableFromFreeHelper [] _ _ = []
 createAvailableFromFreeHelper ((FreeTimeEntry userId day fromTime toTime spanMultiple):xs) date eventId = 
     case ((toLower $ pack $ show $ dateWeekDay (dayToDateTime date)) == day && spanMultiple == False, 
@@ -504,15 +514,15 @@ insertEntriesToDatabase (x:xs) = do
     return $ [insertedEntity] Import.++ recursed_entities
 
 getFreeToAvailableTimeEntryR :: Text -> Handler Value 
-getFreeToAvailableTimeEntryR eventIdText = do 
-    fetchProposedEventInvitation <- Database.fetchProposedEventInvitation (Just eventIdText)
+getFreeToAvailableTimeEntryR userIdText = do 
+    maybeEventId <- lookupGetParam "event_id"
     maybeTimeZone <- lookupGetParam "timezone"
+    fetchProposedEventInvitation <- Database.fetchProposedEventInvitation maybeEventId (Just userIdText)
     case (fetchProposedEventInvitation, maybeTimeZone) of 
-        (Just (Entity eventId (ProposedEventInvitation _ userId _ _ fromDate toDate False)), Just timezone) -> do 
+        (Just (Entity _ (ProposedEventInvitation eventId _ userId _ _ fromDate toDate False)), Just timezone) -> do 
             allEntityFreeTimeEntries <- runDB $ selectList [FreeTimeEntryUserId ==. userId] []
             allProposedEventInvitations <- runDB $ selectList 
-                ([ProposedEventInvitationCreatorId ==. userId, ProposedEventInvitationConfirmed ==. True] 
-                ||. [ProposedEventInvitationRecipientId ==. userId, ProposedEventInvitationConfirmed ==. True]) []
+                ([ProposedEventInvitationRecipientId ==. userId, ProposedEventInvitationConfirmed ==. True]) []
             allConfirmedEventInvitations <- Import.mapM Handler.Event.getConfirmedEventInvitationFromProposedEventInvitation allProposedEventInvitations
             let allFreeTimeEntries = Import.map (\(Entity _ a) -> a) allEntityFreeTimeEntries
             let potentialAvailableTimeEntries = createAvailableFromFree allFreeTimeEntries fromDate toDate eventId
