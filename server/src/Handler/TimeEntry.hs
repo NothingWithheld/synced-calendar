@@ -304,6 +304,26 @@ groupAvailableTimeEntriesByRecipient (invite@(Entity _ (AvailableTimeEntry userI
         Nothing -> let newMap = Data.HashMap.Strict.insert (fromSqlKey userId) [invite] inviteMap in
             groupAvailableTimeEntriesByRecipient xs newMap
 
+getAvailableTimeEntryCountR :: Text -> Handler Value 
+getAvailableTimeEntryCountR eventIdText = do 
+    let eitherEventId = decimal eventIdText
+    case (eitherEventId) of
+        Right (eventIdInt, "") -> do
+            allProposedEventInvitations <- runDB $
+                selectList 
+                    [
+                        ProposedEventInvitationEventId ==. toSqlKey (fromIntegral (eventIdInt::Integer)), 
+                        ProposedEventInvitationConfirmed ==. False
+                    ] [] 
+            availableTimeEntriesList <- fetchAvailableTimeEntriesWithId eventIdText 
+            let groupedAvailableTimeEntries = groupAvailableTimeEntriesByRecipient availableTimeEntriesList Data.HashMap.Strict.empty
+            return $ object 
+                [
+                    "count_submitted" .= (show $ Import.length groupedAvailableTimeEntries),
+                    "total_recipients" .= (show $ Import.length allProposedEventInvitations)
+                ]
+        _ -> invalidArgs ["Failed to find event with id: " Import.++ eventIdText]
+
 getAvailableTimeEntryMultipleR :: Text -> Handler Value 
 getAvailableTimeEntryMultipleR eventIdText = do 
     maybeTimeZone <- lookupGetParam "timezone"

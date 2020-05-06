@@ -131,11 +131,19 @@ As your code changes, your site will be automatically recompiled and redeployed 
 	(see POST documentation for possible values of the other variables). This API returns all 
 	possibile times a creator can schedule a ConfirmedEvent from a ProposedEvent
 
-	user_id (Int) -> unique number that identifies a `User` object (creator of events)
+	event_id (Int) -> unique number that identifies a `Event` object (creator of events)
 
 	**Parameters**
-	
+
 	- timezone (Int) -> offset from UTC time (range: -14 to 12)
+
+
+- **GET** `/api/{event_id}/available-times/count`
+	
+	Retrieves count of number of users who have submitted to event and total 
+	recipients of event
+
+	event_id (Int) -> unique number that identifies a `Event` object (creator of events)
 
 - **POST** `/api/{user_id}/available-times`
 
