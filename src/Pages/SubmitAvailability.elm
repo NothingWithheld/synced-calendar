@@ -18,6 +18,7 @@ import TimeSlots.Time as TSTime
 import TimeSlots.TimeSlots as TS exposing (Calendar(..))
 import TimeSlots.Update as TSUpdate
 import TimeSlots.View exposing (viewCalendarHeading, viewDayHeadings, viewScrollableTimeSlots)
+import Utils exposing (NoData)
 
 
 
@@ -97,6 +98,8 @@ type Msg
     | HandleTimeSlotMouseUp
     | EditTimeSlotSelection TS.SelectedTimeSlotDetails
     | SaveAvailableTimeSlot
+    | SubmitAvailableTimes
+    | AcknowledgeAvailableTimesSubmission (Result Http.Error NoData)
       -- EventCreation
     | PromptUserForEventDetails EC.EventDetails (Result Dom.Error Dom.Element)
     | ChangeSelectionDayNum String
@@ -170,6 +173,12 @@ update msg model =
 
         SaveAvailableTimeSlot ->
             TSUpdate.saveAvailableTimeSlot model
+
+        SubmitAvailableTimes ->
+            TSUpdate.submitAvailableTimes model AcknowledgeAvailableTimesSubmission
+
+        AcknowledgeAvailableTimesSubmission result ->
+            TSUpdate.acknowledgeAvailableTimesSubmission model result
 
         -- EventCreation
         PromptUserForEventDetails eventDetails result ->

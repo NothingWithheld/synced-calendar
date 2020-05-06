@@ -1,4 +1,4 @@
-module AvailableTime.Commands exposing (submitAvailableTimes)
+module AvailableTime.Commands exposing (saveAvailableTimes)
 
 import AvailableTime.AvailableTime exposing (AvailableTimeDetails)
 import AvailableTime.Messaging as ATMessaging
@@ -7,14 +7,14 @@ import Session exposing (WithSession)
 import Utils exposing (NoData)
 
 
-submitAvailableTimes :
+saveAvailableTimes :
     WithSession a
     -> (Result Http.Error NoData -> msg)
     -> String
     -> Int
     -> List AvailableTimeDetails
     -> Cmd msg
-submitAvailableTimes model onSubmit userId eventId availableTimes =
+saveAvailableTimes model onSubmit userId eventId availableTimes =
     let
         queryString =
             ATMessaging.getMultipleAvailableTimesQueryString model eventId availableTimes

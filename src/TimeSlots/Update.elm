@@ -1,5 +1,6 @@
 module TimeSlots.Update exposing
-    ( adjustTimeSlotSelection
+    ( acknowledgeAvailableTimesSubmission
+    , adjustTimeSlotSelection
     , deleteTimeSlot
     , editTimeSlotSelection
     , handleTimeSlotMouseMove
@@ -19,9 +20,12 @@ module TimeSlots.Update exposing
     , setTimeSlotPositions
     , setTimeSlotsElement
     , startSelectingTimeSlot
+    , submitAvailableTimes
     , updateTimeZone
     )
 
+import AvailableTime.AvailableTime exposing (AvailableTimeDetails)
+import AvailableTime.Commands exposing (saveAvailableTimes)
 import Browser.Dom as Dom
 import EventCreation.EventCreation as EC
 import EventCreation.Update as ECUpdate
@@ -884,6 +888,10 @@ deleteTimeSlot model result =
             ( model, Cmd.none )
 
 
+
+-- available time
+
+
 saveAvailableTimeSlot :
     EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TSTime.WithTimeDetails (WithSession a))))
     -> ( EC.WithEventCreation (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TSTime.WithTimeDetails (WithSession a)))), Cmd msg )
@@ -927,4 +935,66 @@ saveAvailableTimeSlot model =
             updateFunc selectionBounds eventDetails
 
         _ ->
+            ( model, Cmd.none )
+
+
+submitAvailableTimes :
+    WithSession (TS.WithSelectedTimeSlots (PE.WithProposedEvent (PE.WithAlreadySubmittedAvailability a)))
+    -> (Result Http.Error NoData -> msg)
+    -> ( WithSession (TS.WithSelectedTimeSlots (PE.WithProposedEvent (PE.WithAlreadySubmittedAvailability a))), Cmd msg )
+submitAvailableTimes model ackAvailbleTimesSubmission =
+    let
+        isAvailableTime eventDetails =
+            case eventDetails of
+                EC.AvailableTime _ ->
+                    True
+
+                _ ->
+                    False
+
+        availableTimeTSs =
+            List.filter
+                (isAvailableTime << TS.getEventDetailsFromDetails)
+                model.selectedTimeSlots
+
+        toAvailableTime (TS.SelectedTimeSlotDetails { startBound, endBound } eventDetails) =
+            case eventDetails of
+                EC.AvailableTime date ->
+                    Just <| AvailableTimeDetails date startBound.slotNum endBound.slotNum
+
+                _ ->
+                    Nothing
+
+        availableTimeDetails =
+            List.filterMap toAvailableTime availableTimeTSs
+    in
+    if model.alreadySubmittedAvailability then
+        ( model, Cmd.none )
+
+    else
+        case model.proposedEvent of
+            Just { eventId } ->
+                ( model
+                , saveAvailableTimes
+                    model
+                    ackAvailbleTimesSubmission
+                    (Session.getUserId model.session)
+                    eventId
+                    availableTimeDetails
+                )
+
+            Nothing ->
+                ( model, Cmd.none )
+
+
+acknowledgeAvailableTimesSubmission :
+    PE.WithAlreadySubmittedAvailability a
+    -> Result Http.Error NoData
+    -> ( PE.WithAlreadySubmittedAvailability a, Cmd msg )
+acknowledgeAvailableTimesSubmission model result =
+    case result of
+        Ok _ ->
+            ( { model | alreadySubmittedAvailability = True }, Cmd.none )
+
+        Err _ ->
             ( model, Cmd.none )
