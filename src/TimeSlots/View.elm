@@ -434,7 +434,7 @@ viewTimeSlotTimes =
 
 
 viewScrollableTimeSlots :
-    TS.WithLoadingAll (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TSTime.WithTimeDetails (WithSession (EC.WithEventCreation (PE.WithProposedEvent a))))))
+    PE.WithAlreadySubmittedAvailability (TS.WithLoadingAll (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TSTime.WithTimeDetails (WithSession (EC.WithEventCreation (PE.WithProposedEvent a)))))))
     ->
         Calendar
             { b
@@ -497,7 +497,8 @@ viewScrollableTimeSlots model updates =
                     nop
 
                 SubmitAvailability { handleTimeSlotMouseUp } ->
-                    when isSelectingTimeSlots <| Options.onMouseUp handleTimeSlotMouseUp
+                    when (isSelectingTimeSlots && not model.alreadySubmittedAvailability) <|
+                        Options.onMouseUp handleTimeSlotMouseUp
             ]
             (viewTimeSlotTimes
                 :: List.map
@@ -544,7 +545,7 @@ viewTimeSlotTime hour =
 
 
 viewSingleDayTimeSlots :
-    TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (WithSession (EC.WithEventCreation (PE.WithProposedEvent (TSTime.WithTimeDetails a)))))
+    PE.WithAlreadySubmittedAvailability (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (WithSession (EC.WithEventCreation (PE.WithProposedEvent (TSTime.WithTimeDetails a))))))
     ->
         Calendar
             { b
@@ -617,34 +618,36 @@ viewSingleDayTimeSlots model updates ( dayNum, maybeDate ) =
                 nop
 
             SubmitAvailability { handleTimeSlotMouseMove } ->
-                when isSelectingTimeSlots <|
+                when (isSelectingTimeSlots && not model.alreadySubmittedAvailability) <|
                     onTimeSlotMouseMove handleTimeSlotMouseMove
         ]
         ([ div
             []
             (List.map
-                (viewTimeSlot updates isOutsideEventRange dayNum)
+                (viewTimeSlot model updates isOutsideEventRange dayNum)
                 TS.slotNumRange
             )
          , viewCurrentlySelectingTimeSlot model dayNum
          ]
             ++ List.map
-                (viewSelectedTimeSlot updates)
+                (viewSelectedTimeSlot model updates)
                 selectedTimeSlotsForThisDay
         )
 
 
 viewTimeSlot :
-    Calendar { a | startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg }
-        b
-        { c
-            | startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg
-        }
+    PE.WithAlreadySubmittedAvailability a
+    ->
+        Calendar { b | startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg }
+            c
+            { d
+                | startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg
+            }
     -> Bool
     -> Int
     -> Int
     -> Html msg
-viewTimeSlot updates isOutsideEventRange dayNum slotNum =
+viewTimeSlot model updates isOutsideEventRange dayNum slotNum =
     styled div
         [ css "border-right" "1px solid #829AB1"
         , when isOutsideEventRange <| css "background-color" Constants.disabledColor
@@ -658,7 +661,7 @@ viewTimeSlot updates isOutsideEventRange dayNum slotNum =
                 nop
 
             SubmitAvailability { startSelectingTimeSlot } ->
-                when (not isOutsideEventRange) <|
+                when (not isOutsideEventRange && not model.alreadySubmittedAvailability) <|
                     Options.onMouseDown (startSelectingTimeSlot dayNum slotNum)
         , Options.id (TS.getTimeSlotId dayNum slotNum)
         ]
@@ -666,16 +669,18 @@ viewTimeSlot updates isOutsideEventRange dayNum slotNum =
 
 
 viewSelectedTimeSlot :
-    Calendar { a | editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg }
-        { b
-            | editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
-        }
-        { c
-            | editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
-        }
+    PE.WithAlreadySubmittedAvailability a
+    ->
+        Calendar { b | editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg }
+            { c
+                | editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
+            }
+            { d
+                | editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
+            }
     -> TS.SelectedTimeSlotDetails
     -> Html msg
-viewSelectedTimeSlot updates selectedTimeSlotDetails =
+viewSelectedTimeSlot model updates selectedTimeSlotDetails =
     let
         (TS.SelectedTimeSlotDetails selectedTimeSlot eventDetails) =
             selectedTimeSlotDetails
@@ -711,7 +716,9 @@ viewSelectedTimeSlot updates selectedTimeSlotDetails =
                 Options.onClick <| editTimeSlotSelection selectedTimeSlotDetails
 
             SubmitAvailability { editTimeSlotSelection } ->
-                Options.onClick <| editTimeSlotSelection selectedTimeSlotDetails
+                when (not model.alreadySubmittedAvailability) <|
+                    Options.onClick <|
+                        editTimeSlotSelection selectedTimeSlotDetails
         ]
         [ viewTimeSlotDuration selectedTimeSlot hasSingleSlotHeight ]
 
