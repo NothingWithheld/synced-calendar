@@ -29,7 +29,11 @@ saveAvailableTimes model onSubmit eventId availableTimes =
         }
 
 
-requestAvailableTimesForUser : WithSession a -> (Result Http.Error (List AvailableTimeDetails) -> msg) -> Int -> Cmd msg
+requestAvailableTimesForUser :
+    WithSession a
+    -> (Result Http.Error (List AvailableTimeDetails) -> msg)
+    -> Int
+    -> Cmd msg
 requestAvailableTimesForUser model onResult eventId =
     let
         userId =

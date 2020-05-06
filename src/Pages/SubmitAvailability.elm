@@ -1,5 +1,6 @@
 module Pages.SubmitAvailability exposing (Model, Msg, init, subscriptions, update, view)
 
+import AvailableTime.AvailableTime exposing (AvailableTimeDetails)
 import Browser exposing (Document)
 import Browser.Dom as Dom
 import EventCreation.EventCreation as EC
@@ -89,6 +90,7 @@ type Msg
     | SetTimeSlotPositions (Result Dom.Error (List Dom.Element))
     | SetSavedConfirmedEventsBy (Result Http.Error (List TSMessaging.ServerConfirmedEvent))
     | SetSavedConfirmedEventsFor (Result Http.Error (List TSMessaging.ServerConfirmedEvent))
+    | HandleSavedAvailableTimesForUser (Result Http.Error (List AvailableTimeDetails))
     | UpdateTimeZone String
     | SetTimeSlotsElement (Result Dom.Error Dom.Element)
     | SetSavedWeeklyTimeSlots (Result Http.Error (List TSMessaging.ServerTimeSlot))
@@ -142,10 +144,17 @@ update msg model =
                 result
 
         SetSavedConfirmedEventsBy result ->
-            TSUpdate.setSavedConfirmedEventsBy model (SubmitAvailability {}) result
+            TSUpdate.setSavedConfirmedEventsBy model
+                (SubmitAvailability { handleSavedATForUser = HandleSavedAvailableTimesForUser })
+                result
 
         SetSavedConfirmedEventsFor result ->
-            TSUpdate.setSavedConfirmedEventsFor model (SubmitAvailability {}) result
+            TSUpdate.setSavedConfirmedEventsFor model
+                (SubmitAvailability { handleSavedATForUser = HandleSavedAvailableTimesForUser })
+                result
+
+        HandleSavedAvailableTimesForUser result ->
+            TSUpdate.handleSavedAvailableTimesForUser model result
 
         UpdateTimeZone timeZoneLabel ->
             TSUpdate.updateTimeZone model (WeeklyFreeTimes SetSavedWeeklyTimeSlots) timeZoneLabel
@@ -154,7 +163,9 @@ update msg model =
             TSUpdate.setTimeSlotsElement model result
 
         SetSavedWeeklyTimeSlots result ->
-            TSUpdate.setSavedWeeklyTimeSlots model (SubmitAvailability {}) result
+            TSUpdate.setSavedWeeklyTimeSlots model
+                (SubmitAvailability { handleSavedATForUser = HandleSavedAvailableTimesForUser })
+                result
 
         StartSelectingTimeSlot dayNum slotNum ->
             TSUpdate.startSelectingTimeSlot model dayNum slotNum
