@@ -58,11 +58,10 @@ proposedEventDecoder =
     Decode.succeed toProposedEvent
         |> required "name" Decode.string
         |> required "description" Decode.string
-        |> required "creatorId" Decode.string
-        |> required "id" Decode.int
-        |> required "recipientId" (Decode.map (String.split ",") Decode.string)
-        |> required "fromDate" (Decode.map TSTime.isoStringToDate Decode.string)
-        |> required "toDate" (Decode.map TSTime.isoStringToDate Decode.string)
+        |> required "creatorId" (Decode.map String.fromInt Decode.int)
+        |> required "eventId" Decode.int
+        |> required "fromDate" (Decode.map TSTime.stringToDate Decode.string)
+        |> required "toDate" (Decode.map TSTime.stringToDate Decode.string)
 
 
 toProposedEvent :
@@ -70,13 +69,12 @@ toProposedEvent :
     -> String
     -> String
     -> Int
-    -> List String
     -> Maybe Date
     -> Maybe Date
     -> Maybe ProposedEvent
-toProposedEvent title description creatorId eventId recipientIds fromDate toDate =
+toProposedEvent title description creatorId eventId fromDate toDate =
     Maybe.map2
-        (ProposedEvent title description creatorId eventId recipientIds)
+        (ProposedEvent title description creatorId eventId)
         fromDate
         toDate
 
@@ -87,7 +85,6 @@ proposedEventToQueryParams proposedEvent =
     , Builder.string "description" proposedEvent.description
     , Builder.string "creatorId" proposedEvent.creatorId
     , Builder.int "eventId" proposedEvent.eventId
-    , Builder.string "recipientIds" <| String.join "," proposedEvent.recipientIds
     , Builder.string "fromDate" <| TSTime.dateToString proposedEvent.fromDate
     , Builder.string "toDate" <| TSTime.dateToString proposedEvent.toDate
     ]
@@ -95,11 +92,10 @@ proposedEventToQueryParams proposedEvent =
 
 proposedEventQueryDecoder : Query.Parser (Maybe ProposedEvent)
 proposedEventQueryDecoder =
-    Query.map7 (Utils.maybeMap7 ProposedEvent)
+    Query.map6 (Utils.maybeMap6 ProposedEvent)
         (Query.string "title")
         (Query.string "description")
         (Query.string "creatorId")
         (Query.int "eventId")
-        (Query.map (Maybe.map (String.split ",")) (Query.string "recipientIds"))
         (Query.map (Maybe.andThen TSTime.stringToDate) (Query.string "fromDate"))
         (Query.map (Maybe.andThen TSTime.stringToDate) (Query.string "toDate"))

@@ -12,7 +12,6 @@ type alias ProposedEvent =
     , description : String
     , creatorId : String
     , eventId : Int
-    , recipientIds : List String
     , fromDate : Date
     , toDate : Date
     }
