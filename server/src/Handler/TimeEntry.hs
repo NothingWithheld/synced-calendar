@@ -253,7 +253,12 @@ getAvailableTimeEntryR userIdText = do
                             AvailableTimeEntryUserId <-. [userId], 
                             AvailableTimeEntryEventId ==. toSqlKey (fromIntegral (eventIdInt::Integer))
                         ] []
-                    returnJson $ catMaybes $ Import.map (\x -> convertAvailableTimeEntryToLocal x timezone) allTimeEntries
+                    let availableTimesNoEntities = Import.map (\(Entity _ x) -> x) allTimeEntries
+                    allProposedEventInvitations <- runDB $ selectList 
+                        ([ProposedEventInvitationRecipientId ==. userId, ProposedEventInvitationConfirmed ==. True]) []
+                    allConfirmedEventInvitations <- Import.mapM Handler.Event.getConfirmedEventInvitationFromProposedEventInvitation allProposedEventInvitations
+                    let allAvailableTimes = iterateConfirmedEventInvitations availableTimesNoEntities (catMaybes allConfirmedEventInvitations)
+                    returnJson $ catMaybes $ Import.map (\x -> convertAvailableTimeEntryNoEntityLocal x timezone) allAvailableTimes
                 _ -> invalidArgs ["Failed to parse event_id params"]
         (_, _, _) -> invalidArgs ["Failed to parse event_id and/or timezone params"]
 

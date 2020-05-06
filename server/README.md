@@ -123,9 +123,9 @@ As your code changes, your site will be automatically recompiled and redeployed 
 	- event_id (Int) -> id that corresponds to a `ProposedEvent` object
 	- timezone (Int) -> offset from UTC time (range: -14 to 12)
 
-- **GET** `/api/{user_id}/available-times/multiple`
+- **GET** `/api/{event_id}/available-times/multiple`
 	
-	Retrieves available time entries for given ProposedEvents. Response sends in a JSON array of data 
+	Retrieves available time entries for given event. Response sends in a JSON array of data 
 	objects with `date`, `fromTime`, `toTime`, `spanMultiple` variables. `spanMultiple` is a flag 
 	that indicates AvailableTimeEntry returned spans two days. `date` variable will correspond to `fromTime`. 
 	(see POST documentation for possible values of the other variables). This API returns all 
@@ -135,7 +135,6 @@ As your code changes, your site will be automatically recompiled and redeployed 
 
 	**Parameters**
 	
-	- event_ids ([Int]) -> ids that corresponds to `ProposedEvent` objects
 	- timezone (Int) -> offset from UTC time (range: -14 to 12)
 
 - **POST** `/api/{user_id}/available-times`
