@@ -1,11 +1,17 @@
 module Utils exposing (..)
 
 import Flip
+import Json.Decode as Decode exposing (Decoder)
 import Material
 
 
 type NoData
     = NoData
+
+
+noDataDecoder : Decoder NoData
+noDataDecoder =
+    Decode.succeed NoData
 
 
 type alias WithMdc msg a =

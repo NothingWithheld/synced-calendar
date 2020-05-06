@@ -9,9 +9,11 @@ module TimeSlots.Time exposing
     , getSelectedTimeSlotsInThatWeek
     , isSameDay
     , isoStringToDate
+    , militaryToSlotNum
     , monthToLongString
     , monthToShortString
     , shiftWeeksToStartDate
+    , slotNumToMilitary
     , stringToDate
     , weekdayStrings
     , weekdayToString
@@ -376,3 +378,66 @@ getSelectedTimeSlotsInThatWeek model =
 
         Nothing ->
             model.selectedTimeSlots
+
+
+militaryToSlotNum : Bool -> String -> Maybe TS.SlotNum
+militaryToSlotNum isEndSlot militaryTime =
+    let
+        splitTime =
+            String.split ":" militaryTime
+    in
+    case splitTime of
+        [ hourString, minuteString ] ->
+            let
+                hours =
+                    String.toInt hourString
+
+                minutes =
+                    String.toInt minuteString
+            in
+            Maybe.withDefault Nothing <|
+                Maybe.map2 (hoursMinutesToSlotNum isEndSlot) hours minutes
+
+        _ ->
+            Nothing
+
+
+hoursMinutesToSlotNum : Bool -> Int -> Int -> Maybe TS.SlotNum
+hoursMinutesToSlotNum isEndSlot hours minutes =
+    let
+        minute15Interval =
+            minutes // 15
+    in
+    if hours >= 0 && hours < 24 && minute15Interval >= 0 && minute15Interval < 4 then
+        Just <|
+            4
+                * hours
+                + minute15Interval
+                + (if isEndSlot then
+                    -1
+
+                   else
+                    0
+                  )
+
+    else
+        Nothing
+
+
+slotNumToMilitary : TS.SlotNum -> Bool -> String
+slotNumToMilitary slotNum isEndSlot =
+    let
+        adjustedSlotNum =
+            if isEndSlot then
+                slotNum + 1
+
+            else
+                slotNum
+
+        hours =
+            adjustedSlotNum // 4
+
+        minutes =
+            15 * modBy 4 adjustedSlotNum
+    in
+    String.fromInt hours ++ ":" ++ String.fromInt minutes

@@ -203,7 +203,16 @@ update msg model =
 
 view : Model -> Document Msg
 view model =
-    { title = "Edit What Times You're Free Each Week"
+    let
+        docTitle =
+            case model.proposedEvent of
+                Just { title } ->
+                    "Submit When You're Available for - " ++ title
+
+                Nothing ->
+                    "Submit When You're Available"
+    in
+    { title = docTitle
     , body =
         [ styled div
             [ css "position" "relative"

@@ -38,8 +38,8 @@ serverTimeSlotDecoder =
     Decode.map4 (Maybe.map4 ServerTimeSlot)
         (Decode.map dayToDayNum <| Decode.field "day" Decode.string)
         (Decode.map Just <| Decode.field "id" Decode.int)
-        (Decode.map (militaryToSlotNum False) <| Decode.field "fromTime" Decode.string)
-        (Decode.map (militaryToSlotNum True) <| Decode.field "toTime" Decode.string)
+        (Decode.map (TSTime.militaryToSlotNum False) <| Decode.field "fromTime" Decode.string)
+        (Decode.map (TSTime.militaryToSlotNum True) <| Decode.field "toTime" Decode.string)
 
 
 type alias ServerConfirmedEvent =
@@ -69,8 +69,8 @@ serverConfirmedEventDecoder =
         |> required "name" Decode.string
         |> required "description" Decode.string
         |> required "date" (Decode.map TSTime.isoStringToDate Decode.string)
-        |> required "fromTime" (Decode.map (militaryToSlotNum False) Decode.string)
-        |> required "toTime" (Decode.map (militaryToSlotNum True) Decode.string)
+        |> required "fromTime" (Decode.map (TSTime.militaryToSlotNum False) Decode.string)
+        |> required "toTime" (Decode.map (TSTime.militaryToSlotNum True) Decode.string)
 
 
 toServerConfirmedEvent : Int -> List String -> String -> String -> String -> Maybe Date -> Maybe TS.SlotNum -> Maybe TS.SlotNum -> Maybe ServerConfirmedEvent
@@ -99,8 +99,8 @@ getPostFreeTimesJson dayNum startSlotNum endSlotNum =
         mapFunc day =
             Encode.object
                 [ ( "day", Encode.string day )
-                , ( "from_time", Encode.string <| slotNumToMilitary startSlotNum False )
-                , ( "to_time", Encode.string <| slotNumToMilitary endSlotNum True )
+                , ( "from_time", Encode.string <| TSTime.slotNumToMilitary startSlotNum False )
+                , ( "to_time", Encode.string <| TSTime.slotNumToMilitary endSlotNum True )
                 ]
     in
     Maybe.map mapFunc <| dayNumToDay dayNum
@@ -113,8 +113,8 @@ getFreeTimesQueryString timeZoneOffset dayNum startSlotNum endSlotNum =
             String.dropLeft 1 <|
                 Builder.toQuery
                     [ Builder.string "day" day
-                    , Builder.string "from_time" <| slotNumToMilitary startSlotNum False
-                    , Builder.string "to_time" <| slotNumToMilitary endSlotNum True
+                    , Builder.string "from_time" <| TSTime.slotNumToMilitary startSlotNum False
+                    , Builder.string "to_time" <| TSTime.slotNumToMilitary endSlotNum True
                     , Builder.int "timezone" timeZoneOffset
                     ]
     in
@@ -142,66 +142,3 @@ dayToDayNum dayString =
 dayNumToDay : TS.DayNum -> Maybe String
 dayNumToDay dayNum =
     getListItemAt dayNum dayNames
-
-
-militaryToSlotNum : Bool -> String -> Maybe TS.SlotNum
-militaryToSlotNum isEndSlot militaryTime =
-    let
-        splitTime =
-            String.split ":" militaryTime
-    in
-    case splitTime of
-        [ hourString, minuteString ] ->
-            let
-                hours =
-                    String.toInt hourString
-
-                minutes =
-                    String.toInt minuteString
-            in
-            Maybe.withDefault Nothing <|
-                Maybe.map2 (hoursMinutesToSlotNum isEndSlot) hours minutes
-
-        _ ->
-            Nothing
-
-
-hoursMinutesToSlotNum : Bool -> Int -> Int -> Maybe TS.SlotNum
-hoursMinutesToSlotNum isEndSlot hours minutes =
-    let
-        minute15Interval =
-            minutes // 15
-    in
-    if hours >= 0 && hours < 24 && minute15Interval >= 0 && minute15Interval < 4 then
-        Just <|
-            4
-                * hours
-                + minute15Interval
-                + (if isEndSlot then
-                    -1
-
-                   else
-                    0
-                  )
-
-    else
-        Nothing
-
-
-slotNumToMilitary : TS.SlotNum -> Bool -> String
-slotNumToMilitary slotNum isEndSlot =
-    let
-        adjustedSlotNum =
-            if isEndSlot then
-                slotNum + 1
-
-            else
-                slotNum
-
-        hours =
-            adjustedSlotNum // 4
-
-        minutes =
-            15 * modBy 4 adjustedSlotNum
-    in
-    String.fromInt hours ++ ":" ++ String.fromInt minutes
