@@ -10,10 +10,10 @@ import Data.Time.LocalTime
 import Data.Text.Read
 import qualified Database
 
-data ConfirmedEventData = ConfirmedEventData ConfirmedEventId ProposedEventId UserId UserId (Maybe Text) (Maybe Text) Day TimeOfDay TimeOfDay Bool
+data ConfirmedEventInvitationData = ConfirmedEventInvitationData ConfirmedEventInvitationId ProposedEventInvitationId UserId UserId (Maybe Text) (Maybe Text) Day TimeOfDay TimeOfDay Bool
 
-instance ToJSON ConfirmedEventData where 
-    toJSON (ConfirmedEventData confirmedEventId eventId creatorId recipientId name description date (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _) spanMultiple) =
+instance ToJSON ConfirmedEventInvitationData where 
+    toJSON (ConfirmedEventInvitationData confirmedEventId eventId creatorId recipientId name description date (TimeOfDay fromHour fromMinutes _) (TimeOfDay toHour toMinutes _) spanMultiple) =
         object [
             "id" .= confirmedEventId,
             "eventId" .= eventId, 
@@ -27,10 +27,10 @@ instance ToJSON ConfirmedEventData where
             "spanMultiple" .= spanMultiple
         ]
 
-data ProposedEventData = ProposedEventData ProposedEventId UserId UserId (Maybe Text) (Maybe Text) Day Day Bool
+data ProposedEventInvitationData = ProposedEventInvitationData ProposedEventInvitationId UserId UserId (Maybe Text) (Maybe Text) Day Day Bool
 
-instance ToJSON ProposedEventData where 
-    toJSON (ProposedEventData eventId creatorId recipientId name description fromDate toDate confirmed) = 
+instance ToJSON ProposedEventInvitationData where 
+    toJSON (ProposedEventInvitationData eventId creatorId recipientId name description fromDate toDate confirmed) = 
         object [
             "id" .= eventId,
             "creatorId" .= creatorId,
@@ -42,9 +42,9 @@ instance ToJSON ProposedEventData where
             "confirmed" .= confirmed 
         ]
 
-convertConfirmedEventToLocal :: ConfirmedEventData -> Text -> Maybe ConfirmedEventData
-convertConfirmedEventToLocal 
-    (ConfirmedEventData confirmedEventId proposedEventId creatorId recipientId name description date fromTime toTime spanMultiple) timezone = do 
+convertConfirmedEventInvitationToLocal :: ConfirmedEventInvitationData -> Text -> Maybe ConfirmedEventInvitationData
+convertConfirmedEventInvitationToLocal 
+    (ConfirmedEventInvitationData confirmedEventId proposedEventId creatorId recipientId name description date fromTime toTime spanMultiple) timezone = do 
         let maybeLocalFromTime = Database.convertUTCToLocal fromTime timezone
         let maybeLocalToTime = Database.convertUTCToLocal toTime timezone
         case (maybeLocalFromTime, maybeLocalToTime) of 
@@ -53,35 +53,35 @@ convertConfirmedEventToLocal
                 -- between to two days 
                 let localDate = addDays fromTimeDayOffset date
                 let newSpanMultiple = if fromTimeDayOffset == toTimeDayOffset then spanMultiple else not spanMultiple
-                return $ ConfirmedEventData confirmedEventId proposedEventId creatorId recipientId name description localDate localFromTime localToTime newSpanMultiple
+                return $ ConfirmedEventInvitationData confirmedEventId proposedEventId creatorId recipientId name description localDate localFromTime localToTime newSpanMultiple
             (_, _) -> Nothing
 
-getConfirmedEventFromProposedEvent :: Entity ProposedEvent -> Handler (Maybe ConfirmedEventData)
-getConfirmedEventFromProposedEvent 
-    (Entity proposedEventId (ProposedEvent creatorId recipientId name description _ _ _)) = do 
-        allEvents <- runDB $ selectList [ConfirmedEventProposedEventId ==. proposedEventId] []
+getConfirmedEventInvitationFromProposedEventInvitation :: Entity ProposedEventInvitation -> Handler (Maybe ConfirmedEventInvitationData)
+getConfirmedEventInvitationFromProposedEventInvitation 
+    (Entity proposedEventId (ProposedEventInvitation creatorId recipientId name description _ _ _)) = do 
+        allEvents <- runDB $ selectList [ConfirmedEventInvitationProposedEventInvitationId ==. proposedEventId] []
         case allEvents of 
-            [Entity confirmedEventId (ConfirmedEvent _ date fromTime toTime spanMultiple)] -> 
-                return $ Just $ ConfirmedEventData confirmedEventId proposedEventId creatorId recipientId name description date fromTime toTime spanMultiple
+            [Entity confirmedEventId (ConfirmedEventInvitation _ date fromTime toTime spanMultiple)] -> 
+                return $ Just $ ConfirmedEventInvitationData confirmedEventId proposedEventId creatorId recipientId name description date fromTime toTime spanMultiple
             _ -> return $ Nothing
 
-createProposedEvent :: (Text, Text, Maybe Text, Maybe Text, Day, Day) -> Handler (Maybe ProposedEventData)
-createProposedEvent (recipientEmail, creatorIdText, maybeName, maybeDescription, fromDate, toDate) = do 
+createProposedEventInvitation :: (Text, Text, Maybe Text, Maybe Text, Day, Day) -> Handler (Maybe ProposedEventInvitationData)
+createProposedEventInvitation (recipientEmail, creatorIdText, maybeName, maybeDescription, fromDate, toDate) = do 
     let confirmed = False
     maybeCreatorId <- Database.fetchUserId (Just creatorIdText)
     maybeRecipientId <- Database.fetchUserIdByEmail (Just recipientEmail)
     case (maybeCreatorId, maybeRecipientId) of 
         (Just creatorId, Just recipientId) -> do 
-            let event' = ProposedEvent creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
+            let event' = ProposedEventInvitation creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
             (Entity eventId _) <- runDB $ insertEntity event'
-            return $ Just $ ProposedEventData eventId creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
+            return $ Just $ ProposedEventInvitationData eventId creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
         (Just creatorId, Nothing) -> do 
             -- create a user for the email, but have registred be False
             let newUser' = User recipientEmail Nothing False
             Entity recipientId _ <- runDB $ insertEntity newUser'
-            let event' = ProposedEvent creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
+            let event' = ProposedEventInvitation creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
             (Entity eventId _) <- runDB $ insertEntity event'
-            return $ Just $ ProposedEventData eventId creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
+            return $ Just $ ProposedEventInvitationData eventId creatorId recipientId maybeName maybeDescription fromDate toDate confirmed
         (_, _) -> return Nothing
 
 getProposedEventCreatorR :: Text -> Handler Value
@@ -89,13 +89,13 @@ getProposedEventCreatorR creatorIdText = do
     maybeCreatorId <- Database.fetchUserId (Just creatorIdText)
     case maybeCreatorId of
         Just creatorId -> do 
-            allProposedEvents <- runDB $ 
+            allProposedEventInvitations <- runDB $ 
                 selectList [
-                    ProposedEventCreatorId <-. [creatorId],
-                    ProposedEventConfirmed <-. [False]
+                    ProposedEventInvitationCreatorId <-. [creatorId],
+                    ProposedEventInvitationConfirmed <-. [False]
                 ] []
-            returnJson $ Import.map (\(Entity eventId (ProposedEvent _ recipientId name description fromDate toDate confirmed)) ->
-                ProposedEventData eventId creatorId recipientId name description fromDate toDate confirmed) allProposedEvents
+            returnJson $ Import.map (\(Entity eventId (ProposedEventInvitation _ recipientId name description fromDate toDate confirmed)) ->
+                ProposedEventInvitationData eventId creatorId recipientId name description fromDate toDate confirmed) allProposedEventInvitations
         _ -> invalidArgs ["Failed to find user with creatorId: " Import.++ creatorIdText]
 
 postProposedEventCreatorR :: Text -> Handler Value 
@@ -111,7 +111,7 @@ postProposedEventCreatorR creatorIdText = do
         (Just recipientEmailsText, Just fromDate, Just toDate) -> do
             let recipientEmails = Database.splitStringByCommas recipientEmailsText
             let arguments = Import.map (\x -> (x, creatorIdText, maybeName, maybeDescription, fromDate, toDate)) recipientEmails
-            unwrapped_events <- Import.mapM createProposedEvent arguments
+            unwrapped_events <- Import.mapM createProposedEventInvitation arguments
             returnJson $ catMaybes unwrapped_events
         (_, _, _) -> invalidArgs ["Failed to parse arguments. Check API documentation for valid formatting"]
 
@@ -130,17 +130,17 @@ putProposedEventCreatorR eventIdText = do
     let eitherEventId = decimal eventIdText
     case (maybeRecipientId, maybeFromDate, maybeToDate, eitherEventId) of
         (Just recipientId, Just fromDate, Just toDate, Right (eventIdInt, "")) -> do
-            allEvents <- runDB $ selectList [ProposedEventId ==. toSqlKey (fromIntegral (eventIdInt::Integer))] []
+            allEvents <- runDB $ selectList [ProposedEventInvitationId ==. toSqlKey (fromIntegral (eventIdInt::Integer))] []
             case allEvents of 
-                [Entity eventId ProposedEvent {..}] -> do 
+                [Entity eventId ProposedEventInvitation {..}] -> do 
                     runDB $ update eventId 
                         [
-                            ProposedEventRecipientId =. recipientId,
-                            ProposedEventName =. maybeNameText,
-                            ProposedEventDescription =. maybeDescriptionText,
-                            ProposedEventFromDate =. fromDate,
-                            ProposedEventToDate =. toDate,
-                            ProposedEventConfirmed =. confirmed
+                            ProposedEventInvitationRecipientId =. recipientId,
+                            ProposedEventInvitationName =. maybeNameText,
+                            ProposedEventInvitationDescription =. maybeDescriptionText,
+                            ProposedEventInvitationFromDate =. fromDate,
+                            ProposedEventInvitationToDate =. toDate,
+                            ProposedEventInvitationConfirmed =. confirmed
                         ]
                     return Null
                 _ -> invalidArgs ["Failed to find event with id: " Import.++ eventIdText]
@@ -151,7 +151,7 @@ deleteProposedEventCreatorR eventIdText = do
     let eitherEventId = decimal eventIdText 
     case eitherEventId of 
         Right (eventIdInt, "") -> do 
-            runDB $ deleteWhere [ProposedEventId ==. toSqlKey (fromIntegral (eventIdInt::Integer))]
+            runDB $ deleteWhere [ProposedEventInvitationId ==. toSqlKey (fromIntegral (eventIdInt::Integer))]
             return Null
         _ -> badMethod
 
@@ -160,13 +160,13 @@ getProposedEventRecipientR recipientIdText = do
     maybeRecipientId <- Database.fetchUserId (Just recipientIdText)
     case maybeRecipientId of 
         Just recipientId -> do
-            allProposedEvents <- runDB $ 
+            allProposedEventInvitations <- runDB $ 
                 selectList [
-                    ProposedEventRecipientId <-. [recipientId],
-                    ProposedEventConfirmed <-. [False]
+                    ProposedEventInvitationRecipientId <-. [recipientId],
+                    ProposedEventInvitationConfirmed <-. [False]
                 ] []
-            returnJson $ Import.map (\(Entity eventId (ProposedEvent creatorId _ name description fromDate toDate confirmed)) ->
-                ProposedEventData eventId creatorId recipientId name description fromDate toDate confirmed) allProposedEvents
+            returnJson $ Import.map (\(Entity eventId (ProposedEventInvitation creatorId _ name description fromDate toDate confirmed)) ->
+                ProposedEventInvitationData eventId creatorId recipientId name description fromDate toDate confirmed) allProposedEventInvitations
         _ -> invalidArgs ["Failed to find user with id: " Import.++ recipientIdText]
 
 getConfirmedEventCreatorR :: Text -> Handler Value
@@ -175,28 +175,28 @@ getConfirmedEventCreatorR creatorIdText = do
     maybeCreatorId <- Database.fetchUserId (Just creatorIdText)
     case (maybeCreatorId, maybeTimeZone) of
         (Just creatorId, Just timezone) -> do 
-            allProposedEventEntries <- runDB $ 
+            allProposedEventInvitationEntries <- runDB $ 
                 selectList [
-                    ProposedEventCreatorId <-. [creatorId],
-                    ProposedEventConfirmed <-. [True]
+                    ProposedEventInvitationCreatorId <-. [creatorId],
+                    ProposedEventInvitationConfirmed <-. [True]
                 ] []
-            confirmedEvents <- Import.mapM getConfirmedEventFromProposedEvent allProposedEventEntries
-            returnJson $ catMaybes $ Import.map (\x -> convertConfirmedEventToLocal x timezone) (catMaybes confirmedEvents)
+            confirmedEvents <- Import.mapM getConfirmedEventInvitationFromProposedEventInvitation allProposedEventInvitationEntries
+            returnJson $ catMaybes $ Import.map (\x -> convertConfirmedEventInvitationToLocal x timezone) (catMaybes confirmedEvents)
         (_, _) -> invalidArgs ["Failed to parse timezone"]
 
 postConfirmedEventCreatorR :: Text -> Handler Value 
 postConfirmedEventCreatorR eventIdText = do 
-    -- Find the corresponding ProposedEvent object
+    -- Find the corresponding ProposedEventInvitation object
     let eitherEventId = decimal eventIdText
     case eitherEventId of 
         Right (eventIdInt, "") -> do
-            allProposedEvents <- runDB $ 
+            allProposedEventInvitations <- runDB $ 
                 selectList [
-                    ProposedEventId ==. toSqlKey (fromIntegral (eventIdInt::Integer)),
-                    ProposedEventConfirmed <-. [False]
+                    ProposedEventInvitationId ==. toSqlKey (fromIntegral (eventIdInt::Integer)),
+                    ProposedEventInvitationConfirmed <-. [False]
                 ] []
-            case allProposedEvents of 
-                [Entity eventId (ProposedEvent creatorId recipientId name description _ _ _)] -> do 
+            case allProposedEventInvitations of 
+                [Entity eventId (ProposedEventInvitation creatorId recipientId name description _ _ _)] -> do 
                     maybeDateText <- lookupPostParam "date"
                     maybeTimezone <- lookupPostParam "timezone"
                     maybeFromTimeText <- lookupPostParam "from_time"
@@ -210,12 +210,12 @@ postConfirmedEventCreatorR eventIdText = do
                             -- between to two days
                             let utcDate = addDays fromTimeDayOffset date
                             let spanMultiple = if fromTimeDayOffset == toTimeDayOffset then False else True
-                            let event' = ConfirmedEvent eventId utcDate fromTime toTime spanMultiple
+                            let event' = ConfirmedEventInvitation eventId utcDate fromTime toTime spanMultiple
                             (Entity confirmedEventId _) <- runDB $ insertEntity event'
-                            runDB $ update eventId [ProposedEventConfirmed =. True]
-                            let confirmedEventData = ConfirmedEventData confirmedEventId eventId creatorId recipientId name description date fromTime toTime spanMultiple
-                            let localConfirmedEventData = convertConfirmedEventToLocal confirmedEventData timezone
-                            case localConfirmedEventData of
+                            runDB $ update eventId [ProposedEventInvitationConfirmed =. True]
+                            let confirmedEventData = ConfirmedEventInvitationData confirmedEventId eventId creatorId recipientId name description date fromTime toTime spanMultiple
+                            let localConfirmedEventInvitationData = convertConfirmedEventInvitationToLocal confirmedEventData timezone
+                            case localConfirmedEventInvitationData of
                                 Just entity -> returnJson $ entity
                                 Nothing -> invalidArgs ["Created in database, failed to convert back to local time"]
                         (_, _, _, _) -> invalidArgs ["Failed to parse date, from_time and/or to_time"]
@@ -234,19 +234,19 @@ putConfirmedEventCreatorR eventIdText = do
     let eitherEventId = decimal eventIdText
     case (maybeDate, maybeUTCFromTime, maybeUTCToTime, eitherEventId) of
         (Just date, Just (fromTimeDayOffset, fromTime), Just (toTimeDayOffset, toTime), Right (eventIdInt, "")) -> do
-            allEventEntries <- runDB $ selectList [ConfirmedEventId ==. toSqlKey (fromIntegral (eventIdInt::Integer))] []
+            allEventEntries <- runDB $ selectList [ConfirmedEventInvitationId ==. toSqlKey (fromIntegral (eventIdInt::Integer))] []
             case allEventEntries of 
-                [Entity eventId (ConfirmedEvent _ _ _ _ spanMultiple)] -> do 
+                [Entity eventId (ConfirmedEventInvitation _ _ _ _ spanMultiple)] -> do 
                      -- The database will hold in the date of fromTime if the event is staggered 
                     -- between to two days 
                     let utcDate = addDays fromTimeDayOffset date
                     let newSpanMultiple = if fromTimeDayOffset == toTimeDayOffset then spanMultiple else not spanMultiple
                     runDB $ update eventId 
                         [
-                            ConfirmedEventDate =. utcDate,
-                            ConfirmedEventFromTime =. fromTime, 
-                            ConfirmedEventToTime =. toTime,
-                            ConfirmedEventSpanMultiple =. newSpanMultiple
+                            ConfirmedEventInvitationDate =. utcDate,
+                            ConfirmedEventInvitationFromTime =. fromTime, 
+                            ConfirmedEventInvitationToTime =. toTime,
+                            ConfirmedEventInvitationSpanMultiple =. newSpanMultiple
                         ]
                     return Null
                 _ -> notFound
@@ -257,7 +257,7 @@ deleteConfirmedEventCreatorR eventIdText = do
     let eitherEventId = decimal eventIdText 
     case eitherEventId of 
         Right (eventIdInt, "") -> do 
-            runDB $ deleteWhere [ConfirmedEventId ==. toSqlKey (fromIntegral (eventIdInt::Integer))]
+            runDB $ deleteWhere [ConfirmedEventInvitationId ==. toSqlKey (fromIntegral (eventIdInt::Integer))]
             return Null
         _ -> badMethod
 
@@ -267,11 +267,11 @@ getConfirmedEventRecipientR recipientIdText = do
     maybeRecipientId <- Database.fetchUserId (Just recipientIdText)
     case (maybeRecipientId, maybeTimeZone) of
         (Just recipientId, Just timezone) -> do 
-            allProposedEventEntries <- runDB $ 
+            allProposedEventInvitationEntries <- runDB $ 
                 selectList [
-                    ProposedEventRecipientId <-. [recipientId],
-                    ProposedEventConfirmed <-. [True]
+                    ProposedEventInvitationRecipientId <-. [recipientId],
+                    ProposedEventInvitationConfirmed <-. [True]
                 ] []
-            confirmedEvents <- Import.mapM getConfirmedEventFromProposedEvent allProposedEventEntries
-            returnJson $ catMaybes $ Import.map (\x -> convertConfirmedEventToLocal x timezone) (catMaybes confirmedEvents)
+            confirmedEvents <- Import.mapM getConfirmedEventInvitationFromProposedEventInvitation allProposedEventInvitationEntries
+            returnJson $ catMaybes $ Import.map (\x -> convertConfirmedEventInvitationToLocal x timezone) (catMaybes confirmedEvents)
         (_, _) -> invalidArgs ["Failed to parse timezone"]
