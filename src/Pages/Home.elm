@@ -100,6 +100,11 @@ view model =
 
                   else
                     text ""
+                , if List.length model.createdProposedEvents > 0 then
+                    viewContainerCard (Just 350) (viewCreatedProposedEventsLineItems model)
+
+                  else
+                    text ""
                 ]
             ]
         ]
@@ -152,11 +157,25 @@ viewReceivedProposedEventsLineItems model =
         [ css "margin" "0" ]
         []
     ]
-        ++ List.map (viewProposedEventLineItem model) model.receivedProposedEvents
+        ++ List.map (viewEventLineItem model True) model.receivedProposedEvents
 
 
-viewProposedEventLineItem : Model -> ProposedEvent -> Html Msg
-viewProposedEventLineItem model ({ title, fromDate, toDate, eventId } as proposedEvent) =
+viewCreatedProposedEventsLineItems : Model -> List (Html Msg)
+viewCreatedProposedEventsLineItems model =
+    [ styled Html.h3
+        [ Typography.body1
+        , css "margin-left" "16px"
+        ]
+        [ text "Select the Meeting Time for these events" ]
+    , styled Html.hr
+        [ css "margin" "0" ]
+        []
+    ]
+        ++ List.map (viewEventLineItem model False) model.createdProposedEvents
+
+
+viewEventLineItem : Model -> Bool -> ProposedEvent -> Html Msg
+viewEventLineItem model isProposed ({ title, fromDate, toDate, eventId } as proposedEvent) =
     let
         lineText =
             limitToNChars 13 title
@@ -173,7 +192,11 @@ viewProposedEventLineItem model ({ title, fromDate, toDate, eventId } as propose
             "Submit availability for event " ++ String.fromInt eventId
     in
     viewLineEntry model True lineText buttonLabel <|
-        Route.routeToString (Route.SubmitAvailability proposedEvent)
+        if isProposed then
+            Route.routeToString (Route.SubmitAvailability proposedEvent)
+
+        else
+            Route.routeToString (Route.CreateEvent proposedEvent)
 
 
 viewContainerCard : Maybe Int -> List (Html Msg) -> Html Msg

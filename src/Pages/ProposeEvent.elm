@@ -370,7 +370,7 @@ viewRightOfFold model =
                 [ TextField.view Mdc
                     "adding-recipient-text-field"
                     model.mdc
-                    [ TextField.label "User to Add"
+                    [ TextField.label "User Email"
                     , TextField.value model.recipientToBeAdded
                     , when model.invalidRecipient TextField.invalid
                     , Options.onInput AdjustRecipiecntToBeAdded
