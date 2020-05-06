@@ -5,6 +5,7 @@ import Browser.Navigation as Nav
 import Error
 import Html
 import Json.Decode as Decode
+import Pages.CreateEvent
 import Pages.EventCalendar
 import Pages.Home
 import Pages.Login
@@ -43,8 +44,9 @@ type Model
     | Home Pages.Home.Model
     | WeeklyFreeTimes Pages.WeeklyFreeTimes.Model
     | EventCalendar Pages.EventCalendar.Model
-    | SubmitAvailability Pages.SubmitAvailability.Model
     | ProposeEvent Pages.ProposeEvent.Model
+    | SubmitAvailability Pages.SubmitAvailability.Model
+    | CreateEvent Pages.CreateEvent.Model
 
 
 init : Decode.Value -> Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -75,10 +77,13 @@ getSession model =
         EventCalendar model_ ->
             model_.session
 
+        ProposeEvent model_ ->
+            model_.session
+
         SubmitAvailability model_ ->
             model_.session
 
-        ProposeEvent model_ ->
+        CreateEvent model_ ->
             model_.session
 
 
@@ -93,8 +98,9 @@ type Msg
     | HomeMsg Pages.Home.Msg
     | WeeklyFreeTimesMsg Pages.WeeklyFreeTimes.Msg
     | EventCalendarMsg Pages.EventCalendar.Msg
-    | SubmitAvailabilityMsg Pages.SubmitAvailability.Msg
     | ProposeEventMsg Pages.ProposeEvent.Msg
+    | SubmitAvailabilityMsg Pages.SubmitAvailability.Msg
+    | CreateEventMsg Pages.CreateEvent.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -131,13 +137,17 @@ update msg model =
             updateWith EventCalendar EventCalendarMsg <|
                 Pages.EventCalendar.update subMsg model_
 
+        ( ProposeEventMsg subMsg, ProposeEvent model_ ) ->
+            updateWith ProposeEvent ProposeEventMsg <|
+                Pages.ProposeEvent.update subMsg model_
+
         ( SubmitAvailabilityMsg subMsg, SubmitAvailability model_ ) ->
             updateWith SubmitAvailability SubmitAvailabilityMsg <|
                 Pages.SubmitAvailability.update subMsg model_
 
-        ( ProposeEventMsg subMsg, ProposeEvent model_ ) ->
-            updateWith ProposeEvent ProposeEventMsg <|
-                Pages.ProposeEvent.update subMsg model_
+        ( CreateEventMsg subMsg, CreateEvent model_ ) ->
+            updateWith CreateEvent CreateEventMsg <|
+                Pages.CreateEvent.update subMsg model_
 
         ( _, _ ) ->
             ( model, Cmd.none )
@@ -189,13 +199,17 @@ handleUrlChange route model =
             updateWith EventCalendar EventCalendarMsg <|
                 Pages.EventCalendar.init session
 
+        ( Route.ProposeEvent, True ) ->
+            updateWith ProposeEvent ProposeEventMsg <|
+                Pages.ProposeEvent.init session
+
         ( Route.SubmitAvailability proposedEvent, True ) ->
             updateWith SubmitAvailability SubmitAvailabilityMsg <|
                 Pages.SubmitAvailability.init session proposedEvent
 
-        ( Route.ProposeEvent, True ) ->
-            updateWith ProposeEvent ProposeEventMsg <|
-                Pages.ProposeEvent.init session
+        ( Route.CreateEvent proposedEvent, True ) ->
+            updateWith CreateEvent CreateEventMsg <|
+                Pages.CreateEvent.init session proposedEvent
 
         ( Route.Logout, True ) ->
             ( Redirect <| Session.signOut session, Route.replaceUrl key Route.Login )
@@ -228,13 +242,17 @@ view model =
             viewWith EventCalendarMsg <|
                 Pages.EventCalendar.view model_
 
+        ProposeEvent model_ ->
+            viewWith ProposeEventMsg <|
+                Pages.ProposeEvent.view model_
+
         SubmitAvailability model_ ->
             viewWith SubmitAvailabilityMsg <|
                 Pages.SubmitAvailability.view model_
 
-        ProposeEvent model_ ->
-            viewWith ProposeEventMsg <|
-                Pages.ProposeEvent.view model_
+        CreateEvent model_ ->
+            viewWith CreateEventMsg <|
+                Pages.CreateEvent.view model_
 
 
 viewWith : (subMsg -> Msg) -> Document subMsg -> Document Msg
@@ -273,10 +291,14 @@ subscriptions model =
             Sub.map EventCalendarMsg <|
                 Pages.EventCalendar.subscriptions model_
 
+        ProposeEvent model_ ->
+            Sub.map ProposeEventMsg <|
+                Pages.ProposeEvent.subscriptions model_
+
         SubmitAvailability model_ ->
             Sub.map SubmitAvailabilityMsg <|
                 Pages.SubmitAvailability.subscriptions model_
 
-        ProposeEvent model_ ->
-            Sub.map ProposeEventMsg <|
-                Pages.ProposeEvent.subscriptions model_
+        CreateEvent model_ ->
+            Sub.map CreateEventMsg <|
+                Pages.CreateEvent.subscriptions model_

@@ -18,8 +18,9 @@ type Route
     | Login
     | WeeklyFreeTimes
     | EventCalendar
-    | SubmitAvailability ProposedEvent
     | ProposeEvent
+    | SubmitAvailability ProposedEvent
+    | CreateEvent ProposedEvent
     | Logout
 
 
@@ -42,10 +43,13 @@ parser =
         , Parser.map (Just Login) <| Parser.s loginString
         , Parser.map (Just WeeklyFreeTimes) <| Parser.s weeklyFreeTimesString
         , Parser.map (Just EventCalendar) <| Parser.s eventCalendarString
+        , Parser.map (Just ProposeEvent) <| Parser.s proposeEventString
         , Parser.map (Maybe.map SubmitAvailability) <|
             Parser.s submitAvailiabilityString
                 <?> PEMessaging.proposedEventQueryDecoder
-        , Parser.map (Just ProposeEvent) <| Parser.s proposeEventString
+        , Parser.map (Maybe.map CreateEvent) <|
+            Parser.s createEventString
+                <?> PEMessaging.proposedEventQueryDecoder
         , Parser.map (Just Logout) <| Parser.s logoutString
         ]
 
@@ -80,12 +84,16 @@ routeToString route =
         EventCalendar ->
             Builder.absolute [ eventCalendarString ] []
 
+        ProposeEvent ->
+            Builder.absolute [ proposeEventString ] []
+
         SubmitAvailability proposedEvent ->
             Builder.absolute [ submitAvailiabilityString ] <|
                 PEMessaging.proposedEventToQueryParams proposedEvent
 
-        ProposeEvent ->
-            Builder.absolute [ proposeEventString ] []
+        CreateEvent proposedEvent ->
+            Builder.absolute [ createEventString ] <|
+                PEMessaging.proposedEventToQueryParams proposedEvent
 
         Logout ->
             Builder.absolute [ logoutString ] []
@@ -106,14 +114,19 @@ eventCalendarString =
     "event-calendar"
 
 
+proposeEventString : String
+proposeEventString =
+    "propose-event"
+
+
 submitAvailiabilityString : String
 submitAvailiabilityString =
     "submit-availability"
 
 
-proposeEventString : String
-proposeEventString =
-    "propose-event"
+createEventString : String
+createEventString =
+    "create-event"
 
 
 logoutString : String
