@@ -9,7 +9,7 @@ User json
     deriving Show
 AvailableTimeEntry json
     userId UserId
-    eventId ProposedEventId
+    eventId EventId
     date Day
     fromTime TimeOfDay
     toTime TimeOfDay
@@ -22,7 +22,9 @@ FreeTimeEntry json
     toTime TimeOfDay
     spanMultiple Bool
     deriving Show Eq
-ProposedEvent json 
+Event
+ProposedEventInvitation json
+    eventId EventId
     creatorId UserId
     recipientId UserId 
     name Text Maybe 
@@ -31,11 +33,11 @@ ProposedEvent json
     toDate Day
     confirmed Bool
     deriving Show Eq
-ConfirmedEvent json
-    proposedEventId ProposedEventId
+ConfirmedEventInvitation json
+    proposedEventInvitationId ProposedEventInvitationId
     date Day 
     fromTime TimeOfDay 
     toTime TimeOfDay
     spanMultiple Bool 
-    UniqueProposedEventId proposedEventId
+    UniqueProposedEventInvitationId proposedEventInvitationId
     deriving Show Eq

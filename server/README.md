@@ -117,33 +117,40 @@ As your code changes, your site will be automatically recompiled and redeployed 
 	`spanMultiple` is a flag that indicates AvailableTimeEntry returned spans two days. `date` variable will 
 	correspond to `fromTime`. (see POST documentation for possible values of the other variables).
 
-	user_id (Int) -> unique number that identifies a `User` object
+	user_id (Int) -> unique number that identifies a `User` object (recipient of event)
 
 	**Parameters**
 	
 	- event_id (Int) -> id that corresponds to a `ProposedEvent` object
 	- timezone (Int) -> offset from UTC time (range: -12 to 14 only in hours, not zone name)
 
-- **GET** `/api/{user_id}/available-times/multiple`
+- **GET** `/api/{event_id}/available-times/multiple`
 	
-	Retrieves available time entries for given events. Response sends in a JSON array of data 
+	Retrieves available time entries for given event. Response sends in a JSON array of data 
 	objects with `date`, `fromTime`, `toTime`, `spanMultiple` variables. `spanMultiple` is a flag 
 	that indicates AvailableTimeEntry returned spans two days. `date` variable will correspond to `fromTime`. 
 	(see POST documentation for possible values of the other variables). This API returns all 
 	possibile times a creator can schedule a ConfirmedEvent from a ProposedEvent
 
-	user_id (Int) -> unique number that identifies a `User` object
+	event_id (Int) -> unique number that identifies a `Event` object (creator of events)
 
 	**Parameters**
-	
-	- event_ids ([Int]) -> ids that corresponds to `ProposedEvent` objects
+
 	- timezone (Int) -> offset from UTC time (range: -12 to 14 only in hours, not zone name)
+
+
+- **GET** `/api/{event_id}/available-times/count`
+	
+	Retrieves count of number of users who have submitted to event and total 
+	recipients of event
+
+	event_id (Int) -> unique number that identifies a `Event` object (creator of events)
 
 - **POST** `/api/{user_id}/available-times`
 
   Creates an available time entry for a given user and event. User responds to ProposedEvent with availabilites. Response sends in a JSON object of the newly created `AvailableTimeEntry`.
 
-	user_id (Int) -> unique number that identifies a `User` object
+	user_id (Int) -> unique number that identifies a `User` object (recipient of event)
 
 	**x-www-form-urlencoded body**
 	
@@ -157,7 +164,7 @@ As your code changes, your site will be automatically recompiled and redeployed 
 
 	Creates multiple available time entry for a given user and event. User responds to ProposedEvent with availabilites. Response sends in a JSON array object of the newly created `AvailableTimeEntry`.
 
-	user_id (Int) -> unique number that identifies a `User` object
+	user_id (Int) -> unique number that identifies a `User` object (recipient of event)
 
 	**x-www-form-urlencoded body**
 	
