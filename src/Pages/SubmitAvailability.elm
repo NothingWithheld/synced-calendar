@@ -237,6 +237,7 @@ view model =
                         , onTimeZoneSelect = UpdateTimeZone
                         , moveWeekBackward = MoveWeekBackward
                         , moveWeekForward = MoveWeekForward
+                        , submitAvailability = SubmitAvailableTimes
                         }
                     )
                 , viewDayHeadings model

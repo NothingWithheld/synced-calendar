@@ -58,6 +58,7 @@ viewCalendarHeading :
                 , onTimeZoneSelect : String -> msg
                 , moveWeekForward : msg
                 , moveWeekBackward : msg
+                , submitAvailability : msg
             }
     -> Html msg
 viewCalendarHeading model updates =
@@ -261,9 +262,13 @@ viewMonthHeading model currentDay weekOffset =
 
 viewSubmitAvailabilityButton :
     WithMdc msg (PE.WithAlreadySubmittedAvailability (TS.WithSelectedTimeSlots a))
-    -> { b | onMdc : Material.Msg msg -> msg }
+    ->
+        { b
+            | onMdc : Material.Msg msg -> msg
+            , submitAvailability : msg
+        }
     -> Html msg
-viewSubmitAvailabilityButton model { onMdc } =
+viewSubmitAvailabilityButton model { onMdc, submitAvailability } =
     let
         isAvailableTS eventDetails =
             case eventDetails of
@@ -290,6 +295,7 @@ viewSubmitAvailabilityButton model { onMdc } =
             [ Button.ripple
             , Button.unelevated
             , when isDisabled Button.disabled
+            , Options.onClick submitAvailability
             ]
             [ text "Submit Availability" ]
         ]
