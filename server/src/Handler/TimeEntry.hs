@@ -553,4 +553,4 @@ getFreeToAvailableTimeEntryR userIdText = do
             let potentialAvailableTimeEntries = createAvailableFromFree allFreeTimeEntries fromDate toDate eventId
             let allAvailableTimes = iterateConfirmedEventInvitations potentialAvailableTimeEntries (catMaybes allConfirmedEventInvitations)
             returnJson $ catMaybes $ Import.map (\x -> convertAvailableTimeEntryNoEntityLocal x timezone) allAvailableTimes
-        (_, _) -> invalidArgs ["Failed to pass in valid arguments for timezone or route to valid eventId"]
+        (_, _) -> invalidArgs ["Failed to pass in valid arguments for timezone or event_id"]

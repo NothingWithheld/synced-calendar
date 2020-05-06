@@ -307,18 +307,19 @@ As your code changes, your site will be automatically recompiled and redeployed 
 	id (Int) -> Unique number that identifies a `ProposedEvent`
 
 ### Misc
-- **GET** `/api/{id}/free-to-available`
+- **GET** `/api/{user_id}/free-to-available`
 
-	Gets time entries for the `recipient_id` of the `ProposedEvent`. Finds `FreeTimeEntry` and `ConfirmedEvent`
+	Gets time entries for the User with given `user_id`. Finds `FreeTimeEntry` and `ConfirmedEvent`
 	of `recipient_id` and returns array of time entries with variables `userId`, `eventId`, `date`, `fromTime`, 
 	`toTime`, and `spanMultiple` that are within recipient's `FreeTimeEntry` blocks, but do not conflict 
 	with `ConfirmedEvent`. This doesn't save time entries in database. Client needs to make POST requests to 
 	`/{user_id}/available-times` or `{user_id}/available-times/multiple` if user wants to save these returned 
 	time entries.
 
-	id (Int) -> Unique number that identifies a `ProposedEvent`
+	user_id (Int) -> unique number that identifies a `User` object
 
 	**Parameters**
+	- event_id (Int) -> id that corresponds to a `Event` object
 	- timezone (Int) -> offset from UTC time (range: -14 to 12)
 
 ## Database relationships
