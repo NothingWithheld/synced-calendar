@@ -106,7 +106,6 @@ type Msg
     | HandleSavedAvailableTimesForUser (Result Http.Error (List AvailableTimeDetails))
     | UpdateTimeZone String
     | SetTimeSlotsElement (Result Dom.Error Dom.Element)
-    | SetSavedWeeklyTimeSlots (Result Http.Error (List TSMessaging.ServerTimeSlot))
     | SetAvailableTimesCount (Result Http.Error (Maybe AT.ServerAvailableTimesCount))
     | SetAvailabilityMap (Result Http.Error (List AvailableTimeDetails))
     | StartSelectingTimeSlot TS.DayNum TS.SlotNum
@@ -115,8 +114,6 @@ type Msg
     | HandleTimeSlotMouseUp
     | EditTimeSlotSelection TS.SelectedTimeSlotDetails
     | SaveAvailableTimeSlot
-    | SubmitAvailableTimes
-    | AcknowledgeAvailableTimesSubmission (Result Http.Error NoData)
       -- EventCreation
     | PromptUserForEventDetails EC.EventDetails (Result Dom.Error Dom.Element)
     | ChangeSelectionDayNum String
@@ -184,11 +181,6 @@ update msg model =
         SetTimeSlotsElement result ->
             TSUpdate.setTimeSlotsElement model result
 
-        SetSavedWeeklyTimeSlots result ->
-            TSUpdate.setSavedWeeklyTimeSlots model
-                (SubmitAvailability { handleSavedATForUser = HandleSavedAvailableTimesForUser })
-                result
-
         SetAvailableTimesCount result ->
             TSUpdate.setAvailableTimesCount model result
 
@@ -212,12 +204,6 @@ update msg model =
 
         SaveAvailableTimeSlot ->
             TSUpdate.saveAvailableTimeSlot model
-
-        SubmitAvailableTimes ->
-            TSUpdate.submitAvailableTimes model AcknowledgeAvailableTimesSubmission
-
-        AcknowledgeAvailableTimesSubmission result ->
-            TSUpdate.acknowledgeAvailableTimesSubmission model result
 
         -- EventCreation
         PromptUserForEventDetails eventDetails result ->
@@ -280,7 +266,7 @@ view model =
                     )
                 , viewDayHeadings model
                 , viewScrollableTimeSlots model
-                    (SubmitAvailability
+                    (CreateEvent
                         { editTimeSlotSelection = EditTimeSlotSelection
                         , handleTimeSlotMouseMove = HandleTimeSlotMouseMove
                         , handleTimeSlotMouseUp = HandleTimeSlotMouseUp

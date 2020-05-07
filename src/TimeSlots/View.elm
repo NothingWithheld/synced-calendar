@@ -479,7 +479,7 @@ viewTimeSlotTimes =
 
 
 viewScrollableTimeSlots :
-    PE.WithAlreadySubmittedAvailability (TS.WithLoadingAll (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TSTime.WithTimeDetails (WithSession (EC.WithEventCreation (PE.WithProposedEvent a)))))))
+    AT.WithAvailabilityMap (AT.WithAvailableTimesCount (PE.WithAlreadySubmittedAvailability (TS.WithLoadingAll (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TSTime.WithTimeDetails (WithSession (EC.WithEventCreation (PE.WithProposedEvent a)))))))))
     ->
         Calendar
             { b
@@ -594,7 +594,7 @@ viewTimeSlotTime hour =
 
 
 viewSingleDayTimeSlots :
-    PE.WithAlreadySubmittedAvailability (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (WithSession (EC.WithEventCreation (PE.WithProposedEvent (TSTime.WithTimeDetails a))))))
+    AT.WithAvailabilityMap (AT.WithAvailableTimesCount (PE.WithAlreadySubmittedAvailability (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (WithSession (EC.WithEventCreation (PE.WithProposedEvent (TSTime.WithTimeDetails a))))))))
     ->
         Calendar
             { b
@@ -677,7 +677,7 @@ viewSingleDayTimeSlots model updates ( dayNum, maybeDate ) =
         ([ div
             []
             (List.map
-                (viewTimeSlot model updates isOutsideEventRange dayNum)
+                (viewTimeSlot model updates isOutsideEventRange maybeDate dayNum)
                 TS.slotNumRange
             )
          , viewCurrentlySelectingTimeSlot model dayNum
@@ -689,7 +689,7 @@ viewSingleDayTimeSlots model updates ( dayNum, maybeDate ) =
 
 
 viewTimeSlot :
-    PE.WithAlreadySubmittedAvailability a
+    WithSession (AT.WithAvailabilityMap (AT.WithAvailableTimesCount (PE.WithAlreadySubmittedAvailability a)))
     ->
         Calendar { b | startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg }
             c
@@ -698,13 +698,36 @@ viewTimeSlot :
             }
             e
     -> Bool
+    -> Maybe Posix
     -> Int
     -> Int
     -> Html msg
-viewTimeSlot model updates isOutsideEventRange dayNum slotNum =
+viewTimeSlot model updates isOutsideEventRange maybeDay dayNum slotNum =
+    let
+        isAvailable =
+            case ( updates, maybeDay ) of
+                ( CreateEvent _, Just day ) ->
+                    let
+                        isSlotAvailable =
+                            AT.isSlotAvailable model
+                                (Date.fromPosix (Session.getZone model.session) day)
+                                slotNum
+                    in
+                    model.countSubmitted == model.totalRecipients && isSlotAvailable
+
+                _ ->
+                    False
+    in
     styled div
         [ css "border-right" "1px solid #829AB1"
-        , when isOutsideEventRange <| css "background-color" Constants.disabledColor
+        , if isOutsideEventRange then
+            css "background-color" Constants.disabledColor
+
+          else if isAvailable then
+            css "background-color" Constants.availableColor
+
+          else
+            nop
         , when (modBy 4 slotNum == 3) (css "border-bottom" "1px solid #829AB1")
         , css "height" "16px"
         , case updates of

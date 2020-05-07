@@ -47,6 +47,7 @@ type alias Model =
     , alreadySubmittedAvailability : Bool
     , totalRecipients : Int
     , countSubmitted : Int
+    , availabilityMap : List AvailableTimeDetails
     }
 
 
@@ -75,6 +76,7 @@ init session proposedEvent =
       , alreadySubmittedAvailability = False
       , totalRecipients = 0
       , countSubmitted = 0
+      , availabilityMap = []
       }
     , Cmd.batch
         [ Material.init Mdc

@@ -1,5 +1,6 @@
 module Pages.EventCalendar exposing (Model, Msg, init, subscriptions, update, view)
 
+import AvailableTime.AvailableTime exposing (AvailableTimeDetails)
 import Browser exposing (Document)
 import Browser.Dom as Dom
 import EventCreation.EventCreation as EC
@@ -50,6 +51,7 @@ type alias Model =
     , alreadySubmittedAvailability : Bool
     , totalRecipients : Int
     , countSubmitted : Int
+    , availabilityMap : List AvailableTimeDetails
     }
 
 
@@ -78,6 +80,7 @@ init session =
       , alreadySubmittedAvailability = False
       , totalRecipients = 0
       , countSubmitted = 0
+      , availabilityMap = []
       }
     , Cmd.batch
         [ Material.init Mdc

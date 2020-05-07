@@ -1,5 +1,6 @@
 module AvailableTime.Messaging exposing
     ( availableTimeDetailsListDecoder
+    , availableTimeMultipleListDecoder
     , availableTimesCountDecoder
     , getMultipleAvailableTimesQueryString
     )
@@ -70,3 +71,16 @@ availableTimesCountDecoder =
     Decode.map2 (Maybe.map2 ServerAvailableTimesCount)
         (Decode.map String.toInt <| Decode.field "total_recipients" Decode.string)
         (Decode.map String.toInt <| Decode.field "count_submitted" Decode.string)
+
+
+availableTimeMultipleListDecoder : Decoder (List AvailableTimeDetails)
+availableTimeMultipleListDecoder =
+    Decode.map (List.filterMap identity) <| Decode.list availableTimeMultipleDecoder
+
+
+availableTimeMultipleDecoder : Decoder (Maybe AvailableTimeDetails)
+availableTimeMultipleDecoder =
+    Decode.map3 (Maybe.map3 AvailableTimeDetails)
+        (Decode.map TSTime.stringToDate <| Decode.field "date" Decode.string)
+        (Decode.map (TSTime.militaryToSlotNum False) <| Decode.field "fromTime" Decode.string)
+        (Decode.map (TSTime.militaryToSlotNum True) <| Decode.field "toTime" Decode.string)

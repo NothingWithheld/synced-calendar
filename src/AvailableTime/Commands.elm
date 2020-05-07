@@ -88,7 +88,7 @@ requestAllAvailableTimes model onResult eventId =
 
         decoder =
             Decode.oneOf
-                [ ATMessaging.availableTimeDetailsListDecoder
+                [ ATMessaging.availableTimeMultipleListDecoder
                 , Decode.succeed []
                 ]
     in

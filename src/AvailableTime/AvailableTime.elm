@@ -3,6 +3,7 @@ module AvailableTime.AvailableTime exposing
     , ServerAvailableTimesCount
     , WithAvailabilityMap
     , WithAvailableTimesCount
+    , isSlotAvailable
     )
 
 import Date exposing (Date)
@@ -33,3 +34,12 @@ type alias WithAvailabilityMap a =
     { a
         | availabilityMap : List AvailableTimeDetails
     }
+
+
+isSlotAvailable : WithAvailabilityMap a -> Date -> TS.SlotNum -> Bool
+isSlotAvailable model slotDate slotNum =
+    let
+        containsSlot { date, startSlot, endSlot } =
+            slotDate == date && slotNum >= startSlot && slotNum <= endSlot
+    in
+    List.any containsSlot model.availabilityMap

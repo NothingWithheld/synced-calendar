@@ -1,4 +1,4 @@
-module Constants exposing (confirmedEventColor, disabledColor, setTimeSlotColor)
+module Constants exposing (availableColor, confirmedEventColor, disabledColor, setTimeSlotColor)
 
 
 confirmedEventColor : String
@@ -14,3 +14,8 @@ setTimeSlotColor =
 disabledColor : String
 disabledColor =
     "#B8B2A7"
+
+
+availableColor : String
+availableColor =
+    "#3EBD93"
