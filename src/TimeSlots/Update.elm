@@ -179,62 +179,66 @@ updateTimeZone :
 updateTimeZone model updates timeZoneLabel =
     case Session.setOffset model.session timeZoneLabel of
         Just newSession ->
-            ( { model
-                | session = newSession
-                , selectedTimeSlots = []
-                , loadingWeeklyFreeTimes =
-                    case updates of
-                        WeeklyFreeTimes _ ->
-                            True
+            let
+                updatedModel =
+                    { model
+                        | session = newSession
+                        , selectedTimeSlots = []
+                        , loadingWeeklyFreeTimes =
+                            case updates of
+                                WeeklyFreeTimes _ ->
+                                    True
 
-                        Events _ ->
-                            False
+                                Events _ ->
+                                    False
 
-                        SubmitAvailability _ ->
-                            True
+                                SubmitAvailability _ ->
+                                    True
 
-                        CreateEvent _ ->
-                            False
-                , loadingConfirmedEventsBy =
-                    case updates of
-                        WeeklyFreeTimes _ ->
-                            False
+                                CreateEvent _ ->
+                                    False
+                        , loadingConfirmedEventsBy =
+                            case updates of
+                                WeeklyFreeTimes _ ->
+                                    False
 
-                        Events _ ->
-                            True
+                                Events _ ->
+                                    True
 
-                        SubmitAvailability _ ->
-                            True
+                                SubmitAvailability _ ->
+                                    True
 
-                        CreateEvent _ ->
-                            True
-                , loadingConfirmedEventsFor =
-                    case updates of
-                        WeeklyFreeTimes _ ->
-                            False
+                                CreateEvent _ ->
+                                    True
+                        , loadingConfirmedEventsFor =
+                            case updates of
+                                WeeklyFreeTimes _ ->
+                                    False
 
-                        Events _ ->
-                            True
+                                Events _ ->
+                                    True
 
-                        SubmitAvailability _ ->
-                            True
+                                SubmitAvailability _ ->
+                                    True
 
-                        CreateEvent _ ->
-                            True
-                , loadingAvailabilityMap =
-                    case updates of
-                        WeeklyFreeTimes _ ->
-                            False
+                                CreateEvent _ ->
+                                    True
+                        , loadingAvailabilityMap =
+                            case updates of
+                                WeeklyFreeTimes _ ->
+                                    False
 
-                        Events _ ->
-                            False
+                                Events _ ->
+                                    False
 
-                        SubmitAvailability _ ->
-                            False
+                                SubmitAvailability _ ->
+                                    False
 
-                        CreateEvent _ ->
-                            True
-              }
+                                CreateEvent _ ->
+                                    True
+                    }
+            in
+            ( updatedModel
             , case updates of
                 WeeklyFreeTimes setSavedWeeklyTS ->
                     requestSavedWeeklyTimeSlots
@@ -258,32 +262,32 @@ updateTimeZone model updates timeZoneLabel =
                     Cmd.batch
                         [ requestConfirmedEventsBy
                             setSavedConfirmedEvBy
-                            (Session.getUserId model.session)
-                            (Session.getOffset model.session)
+                            (Session.getUserId newSession)
+                            (Session.getOffset newSession)
                         , requestConfirmedEventsFor
                             setSavedConfirmedEvFor
-                            (Session.getUserId model.session)
-                            (Session.getOffset model.session)
+                            (Session.getUserId newSession)
+                            (Session.getOffset newSession)
                         , requestSavedWeeklyTimeSlots
                             setSavedWeeklyTS
-                            (Session.getUserId model.session)
-                            (Session.getOffset model.session)
+                            (Session.getUserId newSession)
+                            (Session.getOffset newSession)
                         ]
 
                 CreateEvent { setSavedConfirmedEvBy, setSavedConfirmedEvFor, setAvailMap } ->
                     Cmd.batch <|
                         [ requestConfirmedEventsBy
                             setSavedConfirmedEvBy
-                            (Session.getUserId model.session)
-                            (Session.getOffset model.session)
+                            (Session.getUserId newSession)
+                            (Session.getOffset newSession)
                         , requestConfirmedEventsFor
                             setSavedConfirmedEvFor
-                            (Session.getUserId model.session)
-                            (Session.getOffset model.session)
+                            (Session.getUserId newSession)
+                            (Session.getOffset newSession)
                         ]
                             ++ (case model.proposedEvent of
                                     Just { eventId } ->
-                                        [ requestAllAvailableTimes model setAvailMap eventId
+                                        [ requestAllAvailableTimes updatedModel setAvailMap eventId
                                         ]
 
                                     Nothing ->
