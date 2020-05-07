@@ -129,7 +129,7 @@ As your code changes, your site will be automatically recompiled and redeployed 
 	objects with `date`, `fromTime`, `toTime`, `spanMultiple` variables. `spanMultiple` is a flag 
 	that indicates AvailableTimeEntry returned spans two days. `date` variable will correspond to `fromTime`. 
 	(see POST documentation for possible values of the other variables). This API returns all 
-	possibile times a creator can schedule a ConfirmedEvent from a ProposedEvent
+	possible times a creator can schedule a ConfirmedEvent from a ProposedEvent
 
 	event_id (Int) -> unique number that identifies a `Event` object (creator of events)
 

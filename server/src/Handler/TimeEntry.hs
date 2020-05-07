@@ -339,7 +339,7 @@ getAvailableTimeEntryMultipleR eventIdText = do
             let availableTimesEntriesListNoConflicts = Import.zipWith zippedFcn availableTimeEntriesNoEntitiesList confirmedEventsList
             let mappedFcn = (\(AvailableTimeEntry _ _ date fromTime toTime spanMultiple) -> CommonAvailableTimeEntryData date fromTime toTime spanMultiple) 
             case Import.length availableTimesEntriesListNoConflicts of 
-                0 -> returnJson $ object []
+                0 -> returnJson $ availableTimesEntriesListNoConflicts
                 _ -> do 
                     let commonEntriesFirst = Import.map mappedFcn (availableTimesEntriesListNoConflicts !! 0)
                     let commonEntries = findCommonAvailableTimeEntriesMultiple availableTimesEntriesListNoConflicts commonEntriesFirst
