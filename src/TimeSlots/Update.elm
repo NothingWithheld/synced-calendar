@@ -201,19 +201,13 @@ updateTimeZone model updates timeZoneLabel =
                             False
 
                         Events _ ->
-                            -- Server Bug -> sends same result for By and For
-                            -- possibly sends results only to creator
-                            False
+                            True
 
                         SubmitAvailability _ ->
-                            -- Server Bug -> sends same result for By and For
-                            -- possibly sends results only to creator
-                            False
+                            True
 
                         CreateEvent _ ->
-                            -- Server Bug -> sends same result for By and For
-                            -- possibly sends results only to creator
-                            False
+                            True
                 , loadingConfirmedEventsFor =
                     case updates of
                         WeeklyFreeTimes _ ->
@@ -250,13 +244,11 @@ updateTimeZone model updates timeZoneLabel =
 
                 Events { setSavedConfirmedEvBy, setSavedConfirmedEvFor } ->
                     Cmd.batch
-                        [ -- Server Bug -> sends same result for By and For
-                          -- possibly sends results only to creator
-                          -- requestConfirmedEventsBy
-                          -- setSavedConfirmedEvBy
-                          -- (Session.getUserId newSession)
-                          -- (Session.getOffset newSession)
-                          requestConfirmedEventsFor
+                        [ requestConfirmedEventsBy
+                            setSavedConfirmedEvBy
+                            (Session.getUserId newSession)
+                            (Session.getOffset newSession)
+                        , requestConfirmedEventsFor
                             setSavedConfirmedEvFor
                             (Session.getUserId newSession)
                             (Session.getOffset newSession)
@@ -264,13 +256,11 @@ updateTimeZone model updates timeZoneLabel =
 
                 SubmitAvailability { setSavedWeeklyTS, setSavedConfirmedEvBy, setSavedConfirmedEvFor } ->
                     Cmd.batch
-                        [ -- Server Bug -> sends same result for By and For
-                          -- possibly sends results only to creator
-                          -- requestConfirmedEventsBy
-                          -- setSavedConfirmedEvBy
-                          -- (Session.getUserId model.session)
-                          -- (Session.getOffset model.session)
-                          requestConfirmedEventsFor
+                        [ requestConfirmedEventsBy
+                            setSavedConfirmedEvBy
+                            (Session.getUserId model.session)
+                            (Session.getOffset model.session)
+                        , requestConfirmedEventsFor
                             setSavedConfirmedEvFor
                             (Session.getUserId model.session)
                             (Session.getOffset model.session)
@@ -282,13 +272,11 @@ updateTimeZone model updates timeZoneLabel =
 
                 CreateEvent { setSavedConfirmedEvBy, setSavedConfirmedEvFor, setAvailMap } ->
                     Cmd.batch <|
-                        [ -- Server Bug -> sends same result for By and For
-                          -- possibly sends results only to creator
-                          -- requestConfirmedEventsBy
-                          -- setSavedConfirmedEvBy
-                          -- (Session.getUserId model.session)
-                          -- (Session.getOffset model.session)
-                          requestConfirmedEventsFor
+                        [ requestConfirmedEventsBy
+                            setSavedConfirmedEvBy
+                            (Session.getUserId model.session)
+                            (Session.getOffset model.session)
+                        , requestConfirmedEventsFor
                             setSavedConfirmedEvFor
                             (Session.getUserId model.session)
                             (Session.getOffset model.session)
@@ -353,13 +341,11 @@ setTimeSlotPositions model updates result =
 
                 Events { setSavedConfirmedEvBy, setSavedConfirmedEvFor } ->
                     Cmd.batch
-                        [ -- Server Bug -> sends same result for By and For
-                          -- possibly sends results only to creator
-                          -- requestConfirmedEventsBy
-                          -- setSavedConfirmedEvBy
-                          -- (Session.getUserId model.session)
-                          -- (Session.getOffset model.session)
-                          requestConfirmedEventsFor
+                        [ requestConfirmedEventsBy
+                            setSavedConfirmedEvBy
+                            (Session.getUserId model.session)
+                            (Session.getOffset model.session)
+                        , requestConfirmedEventsFor
                             setSavedConfirmedEvFor
                             (Session.getUserId model.session)
                             (Session.getOffset model.session)
@@ -367,13 +353,11 @@ setTimeSlotPositions model updates result =
 
                 SubmitAvailability { setSavedWeeklyTS, setSavedConfirmedEvBy, setSavedConfirmedEvFor } ->
                     Cmd.batch
-                        [ -- Server Bug -> sends same result for By and For
-                          -- possibly sends results only to creator
-                          -- requestConfirmedEventsBy
-                          -- setSavedConfirmedEvBy
-                          -- (Session.getUserId model.session)
-                          -- (Session.getOffset model.session)
-                          requestConfirmedEventsFor
+                        [ requestConfirmedEventsBy
+                            setSavedConfirmedEvBy
+                            (Session.getUserId model.session)
+                            (Session.getOffset model.session)
+                        , requestConfirmedEventsFor
                             setSavedConfirmedEvFor
                             (Session.getUserId model.session)
                             (Session.getOffset model.session)
@@ -385,13 +369,11 @@ setTimeSlotPositions model updates result =
 
                 CreateEvent { setSavedConfirmedEvBy, setSavedConfirmedEvFor } ->
                     Cmd.batch
-                        [ -- Server Bug -> sends same result for By and For
-                          -- possibly sends results only to creator
-                          -- requestConfirmedEventsBy
-                          -- setSavedConfirmedEvBy
-                          -- (Session.getUserId model.session)
-                          -- (Session.getOffset model.session)
-                          requestConfirmedEventsFor
+                        [ requestConfirmedEventsBy
+                            setSavedConfirmedEvBy
+                            (Session.getUserId model.session)
+                            (Session.getOffset model.session)
+                        , requestConfirmedEventsFor
                             setSavedConfirmedEvFor
                             (Session.getUserId model.session)
                             (Session.getOffset model.session)

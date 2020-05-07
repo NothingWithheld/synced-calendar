@@ -56,10 +56,7 @@ init session proposedEvent =
     ( { session = session
       , timeDetails = Nothing
       , loadingWeeklyFreeTimes = True
-
-      -- Server Bug -> sends same result for By and For
-      -- possibly sends results only to creator
-      , loadingConfirmedEventsBy = False
+      , loadingConfirmedEventsBy = True
       , loadingConfirmedEventsFor = True
       , loadingAvailableTimes = True
       , loadingTSPositions = True
