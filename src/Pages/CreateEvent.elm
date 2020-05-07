@@ -20,6 +20,7 @@ import TimeSlots.Time as TSTime
 import TimeSlots.TimeSlots as TS exposing (Calendar(..))
 import TimeSlots.Update as TSUpdate
 import TimeSlots.View exposing (viewCalendarHeading, viewDayHeadings, viewScrollableTimeSlots)
+import Utils exposing (NoData)
 
 
 
@@ -111,7 +112,8 @@ type Msg
     | AdjustTimeSlotSelection TS.PointerPosition (Result Dom.Error Dom.Viewport)
     | HandleTimeSlotMouseUp
     | EditTimeSlotSelection TS.SelectedTimeSlotDetails
-    | SaveAvailableTimeSlot
+    | SubmitConfirmedEvent
+    | AcknowledgeConfirmedEventSubmission (Result Http.Error NoData)
       -- EventCreation
     | PromptUserForEventDetails EC.EventDetails (Result Dom.Error Dom.Element)
     | ChangeSelectionDayNum String
@@ -196,8 +198,11 @@ update msg model =
         EditTimeSlotSelection selectedTimeslotDetails ->
             TSUpdate.editTimeSlotSelection model PromptUserForEventDetails selectedTimeslotDetails
 
-        SaveAvailableTimeSlot ->
-            TSUpdate.saveAvailableTimeSlot model
+        SubmitConfirmedEvent ->
+            TSUpdate.submitConfirmedEvent model AcknowledgeConfirmedEventSubmission
+
+        AcknowledgeConfirmedEventSubmission result ->
+            TSUpdate.acknowledgeConfirmedEventSubmission model result
 
         -- EventCreation
         PromptUserForEventDetails eventDetails result ->
@@ -281,7 +286,7 @@ view model =
                 , changeSelectionEndSlot = ChangeSelectionEndSlot
                 , onMdc = Mdc
                 , closeUserPromptForEventDetails = CloseUserPromptForEventDetails
-                , saveTimeSlot = SaveAvailableTimeSlot
+                , saveTimeSlot = SubmitConfirmedEvent
                 , handleEditingCancel = HandleEditingCancel
                 , noOp = NoOp
                 }

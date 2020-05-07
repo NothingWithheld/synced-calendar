@@ -6,12 +6,15 @@ module TimeSlots.Commands exposing
     , requestSavedWeeklyTimeSlots
     , requestTimeSlotPositions
     , requestTimeSlotsElement
+    , saveConfirmedEvent
     , saveWeeklyTimeSlot
     , updateWeeklyTimeSlot
     )
 
 import Browser.Dom as Dom
+import Date exposing (Date)
 import Http
+import Session exposing (WithSession)
 import Task
 import Time exposing (Posix)
 import TimeSlots.Messaging as TSMessaging
@@ -157,4 +160,24 @@ requestConfirmedEventsFor onResult userId timeZoneOffset =
     Http.get
         { url = "http://localhost:3000/api/" ++ userId ++ "/confirmed-event/recipient" ++ queryString
         , expect = Http.expectJson onResult TSMessaging.serverConfirmedEventListDecoder
+        }
+
+
+saveConfirmedEvent :
+    WithSession a
+    -> (Result Http.Error NoData -> msg)
+    -> Int
+    -> Date
+    -> TS.SlotNum
+    -> TS.SlotNum
+    -> Cmd msg
+saveConfirmedEvent model onResult eventId date startSlot endSlot =
+    let
+        queryString =
+            TSMessaging.getConfirmedEventQueryString model date startSlot endSlot
+    in
+    Http.post
+        { url = "http://localhost:3000/api/" ++ String.fromInt eventId ++ "/confirmed-event/creator"
+        , body = Http.stringBody "application/x-www-form-urlencoded" queryString
+        , expect = Http.expectJson onResult Utils.noDataDecoder
         }

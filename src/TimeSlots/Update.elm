@@ -1,5 +1,6 @@
 module TimeSlots.Update exposing
     ( acknowledgeAvailableTimesSubmission
+    , acknowledgeConfirmedEventSubmission
     , adjustTimeSlotSelection
     , deleteTimeSlot
     , editTimeSlotSelection
@@ -24,6 +25,7 @@ module TimeSlots.Update exposing
     , setTimeSlotsElement
     , startSelectingTimeSlot
     , submitAvailableTimes
+    , submitConfirmedEvent
     , updateTimeZone
     )
 
@@ -49,6 +51,7 @@ import TimeSlots.Commands
         , requestConfirmedEventsBy
         , requestConfirmedEventsFor
         , requestSavedWeeklyTimeSlots
+        , saveConfirmedEvent
         , saveWeeklyTimeSlot
         , updateWeeklyTimeSlot
         )
@@ -1265,4 +1268,70 @@ acknowledgeAvailableTimesSubmission model result =
             ( { model | alreadySubmittedAvailability = True }, Cmd.none )
 
         Err _ ->
+            ( model, Cmd.none )
+
+
+
+-- confirmed event
+
+
+submitConfirmedEvent :
+    WithSession (TS.WithTimeSlotSelection (EC.WithEventCreation a))
+    -> (Result Http.Error NoData -> msg)
+    -> ( WithSession (TS.WithTimeSlotSelection (EC.WithEventCreation a)), Cmd msg )
+submitConfirmedEvent model ackConfirmedEventSubmission =
+    case ( model.timeSlotSelection, model.eventCreation ) of
+        ( TS.CurrentlySelecting timeSlot, EC.CurrentlyCreatingEvent eventDetails _ ) ->
+            let
+                { startBound, endBound } =
+                    TS.getOrderedTimeSlot timeSlot
+            in
+            case eventDetails of
+                EC.UnsetConfirmedEvent { eventId, date } ->
+                    ( model
+                    , saveConfirmedEvent model
+                        ackConfirmedEventSubmission
+                        eventId
+                        date
+                        startBound.slotNum
+                        endBound.slotNum
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+acknowledgeConfirmedEventSubmission :
+    WithSession (TS.WithTimeSlotSelection (EC.WithEventCreation (TS.WithSelectedTimeSlots a)))
+    -> Result Http.Error NoData
+    -> ( WithSession (TS.WithTimeSlotSelection (EC.WithEventCreation (TS.WithSelectedTimeSlots a))), Cmd msg )
+acknowledgeConfirmedEventSubmission model result =
+    case ( result, model.timeSlotSelection, model.eventCreation ) of
+        ( Ok _, TS.CurrentlySelecting timeSlot, EC.CurrentlyCreatingEvent eventDetails _ ) ->
+            case eventDetails of
+                EC.UnsetConfirmedEvent confirmedEvent ->
+                    let
+                        orderedTimeSlot =
+                            TS.getOrderedTimeSlot timeSlot
+
+                        selectedTimeSlot =
+                            TS.SelectedTimeSlotDetails
+                                orderedTimeSlot
+                                (EC.ConfirmedEvent confirmedEvent)
+                    in
+                    ( { model
+                        | selectedTimeSlots = selectedTimeSlot :: model.selectedTimeSlots
+                        , timeSlotSelection = TS.NotSelecting
+                        , eventCreation = EC.NotCreating
+                      }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        _ ->
             ( model, Cmd.none )
