@@ -59,6 +59,11 @@ viewUserRequest :
                 , updateTimeSlot : msg
                 , noOp : msg
             }
+            { e
+                | noOp : msg
+                , handleEditingCancel : msg
+                , onMdc : Material.Msg msg -> msg
+            }
     -> Html msg
 viewUserRequest model updates =
     let
@@ -71,6 +76,9 @@ viewUserRequest model updates =
                     updates_.handleEditingCancel
 
                 SubmitAvailability updates_ ->
+                    updates_.handleEditingCancel
+
+                CreateEvent updates_ ->
                     updates_.handleEditingCancel
     in
     case model.eventCreation of
@@ -142,6 +150,11 @@ viewUserRequestForm :
                 , updateTimeSlot : msg
                 , noOp : msg
             }
+            { e
+                | noOp : msg
+                , handleEditingCancel : msg
+                , onMdc : Material.Msg msg -> msg
+            }
     -> EC.EventDetails
     -> Html msg
 viewUserRequestForm model updates eventDetails =
@@ -186,6 +199,9 @@ viewUserRequestForm model updates eventDetails =
                     updates_.noOp
 
                 SubmitAvailability updates_ ->
+                    updates_.noOp
+
+                CreateEvent updates_ ->
                     updates_.noOp
     in
     case maybeTimeSlot of

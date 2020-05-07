@@ -1,9 +1,10 @@
 module AvailableTime.Messaging exposing
     ( availableTimeDetailsListDecoder
+    , availableTimesCountDecoder
     , getMultipleAvailableTimesQueryString
     )
 
-import AvailableTime.AvailableTime exposing (AvailableTimeDetails)
+import AvailableTime.AvailableTime exposing (AvailableTimeDetails, ServerAvailableTimesCount)
 import Json.Decode as Decode exposing (Decoder)
 import Session exposing (WithSession)
 import TimeSlots.Time as TSTime
@@ -62,3 +63,10 @@ availableTimeDetailsDecoder =
         (Decode.map TSTime.isoStringToDate <| Decode.field "date" Decode.string)
         (Decode.map (TSTime.militaryToSlotNum False) <| Decode.field "fromTime" Decode.string)
         (Decode.map (TSTime.militaryToSlotNum True) <| Decode.field "toTime" Decode.string)
+
+
+availableTimesCountDecoder : Decoder (Maybe ServerAvailableTimesCount)
+availableTimesCountDecoder =
+    Decode.map2 (Maybe.map2 ServerAvailableTimesCount)
+        (Decode.map String.toInt <| Decode.field "total_recipients" Decode.string)
+        (Decode.map String.toInt <| Decode.field "count_submitted" Decode.string)

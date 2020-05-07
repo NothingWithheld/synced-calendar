@@ -1,6 +1,10 @@
-module AvailableTime.Commands exposing (requestAvailableTimesForUser, saveAvailableTimes)
+module AvailableTime.Commands exposing
+    ( requestAvailableTimesCount
+    , requestAvailableTimesForUser
+    , saveAvailableTimes
+    )
 
-import AvailableTime.AvailableTime exposing (AvailableTimeDetails)
+import AvailableTime.AvailableTime exposing (AvailableTimeDetails, ServerAvailableTimesCount)
 import AvailableTime.Messaging as ATMessaging
 import Http
 import Session exposing (WithSession)
@@ -51,4 +55,15 @@ requestAvailableTimesForUser model onResult eventId =
     Http.get
         { url = "http://localhost:3000/api/" ++ userId ++ "/available-times" ++ queryString
         , expect = Http.expectJson onResult ATMessaging.availableTimeDetailsListDecoder
+        }
+
+
+requestAvailableTimesCount :
+    (Result Http.Error (Maybe ServerAvailableTimesCount) -> msg)
+    -> Int
+    -> Cmd msg
+requestAvailableTimesCount onResult eventId =
+    Http.get
+        { url = "http://localhost:3000/api/" ++ String.fromInt eventId ++ "/available-times/count"
+        , expect = Http.expectJson onResult ATMessaging.availableTimesCountDecoder
         }

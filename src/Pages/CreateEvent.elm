@@ -1,6 +1,7 @@
 module Pages.CreateEvent exposing (Model, Msg, init, subscriptions, update, view)
 
-import AvailableTime.AvailableTime exposing (AvailableTimeDetails)
+import AvailableTime.AvailableTime as AT exposing (AvailableTimeDetails)
+import AvailableTime.Commands exposing (requestAvailableTimesCount)
 import Browser exposing (Document)
 import Browser.Dom as Dom
 import EventCreation.EventCreation as EC
@@ -34,6 +35,8 @@ type alias Model =
     , loadingConfirmedEventsFor : Bool
     , loadingAvailableTimes : Bool
     , loadingTSPositions : Bool
+    , loadingAvailableTimesCount : Bool
+    , loadingAvailabilityMap : Bool
     , timeSlotPositions : List TS.TimeSlotBoundaryPosition
     , timeSlotsElement : Maybe TS.Element
     , timeSlotSelection : TS.TimeSlotSelection
@@ -43,6 +46,8 @@ type alias Model =
     , mdc : Material.Model Msg
     , proposedEvent : Maybe ProposedEvent
     , alreadySubmittedAvailability : Bool
+    , totalRecipients : Int
+    , countSubmitted : Int
     }
 
 
@@ -58,6 +63,8 @@ init session proposedEvent =
       , loadingConfirmedEventsFor = True
       , loadingAvailableTimes = True
       , loadingTSPositions = True
+      , loadingAvailableTimesCount = True
+      , loadingAvailabilityMap = True
       , timeSlotPositions = []
       , timeSlotsElement = Nothing
       , timeSlotSelection = TS.NotSelecting
@@ -67,12 +74,15 @@ init session proposedEvent =
       , mdc = Material.defaultModel
       , proposedEvent = Just proposedEvent
       , alreadySubmittedAvailability = False
+      , totalRecipients = 0
+      , countSubmitted = 0
       }
     , Cmd.batch
         [ Material.init Mdc
         , requestTimeSlotPositions SetTimeSlotPositions
         , requestTimeSlotsElement SetTimeSlotsElement
         , requestCurrentDay SetInitialTime
+        , requestAvailableTimesCount SetAvailableTimesCount proposedEvent.eventId
         ]
     )
 
@@ -94,6 +104,7 @@ type Msg
     | UpdateTimeZone String
     | SetTimeSlotsElement (Result Dom.Error Dom.Element)
     | SetSavedWeeklyTimeSlots (Result Http.Error (List TSMessaging.ServerTimeSlot))
+    | SetAvailableTimesCount (Result Http.Error (Maybe AT.ServerAvailableTimesCount))
     | StartSelectingTimeSlot TS.DayNum TS.SlotNum
     | HandleTimeSlotMouseMove TS.PointerPosition
     | AdjustTimeSlotSelection TS.PointerPosition (Result Dom.Error Dom.Viewport)
@@ -166,6 +177,9 @@ update msg model =
             TSUpdate.setSavedWeeklyTimeSlots model
                 (SubmitAvailability { handleSavedATForUser = HandleSavedAvailableTimesForUser })
                 result
+
+        SetAvailableTimesCount result ->
+            TSUpdate.setAvailableTimesCount model result
 
         StartSelectingTimeSlot dayNum slotNum ->
             TSUpdate.startSelectingTimeSlot model dayNum slotNum

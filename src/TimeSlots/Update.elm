@@ -12,6 +12,7 @@ module TimeSlots.Update exposing
     , sendDeleteTimeSlotRequest
     , sendSaveTimeSlotRequest
     , sendUpdateTimeSlotRequest
+    , setAvailableTimesCount
     , setInitialTime
     , setSavedConfirmedEventsBy
     , setSavedConfirmedEventsFor
@@ -25,8 +26,12 @@ module TimeSlots.Update exposing
     , updateTimeZone
     )
 
-import AvailableTime.AvailableTime exposing (AvailableTimeDetails)
-import AvailableTime.Commands exposing (requestAvailableTimesForUser, saveAvailableTimes)
+import AvailableTime.AvailableTime as AT exposing (AvailableTimeDetails)
+import AvailableTime.Commands
+    exposing
+        ( requestAvailableTimesForUser
+        , saveAvailableTimes
+        )
 import Browser.Dom as Dom
 import EventCreation.EventCreation as EC
 import EventCreation.Update as ECUpdate
@@ -65,7 +70,7 @@ import Utils
 
 setInitialTime :
     TSTime.WithTimeDetails (PE.WithProposedEvent (WithSession a))
-    -> Calendar b c d
+    -> Calendar b c d e
     -> Result Never Posix
     -> ( TSTime.WithTimeDetails (PE.WithProposedEvent (WithSession a)), Cmd msg )
 setInitialTime model updates result =
@@ -138,6 +143,7 @@ updateTimeZone :
                     Result Http.Error (List TSMessaging.ServerConfirmedEvent) -> msg
             }
             c
+            d
     -> String
     -> ( TS.WithLoadingAllExceptTSPositions (WithSession (TS.WithSelectedTimeSlots a)), Cmd msg )
 updateTimeZone model updates timeZoneLabel =
@@ -156,6 +162,9 @@ updateTimeZone model updates timeZoneLabel =
 
                         SubmitAvailability _ ->
                             True
+
+                        CreateEvent _ ->
+                            False
                 , loadingConfirmedEventsBy =
                     case updates of
                         WeeklyFreeTimes _ ->
@@ -170,6 +179,11 @@ updateTimeZone model updates timeZoneLabel =
                             -- Server Bug -> sends same result for By and For
                             -- possibly sends results only to creator
                             False
+
+                        CreateEvent _ ->
+                            -- Server Bug -> sends same result for By and For
+                            -- possibly sends results only to creator
+                            False
                 , loadingConfirmedEventsFor =
                     case updates of
                         WeeklyFreeTimes _ ->
@@ -179,6 +193,9 @@ updateTimeZone model updates timeZoneLabel =
                             True
 
                         SubmitAvailability _ ->
+                            True
+
+                        CreateEvent _ ->
                             True
               }
             , case updates of
@@ -203,6 +220,9 @@ updateTimeZone model updates timeZoneLabel =
                         ]
 
                 SubmitAvailability _ ->
+                    Cmd.none
+
+                CreateEvent _ ->
                     Cmd.none
             )
 
@@ -232,6 +252,7 @@ setTimeSlotPositions :
                 , setSavedWeeklyTS :
                     Result Http.Error (List TSMessaging.ServerTimeSlot) -> msg
             }
+            d
     -> Result Dom.Error (List Dom.Element)
     -> ( TS.WithTimeSlotPositions (TS.WithLoadingTSPositions (WithSession a)), Cmd msg )
 setTimeSlotPositions model updates result =
@@ -279,6 +300,9 @@ setTimeSlotPositions model updates result =
                             (Session.getUserId model.session)
                             (Session.getOffset model.session)
                         ]
+
+                CreateEvent _ ->
+                    Cmd.none
             )
     in
     defaultOnError ( model, Cmd.none ) result updateModelWithTSPositions
@@ -309,6 +333,7 @@ setSavedWeeklyTimeSlots :
             { d
                 | handleSavedATForUser : Result Http.Error (List AvailableTimeDetails) -> msg
             }
+            e
     -> Result Http.Error (List TSMessaging.ServerTimeSlot)
     -> ( WithSession (TS.WithLoadingAllExceptTSPositions (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots (PE.WithProposedEvent a)))), Cmd msg )
 setSavedWeeklyTimeSlots model updates result =
@@ -403,6 +428,7 @@ setSavedConfirmedEventsFor :
             { d
                 | handleSavedATForUser : Result Http.Error (List AvailableTimeDetails) -> msg
             }
+            e
     -> Result Http.Error (List TSMessaging.ServerConfirmedEvent)
     -> ( WithSession (TS.WithLoadingAllExceptTSPositions (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots (PE.WithProposedEvent a)))), Cmd msg )
 setSavedConfirmedEventsFor model updates result =
@@ -444,6 +470,7 @@ setSavedConfirmedEventsBy :
             { d
                 | handleSavedATForUser : Result Http.Error (List AvailableTimeDetails) -> msg
             }
+            e
     -> Result Http.Error (List TSMessaging.ServerConfirmedEvent)
     -> ( WithSession (TS.WithLoadingAllExceptTSPositions (TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots (PE.WithProposedEvent a)))), Cmd msg )
 setSavedConfirmedEventsBy model updates result =
@@ -601,6 +628,34 @@ setAvailableTimesFromWFT model =
             )
 
         Nothing ->
+            ( model, Cmd.none )
+
+
+
+-- available times for event confirmation
+
+
+setAvailableTimesCount :
+    AT.WithAvailableTimesCount (TS.WithLoadingAvailableTimesCount a)
+    -> Result Http.Error (Maybe AT.ServerAvailableTimesCount)
+    -> ( AT.WithAvailableTimesCount (TS.WithLoadingAvailableTimesCount a), Cmd msg )
+setAvailableTimesCount model result =
+    case result of
+        Ok maybeAvailableTimesCount ->
+            case maybeAvailableTimesCount of
+                Just { totalRecipients, countSubmitted } ->
+                    ( { model
+                        | totalRecipients = totalRecipients
+                        , countSubmitted = countSubmitted
+                        , loadingAvailableTimesCount = False
+                      }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        _ ->
             ( model, Cmd.none )
 
 
@@ -820,7 +875,7 @@ setSelectedTimeSlotAfterEditing model result =
 
 setOneHourSelection :
     TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions (TSTime.WithTimeDetails (WithSession a))))
-    -> Calendar b c d
+    -> Calendar b c d e
     -> (EC.EventDetails -> Result Dom.Error Dom.Element -> msg)
     -> TS.DayNum
     -> TS.SlotNum
@@ -885,7 +940,7 @@ setOneHourSelection model updates promptEventDetails dayNum slotNum =
 
 handleTimeSlotMouseUp :
     TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions (TSTime.WithTimeDetails (WithSession a))))
-    -> Calendar b c d
+    -> Calendar b c d e
     -> (EC.EventDetails -> Result Dom.Error Dom.Element -> msg)
     -> ( TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions (TSTime.WithTimeDetails (WithSession a)))), Cmd msg )
 handleTimeSlotMouseUp model updates promptEventDetails =

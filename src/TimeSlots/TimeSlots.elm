@@ -10,10 +10,11 @@ scrollableTimeSlotsId =
     "scrollable-time-slots"
 
 
-type Calendar a b c
+type Calendar a b c d
     = WeeklyFreeTimes a
     | Events b
     | SubmitAvailability c
+    | CreateEvent d
 
 
 type alias WithLoadingWeeklyFreeTimes a =
@@ -36,8 +37,16 @@ type alias WithLoadingAvailableTimes a =
     { a | loadingAvailableTimes : Bool }
 
 
+type alias WithLoadingAvailableTimesCount a =
+    { a | loadingAvailableTimesCount : Bool }
+
+
+type alias WithLoadingAvailabilityMap a =
+    { a | loadingAvailabilityMap : Bool }
+
+
 type alias WithLoadingAllExceptTSPositions a =
-    WithLoadingWeeklyFreeTimes (WithLoadingConfirmedEventsBy (WithLoadingConfirmedEventsFor (WithLoadingAvailableTimes a)))
+    WithLoadingAvailabilityMap (WithLoadingAvailableTimesCount (WithLoadingWeeklyFreeTimes (WithLoadingConfirmedEventsBy (WithLoadingConfirmedEventsFor (WithLoadingAvailableTimes a)))))
 
 
 type alias WithLoadingConfirmedEvents a =
@@ -45,7 +54,7 @@ type alias WithLoadingConfirmedEvents a =
 
 
 type alias WithLoadingAll a =
-    WithLoadingWeeklyFreeTimes (WithLoadingConfirmedEventsBy (WithLoadingConfirmedEventsFor (WithLoadingTSPositions (WithLoadingAvailableTimes a))))
+    WithLoadingAvailabilityMap (WithLoadingAvailableTimesCount (WithLoadingWeeklyFreeTimes (WithLoadingConfirmedEventsBy (WithLoadingConfirmedEventsFor (WithLoadingTSPositions (WithLoadingAvailableTimes a))))))
 
 
 isLoading : WithLoadingAll a -> Bool
@@ -55,6 +64,8 @@ isLoading model =
         || model.loadingConfirmedEventsFor
         || model.loadingTSPositions
         || model.loadingAvailableTimes
+        || model.loadingAvailableTimesCount
+        || model.loadingAvailabilityMap
 
 
 isLoadingConfirmedEvents : WithLoadingConfirmedEvents a -> Bool

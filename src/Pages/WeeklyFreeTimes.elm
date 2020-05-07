@@ -32,6 +32,8 @@ type alias Model =
     , loadingConfirmedEventsFor : Bool
     , loadingAvailableTimes : Bool
     , loadingTSPositions : Bool
+    , loadingAvailableTimesCount : Bool
+    , loadingAvailabilityMap : Bool
     , timeSlotPositions : List TS.TimeSlotBoundaryPosition
     , timeSlotsElement : Maybe TS.Element
     , timeSlotSelection : TS.TimeSlotSelection
@@ -53,6 +55,8 @@ init session =
       , loadingConfirmedEventsFor = False
       , loadingAvailableTimes = False
       , loadingTSPositions = True
+      , loadingAvailableTimesCount = False
+      , loadingAvailabilityMap = False
       , timeSlotPositions = []
       , timeSlotsElement = Nothing
       , timeSlotSelection = TS.NotSelecting
