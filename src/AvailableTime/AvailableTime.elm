@@ -1,6 +1,7 @@
 module AvailableTime.AvailableTime exposing
     ( AvailableTimeDetails
     , ServerAvailableTimesCount
+    , WithAvailabilityMap
     , WithAvailableTimesCount
     )
 
@@ -25,4 +26,10 @@ type alias WithAvailableTimesCount a =
     { a
         | totalRecipients : Int
         , countSubmitted : Int
+    }
+
+
+type alias WithAvailabilityMap a =
+    { a
+        | availabilityMap : List AvailableTimeDetails
     }

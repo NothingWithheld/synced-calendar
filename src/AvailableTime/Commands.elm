@@ -1,5 +1,6 @@
 module AvailableTime.Commands exposing
-    ( requestAvailableTimesCount
+    ( requestAllAvailableTimes
+    , requestAvailableTimesCount
     , requestAvailableTimesForUser
     , saveAvailableTimes
     )
@@ -7,6 +8,7 @@ module AvailableTime.Commands exposing
 import AvailableTime.AvailableTime exposing (AvailableTimeDetails, ServerAvailableTimesCount)
 import AvailableTime.Messaging as ATMessaging
 import Http
+import Json.Decode as Decode
 import Session exposing (WithSession)
 import Url.Builder as Builder
 import Utils exposing (NoData)
@@ -66,4 +68,31 @@ requestAvailableTimesCount onResult eventId =
     Http.get
         { url = "http://localhost:3000/api/" ++ String.fromInt eventId ++ "/available-times/count"
         , expect = Http.expectJson onResult ATMessaging.availableTimesCountDecoder
+        }
+
+
+requestAllAvailableTimes :
+    WithSession a
+    -> (Result Http.Error (List AvailableTimeDetails) -> msg)
+    -> Int
+    -> Cmd msg
+requestAllAvailableTimes model onResult eventId =
+    let
+        timezoneOffset =
+            Session.getOffset model.session
+
+        queryString =
+            Builder.toQuery
+                [ Builder.int "timezone" timezoneOffset
+                ]
+
+        decoder =
+            Decode.oneOf
+                [ ATMessaging.availableTimeDetailsListDecoder
+                , Decode.succeed []
+                ]
+    in
+    Http.get
+        { url = "http://localhost:3000/api/" ++ String.fromInt eventId ++ "/available-times/multiple" ++ queryString
+        , expect = Http.expectJson onResult decoder
         }

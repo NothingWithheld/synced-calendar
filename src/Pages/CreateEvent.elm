@@ -1,7 +1,7 @@
 module Pages.CreateEvent exposing (Model, Msg, init, subscriptions, update, view)
 
 import AvailableTime.AvailableTime as AT exposing (AvailableTimeDetails)
-import AvailableTime.Commands exposing (requestAvailableTimesCount)
+import AvailableTime.Commands exposing (requestAllAvailableTimes, requestAvailableTimesCount)
 import Browser exposing (Document)
 import Browser.Dom as Dom
 import EventCreation.EventCreation as EC
@@ -48,6 +48,7 @@ type alias Model =
     , alreadySubmittedAvailability : Bool
     , totalRecipients : Int
     , countSubmitted : Int
+    , availabilityMap : List AvailableTimeDetails
     }
 
 
@@ -55,7 +56,7 @@ init : Session -> ProposedEvent -> ( Model, Cmd Msg )
 init session proposedEvent =
     ( { session = session
       , timeDetails = Nothing
-      , loadingWeeklyFreeTimes = True
+      , loadingWeeklyFreeTimes = False
 
       -- Server Bug -> sends same result for By and For
       -- possibly sends results only to creator
@@ -76,6 +77,7 @@ init session proposedEvent =
       , alreadySubmittedAvailability = False
       , totalRecipients = 0
       , countSubmitted = 0
+      , availabilityMap = []
       }
     , Cmd.batch
         [ Material.init Mdc
@@ -83,6 +85,7 @@ init session proposedEvent =
         , requestTimeSlotsElement SetTimeSlotsElement
         , requestCurrentDay SetInitialTime
         , requestAvailableTimesCount SetAvailableTimesCount proposedEvent.eventId
+        , requestAllAvailableTimes { session = session } SetAvailabilityMap proposedEvent.eventId
         ]
     )
 
@@ -105,6 +108,7 @@ type Msg
     | SetTimeSlotsElement (Result Dom.Error Dom.Element)
     | SetSavedWeeklyTimeSlots (Result Http.Error (List TSMessaging.ServerTimeSlot))
     | SetAvailableTimesCount (Result Http.Error (Maybe AT.ServerAvailableTimesCount))
+    | SetAvailabilityMap (Result Http.Error (List AvailableTimeDetails))
     | StartSelectingTimeSlot TS.DayNum TS.SlotNum
     | HandleTimeSlotMouseMove TS.PointerPosition
     | AdjustTimeSlotSelection TS.PointerPosition (Result Dom.Error Dom.Viewport)
@@ -146,10 +150,10 @@ update msg model =
 
         SetTimeSlotPositions result ->
             TSUpdate.setTimeSlotPositions model
-                (SubmitAvailability
+                (CreateEvent
                     { setSavedConfirmedEvBy = SetSavedConfirmedEventsBy
                     , setSavedConfirmedEvFor = SetSavedConfirmedEventsFor
-                    , setSavedWeeklyTS = SetSavedWeeklyTimeSlots
+                    , setAvailMap = SetAvailabilityMap
                     }
                 )
                 result
@@ -168,7 +172,14 @@ update msg model =
             TSUpdate.handleSavedAvailableTimesForUser model result
 
         UpdateTimeZone timeZoneLabel ->
-            TSUpdate.updateTimeZone model (WeeklyFreeTimes SetSavedWeeklyTimeSlots) timeZoneLabel
+            TSUpdate.updateTimeZone model
+                (CreateEvent
+                    { setSavedConfirmedEvBy = SetSavedConfirmedEventsBy
+                    , setSavedConfirmedEvFor = SetSavedConfirmedEventsFor
+                    , setAvailMap = SetAvailabilityMap
+                    }
+                )
+                timeZoneLabel
 
         SetTimeSlotsElement result ->
             TSUpdate.setTimeSlotsElement model result
@@ -180,6 +191,9 @@ update msg model =
 
         SetAvailableTimesCount result ->
             TSUpdate.setAvailableTimesCount model result
+
+        SetAvailabilityMap result ->
+            TSUpdate.setAvailabilityMap model result
 
         StartSelectingTimeSlot dayNum slotNum ->
             TSUpdate.startSelectingTimeSlot model dayNum slotNum

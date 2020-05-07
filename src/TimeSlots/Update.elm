@@ -12,6 +12,7 @@ module TimeSlots.Update exposing
     , sendDeleteTimeSlotRequest
     , sendSaveTimeSlotRequest
     , sendUpdateTimeSlotRequest
+    , setAvailabilityMap
     , setAvailableTimesCount
     , setInitialTime
     , setSavedConfirmedEventsBy
@@ -29,7 +30,8 @@ module TimeSlots.Update exposing
 import AvailableTime.AvailableTime as AT exposing (AvailableTimeDetails)
 import AvailableTime.Commands
     exposing
-        ( requestAvailableTimesForUser
+        ( requestAllAvailableTimes
+        , requestAvailableTimesForUser
         , saveAvailableTimes
         )
 import Browser.Dom as Dom
@@ -133,7 +135,7 @@ moveWeekBackward model =
 
 
 updateTimeZone :
-    TS.WithLoadingAllExceptTSPositions (WithSession (TS.WithSelectedTimeSlots a))
+    PE.WithProposedEvent (TS.WithLoadingAllExceptTSPositions (WithSession (TS.WithSelectedTimeSlots a)))
     ->
         Calendar (Result Http.Error (List TSMessaging.ServerTimeSlot) -> msg)
             { b
@@ -142,10 +144,24 @@ updateTimeZone :
                 , setSavedConfirmedEvFor :
                     Result Http.Error (List TSMessaging.ServerConfirmedEvent) -> msg
             }
-            c
-            d
+            { c
+                | setSavedConfirmedEvBy :
+                    Result Http.Error (List TSMessaging.ServerConfirmedEvent) -> msg
+                , setSavedConfirmedEvFor :
+                    Result Http.Error (List TSMessaging.ServerConfirmedEvent) -> msg
+                , setSavedWeeklyTS :
+                    Result Http.Error (List TSMessaging.ServerTimeSlot) -> msg
+            }
+            { d
+                | setSavedConfirmedEvBy :
+                    Result Http.Error (List TSMessaging.ServerConfirmedEvent) -> msg
+                , setSavedConfirmedEvFor :
+                    Result Http.Error (List TSMessaging.ServerConfirmedEvent) -> msg
+                , setAvailMap :
+                    Result Http.Error (List AvailableTimeDetails) -> msg
+            }
     -> String
-    -> ( TS.WithLoadingAllExceptTSPositions (WithSession (TS.WithSelectedTimeSlots a)), Cmd msg )
+    -> ( PE.WithProposedEvent (TS.WithLoadingAllExceptTSPositions (WithSession (TS.WithSelectedTimeSlots a))), Cmd msg )
 updateTimeZone model updates timeZoneLabel =
     case Session.setOffset model.session timeZoneLabel of
         Just newSession ->
@@ -197,6 +213,19 @@ updateTimeZone model updates timeZoneLabel =
 
                         CreateEvent _ ->
                             True
+                , loadingAvailabilityMap =
+                    case updates of
+                        WeeklyFreeTimes _ ->
+                            False
+
+                        Events _ ->
+                            False
+
+                        SubmitAvailability _ ->
+                            False
+
+                        CreateEvent _ ->
+                            True
               }
             , case updates of
                 WeeklyFreeTimes setSavedWeeklyTS ->
@@ -219,11 +248,45 @@ updateTimeZone model updates timeZoneLabel =
                             (Session.getOffset newSession)
                         ]
 
-                SubmitAvailability _ ->
-                    Cmd.none
+                SubmitAvailability { setSavedWeeklyTS, setSavedConfirmedEvBy, setSavedConfirmedEvFor } ->
+                    Cmd.batch
+                        [ -- Server Bug -> sends same result for By and For
+                          -- possibly sends results only to creator
+                          -- requestConfirmedEventsBy
+                          -- setSavedConfirmedEvBy
+                          -- (Session.getUserId model.session)
+                          -- (Session.getOffset model.session)
+                          requestConfirmedEventsFor
+                            setSavedConfirmedEvFor
+                            (Session.getUserId model.session)
+                            (Session.getOffset model.session)
+                        , requestSavedWeeklyTimeSlots
+                            setSavedWeeklyTS
+                            (Session.getUserId model.session)
+                            (Session.getOffset model.session)
+                        ]
 
-                CreateEvent _ ->
-                    Cmd.none
+                CreateEvent { setSavedConfirmedEvBy, setSavedConfirmedEvFor, setAvailMap } ->
+                    Cmd.batch <|
+                        [ -- Server Bug -> sends same result for By and For
+                          -- possibly sends results only to creator
+                          -- requestConfirmedEventsBy
+                          -- setSavedConfirmedEvBy
+                          -- (Session.getUserId model.session)
+                          -- (Session.getOffset model.session)
+                          requestConfirmedEventsFor
+                            setSavedConfirmedEvFor
+                            (Session.getUserId model.session)
+                            (Session.getOffset model.session)
+                        ]
+                            ++ (case model.proposedEvent of
+                                    Just { eventId } ->
+                                        [ requestAllAvailableTimes model setAvailMap eventId
+                                        ]
+
+                                    Nothing ->
+                                        []
+                               )
             )
 
         Nothing ->
@@ -252,7 +315,12 @@ setTimeSlotPositions :
                 , setSavedWeeklyTS :
                     Result Http.Error (List TSMessaging.ServerTimeSlot) -> msg
             }
-            d
+            { d
+                | setSavedConfirmedEvBy :
+                    Result Http.Error (List TSMessaging.ServerConfirmedEvent) -> msg
+                , setSavedConfirmedEvFor :
+                    Result Http.Error (List TSMessaging.ServerConfirmedEvent) -> msg
+            }
     -> Result Dom.Error (List Dom.Element)
     -> ( TS.WithTimeSlotPositions (TS.WithLoadingTSPositions (WithSession a)), Cmd msg )
 setTimeSlotPositions model updates result =
@@ -301,8 +369,19 @@ setTimeSlotPositions model updates result =
                             (Session.getOffset model.session)
                         ]
 
-                CreateEvent _ ->
-                    Cmd.none
+                CreateEvent { setSavedConfirmedEvBy, setSavedConfirmedEvFor } ->
+                    Cmd.batch
+                        [ -- Server Bug -> sends same result for By and For
+                          -- possibly sends results only to creator
+                          -- requestConfirmedEventsBy
+                          -- setSavedConfirmedEvBy
+                          -- (Session.getUserId model.session)
+                          -- (Session.getOffset model.session)
+                          requestConfirmedEventsFor
+                            setSavedConfirmedEvFor
+                            (Session.getUserId model.session)
+                            (Session.getOffset model.session)
+                        ]
             )
     in
     defaultOnError ( model, Cmd.none ) result updateModelWithTSPositions
@@ -656,6 +735,24 @@ setAvailableTimesCount model result =
                     ( model, Cmd.none )
 
         _ ->
+            ( model, Cmd.none )
+
+
+setAvailabilityMap :
+    AT.WithAvailabilityMap (TS.WithLoadingAvailabilityMap a)
+    -> Result Http.Error (List AvailableTimeDetails)
+    -> ( AT.WithAvailabilityMap (TS.WithLoadingAvailabilityMap a), Cmd msg )
+setAvailabilityMap model result =
+    case result of
+        Ok availabilityMap ->
+            ( { model
+                | availabilityMap = availabilityMap
+                , loadingAvailabilityMap = False
+              }
+            , Cmd.none
+            )
+
+        Err _ ->
             ( model, Cmd.none )
 
 

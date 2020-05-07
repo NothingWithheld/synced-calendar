@@ -165,7 +165,14 @@ update msg model =
             TSUpdate.handleSavedAvailableTimesForUser model result
 
         UpdateTimeZone timeZoneLabel ->
-            TSUpdate.updateTimeZone model (WeeklyFreeTimes SetSavedWeeklyTimeSlots) timeZoneLabel
+            TSUpdate.updateTimeZone model
+                (SubmitAvailability
+                    { setSavedConfirmedEvBy = SetSavedConfirmedEventsBy
+                    , setSavedConfirmedEvFor = SetSavedConfirmedEventsFor
+                    , setSavedWeeklyTS = SetSavedWeeklyTimeSlots
+                    }
+                )
+                timeZoneLabel
 
         SetTimeSlotsElement result ->
             TSUpdate.setTimeSlotsElement model result
