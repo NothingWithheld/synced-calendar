@@ -76,10 +76,10 @@ serverConfirmedEventDecoder : Decoder (Maybe ServerConfirmedEvent)
 serverConfirmedEventDecoder =
     Decode.succeed toServerConfirmedEvent
         |> required "eventId" Decode.int
-        |> required "creatorId" Decode.string
+        |> required "creatorId" (Decode.map String.fromInt Decode.int)
         |> required "name" Decode.string
         |> required "description" Decode.string
-        |> required "date" (Decode.map TSTime.isoStringToDate Decode.string)
+        |> required "date" (Decode.map TSTime.stringToDate Decode.string)
         |> required "fromTime" (Decode.map (TSTime.militaryToSlotNum False) Decode.string)
         |> required "toTime" (Decode.map (TSTime.militaryToSlotNum True) Decode.string)
 
