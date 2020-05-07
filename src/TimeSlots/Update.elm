@@ -90,6 +90,17 @@ setInitialTime model updates result =
                     , Cmd.none
                     )
 
+                ( CreateEvent _, Just { fromDate } ) ->
+                    ( { model
+                        | timeDetails =
+                            Just
+                                { currentDay = currentDay
+                                , weekOffset = TSTime.shiftWeeksToStartDate model currentDay fromDate
+                                }
+                      }
+                    , Cmd.none
+                    )
+
                 _ ->
                     ( { model
                         | timeDetails =
@@ -470,7 +481,7 @@ updateWithConfirmedEvent :
     TSMessaging.ServerConfirmedEvent
     -> TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a)
     -> TS.WithTimeSlotPositions (TS.WithSelectedTimeSlots a)
-updateWithConfirmedEvent { eventId, recipientIds, creatorId, title, description, date, dayNum, startSlot, endSlot } model =
+updateWithConfirmedEvent { eventId, creatorId, title, description, date, dayNum, startSlot, endSlot } model =
     let
         startBound =
             getListItemAt startSlot model.timeSlotPositions
@@ -485,7 +496,6 @@ updateWithConfirmedEvent { eventId, recipientIds, creatorId, title, description,
                     TS.SelectedTimeSlotDetails selectionBounds
                         (EC.ConfirmedEvent
                             { eventId = eventId
-                            , recipientIds = recipientIds
                             , creatorId = creatorId
                             , title = title
                             , description = description
@@ -971,12 +981,12 @@ setSelectedTimeSlotAfterEditing model result =
 
 
 setOneHourSelection :
-    TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions (TSTime.WithTimeDetails (WithSession a))))
+    PE.WithProposedEvent (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions (TSTime.WithTimeDetails (WithSession a)))))
     -> Calendar b c d e
     -> (EC.EventDetails -> Result Dom.Error Dom.Element -> msg)
     -> TS.DayNum
     -> TS.SlotNum
-    -> ( TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions (TSTime.WithTimeDetails (WithSession a)))), Cmd msg )
+    -> ( PE.WithProposedEvent (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions (TSTime.WithTimeDetails (WithSession a))))), Cmd msg )
 setOneHourSelection model updates promptEventDetails dayNum slotNum =
     let
         halfHourAdjustedSlotNum =
@@ -1009,6 +1019,20 @@ setOneHourSelection model updates promptEventDetails dayNum slotNum =
                         Maybe.map EC.AvailableTime <|
                             TSTime.dayNumToDate model dayNum
 
+                CreateEvent _ ->
+                    case ( model.proposedEvent, TSTime.dayNumToDate model dayNum ) of
+                        ( Just { title, description, creatorId, eventId }, Just date ) ->
+                            EC.UnsetConfirmedEvent <|
+                                EC.ConfirmedEventDetails
+                                    eventId
+                                    creatorId
+                                    title
+                                    description
+                                    date
+
+                        _ ->
+                            EC.UnsetWeeklyFreeTime
+
                 _ ->
                     EC.UnsetWeeklyFreeTime
     in
@@ -1036,10 +1060,10 @@ setOneHourSelection model updates promptEventDetails dayNum slotNum =
 
 
 handleTimeSlotMouseUp :
-    TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions (TSTime.WithTimeDetails (WithSession a))))
+    PE.WithProposedEvent (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions (TSTime.WithTimeDetails (WithSession a)))))
     -> Calendar b c d e
     -> (EC.EventDetails -> Result Dom.Error Dom.Element -> msg)
-    -> ( TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions (TSTime.WithTimeDetails (WithSession a)))), Cmd msg )
+    -> ( PE.WithProposedEvent (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions (TSTime.WithTimeDetails (WithSession a))))), Cmd msg )
 handleTimeSlotMouseUp model updates promptEventDetails =
     let
         initialEventDetails dayNum =
@@ -1048,6 +1072,20 @@ handleTimeSlotMouseUp model updates promptEventDetails =
                     Maybe.withDefault EC.UnsetWeeklyFreeTime <|
                         Maybe.map EC.AvailableTime <|
                             TSTime.dayNumToDate model dayNum
+
+                CreateEvent _ ->
+                    case ( model.proposedEvent, TSTime.dayNumToDate model dayNum ) of
+                        ( Just { title, description, creatorId, eventId }, Just date ) ->
+                            EC.UnsetConfirmedEvent <|
+                                EC.ConfirmedEventDetails
+                                    eventId
+                                    creatorId
+                                    title
+                                    description
+                                    date
+
+                        _ ->
+                            EC.UnsetWeeklyFreeTime
 
                 _ ->
                     EC.UnsetWeeklyFreeTime

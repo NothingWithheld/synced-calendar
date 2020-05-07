@@ -33,7 +33,6 @@ type EventDetails
 
 type alias ConfirmedEventDetails =
     { eventId : Int
-    , recipientIds : List String
     , creatorId : String
     , title : String
     , description : String

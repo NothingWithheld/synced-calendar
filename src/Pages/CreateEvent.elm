@@ -62,7 +62,7 @@ init session proposedEvent =
       -- possibly sends results only to creator
       , loadingConfirmedEventsBy = False
       , loadingConfirmedEventsFor = True
-      , loadingAvailableTimes = True
+      , loadingAvailableTimes = False
       , loadingTSPositions = True
       , loadingAvailableTimesCount = True
       , loadingAvailabilityMap = True
@@ -137,7 +137,7 @@ update msg model =
 
         -- TimeSlots
         SetInitialTime result ->
-            TSUpdate.setInitialTime model (SubmitAvailability {}) result
+            TSUpdate.setInitialTime model (CreateEvent {}) result
 
         MoveWeekForward ->
             TSUpdate.moveWeekForward model
@@ -150,19 +150,18 @@ update msg model =
                 (CreateEvent
                     { setSavedConfirmedEvBy = SetSavedConfirmedEventsBy
                     , setSavedConfirmedEvFor = SetSavedConfirmedEventsFor
-                    , setAvailMap = SetAvailabilityMap
                     }
                 )
                 result
 
         SetSavedConfirmedEventsBy result ->
             TSUpdate.setSavedConfirmedEventsBy model
-                (SubmitAvailability { handleSavedATForUser = HandleSavedAvailableTimesForUser })
+                (CreateEvent {})
                 result
 
         SetSavedConfirmedEventsFor result ->
             TSUpdate.setSavedConfirmedEventsFor model
-                (SubmitAvailability { handleSavedATForUser = HandleSavedAvailableTimesForUser })
+                (CreateEvent {})
                 result
 
         HandleSavedAvailableTimesForUser result ->
@@ -197,7 +196,7 @@ update msg model =
             TSUpdate.adjustTimeSlotSelection model pointerPosition result
 
         HandleTimeSlotMouseUp ->
-            TSUpdate.handleTimeSlotMouseUp model (SubmitAvailability {}) PromptUserForEventDetails
+            TSUpdate.handleTimeSlotMouseUp model (CreateEvent {}) PromptUserForEventDetails
 
         EditTimeSlotSelection selectedTimeslotDetails ->
             TSUpdate.editTimeSlotSelection model PromptUserForEventDetails selectedTimeslotDetails

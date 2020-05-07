@@ -416,7 +416,7 @@ viewDayHeadingCopyForDate model currentDay date =
             date == currentDay
     in
     styled div
-        [ css "margin" "auto" ]
+        [ css "margin" "auto", css "height" "100%" ]
         [ styled Html.p
             [ css "text-align" "center"
             , css "margin-top" "0"
@@ -497,7 +497,12 @@ viewScrollableTimeSlots :
                 , editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
                 , handleTimeSlotMouseUp : msg
             }
-            e
+            { e
+                | handleTimeSlotMouseMove : TS.PointerPosition -> msg
+                , startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg
+                , editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
+                , handleTimeSlotMouseUp : msg
+            }
     -> Html msg
 viewScrollableTimeSlots model updates =
     let
@@ -546,8 +551,8 @@ viewScrollableTimeSlots model updates =
                     when (isSelectingTimeSlots && not model.alreadySubmittedAvailability) <|
                         Options.onMouseUp handleTimeSlotMouseUp
 
-                CreateEvent _ ->
-                    nop
+                CreateEvent { handleTimeSlotMouseUp } ->
+                    when isSelectingTimeSlots <| Options.onMouseUp handleTimeSlotMouseUp
             ]
             (viewTimeSlotTimes
                 :: List.map
@@ -610,7 +615,11 @@ viewSingleDayTimeSlots :
                 , startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg
                 , editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
             }
-            e
+            { e
+                | handleTimeSlotMouseMove : TS.PointerPosition -> msg
+                , startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg
+                , editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
+            }
     -> ( TS.DayNum, Maybe Posix )
     -> Html msg
 viewSingleDayTimeSlots model updates ( dayNum, maybeDate ) =
@@ -671,8 +680,9 @@ viewSingleDayTimeSlots model updates ( dayNum, maybeDate ) =
                 when (isSelectingTimeSlots && not model.alreadySubmittedAvailability) <|
                     onTimeSlotMouseMove handleTimeSlotMouseMove
 
-            CreateEvent _ ->
-                nop
+            CreateEvent { handleTimeSlotMouseMove } ->
+                when isSelectingTimeSlots <|
+                    onTimeSlotMouseMove handleTimeSlotMouseMove
         ]
         ([ div
             []
@@ -696,7 +706,9 @@ viewTimeSlot :
             { d
                 | startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg
             }
-            e
+            { e
+                | startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg
+            }
     -> Bool
     -> Maybe Posix
     -> Int
@@ -741,8 +753,8 @@ viewTimeSlot model updates isOutsideEventRange maybeDay dayNum slotNum =
                 when (not isOutsideEventRange && not model.alreadySubmittedAvailability) <|
                     Options.onMouseDown (startSelectingTimeSlot dayNum slotNum)
 
-            CreateEvent _ ->
-                nop
+            CreateEvent { startSelectingTimeSlot } ->
+                Options.onMouseDown (startSelectingTimeSlot dayNum slotNum)
         , Options.id (TS.getTimeSlotId dayNum slotNum)
         ]
         []
@@ -758,7 +770,9 @@ viewSelectedTimeSlot :
             { d
                 | editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
             }
-            e
+            { e
+                | editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg
+            }
     -> TS.SelectedTimeSlotDetails
     -> Html msg
 viewSelectedTimeSlot model updates selectedTimeSlotDetails =
@@ -801,8 +815,8 @@ viewSelectedTimeSlot model updates selectedTimeSlotDetails =
                     Options.onClick <|
                         editTimeSlotSelection selectedTimeSlotDetails
 
-            CreateEvent _ ->
-                nop
+            CreateEvent { editTimeSlotSelection } ->
+                Options.onClick <| editTimeSlotSelection selectedTimeSlotDetails
         ]
         [ viewTimeSlotDuration selectedTimeSlot hasSingleSlotHeight ]
 
