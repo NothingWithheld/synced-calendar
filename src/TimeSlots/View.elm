@@ -1,5 +1,6 @@
 module TimeSlots.View exposing (viewCalendarHeading, viewDayHeadings, viewScrollableTimeSlots)
 
+import AvailableTime.AvailableTime as AT
 import Constants
 import Date
 import EventCreation.EventCreation as EC
@@ -40,7 +41,7 @@ onTimeSlotMouseMove handleTimeSlotMouseMove =
 
 
 viewCalendarHeading :
-    WithMdc msg (WithSession (TS.WithLoadingAll (TSTime.WithTimeDetails (PE.WithAlreadySubmittedAvailability (TS.WithSelectedTimeSlots a)))))
+    WithMdc msg (WithSession (TS.WithLoadingAll (TSTime.WithTimeDetails (PE.WithAlreadySubmittedAvailability (TS.WithSelectedTimeSlots (AT.WithAvailableTimesCount (TS.WithLoadingAvailableTimesCount a)))))))
     ->
         Calendar
             { b
@@ -60,7 +61,12 @@ viewCalendarHeading :
                 , moveWeekBackward : msg
                 , submitAvailability : msg
             }
-            e
+            { e
+                | onMdc : Material.Msg msg -> msg
+                , onTimeZoneSelect : String -> msg
+                , moveWeekForward : msg
+                , moveWeekBackward : msg
+            }
     -> Html msg
 viewCalendarHeading model updates =
     case updates of
@@ -109,8 +115,24 @@ viewCalendarHeading model updates =
                 , viewSubmitAvailabilityButton model updates_
                 ]
 
-        CreateEvent _ ->
-            text ""
+        CreateEvent ({ onMdc } as updates_) ->
+            styled div
+                [ css "height" "10vh"
+                , css "display" "flex"
+                , css "padding-left" "12px"
+                , css "padding-right" "12px"
+                , css "justify-content" "space-between"
+                , css "align-items" "center"
+                ]
+                [ styled div
+                    [ css "display" "flex", css "align-items" "center" ]
+                    [ Route.viewHomeButton model onMdc
+                    , styled div [ css "width" "12px" ] []
+                    , viewTimeZoneSelect model updates_
+                    , viewWeekHeadingItems model updates_
+                    ]
+                , viewAvailabilityCountHeading model
+                ]
 
 
 viewTimeZoneSelect :
@@ -303,6 +325,25 @@ viewSubmitAvailabilityButton model { onMdc, submitAvailability } =
             ]
             [ text "Submit Availability" ]
         ]
+
+
+viewAvailabilityCountHeading : AT.WithAvailableTimesCount (TS.WithLoadingAvailableTimesCount a) -> Html msg
+viewAvailabilityCountHeading model =
+    let
+        headingText =
+            String.fromInt model.countSubmitted
+                ++ " out of "
+                ++ String.fromInt model.totalRecipients
+                ++ " have submitted their availability"
+    in
+    if model.loadingAvailableTimesCount then
+        text ""
+
+    else
+        styled Html.h4
+            [ Typography.headline6
+            ]
+            [ text headingText ]
 
 
 

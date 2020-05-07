@@ -257,12 +257,11 @@ view model =
             [ styled div
                 []
                 [ viewCalendarHeading model
-                    (SubmitAvailability
+                    (CreateEvent
                         { onMdc = Mdc
                         , onTimeZoneSelect = UpdateTimeZone
                         , moveWeekBackward = MoveWeekBackward
                         , moveWeekForward = MoveWeekForward
-                        , submitAvailability = SubmitAvailableTimes
                         }
                     )
                 , viewDayHeadings model

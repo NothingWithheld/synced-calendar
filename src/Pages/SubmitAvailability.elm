@@ -45,6 +45,8 @@ type alias Model =
     , mdc : Material.Model Msg
     , proposedEvent : Maybe ProposedEvent
     , alreadySubmittedAvailability : Bool
+    , totalRecipients : Int
+    , countSubmitted : Int
     }
 
 
@@ -71,6 +73,8 @@ init session proposedEvent =
       , mdc = Material.defaultModel
       , proposedEvent = Just proposedEvent
       , alreadySubmittedAvailability = False
+      , totalRecipients = 0
+      , countSubmitted = 0
       }
     , Cmd.batch
         [ Material.init Mdc
