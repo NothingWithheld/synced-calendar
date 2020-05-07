@@ -863,7 +863,7 @@ viewTimeSlotDuration { startBound, endBound } hasSingleSlotHeight =
 
 
 viewCurrentlySelectingTimeSlot :
-    TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots (EC.WithEventCreation (PE.WithProposedEvent (TSTime.WithTimeDetails (WithSession a)))))
+    TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots (EC.WithEventCreation (PE.WithProposedEvent (TSTime.WithTimeDetails (WithSession (AT.WithAvailabilityMap (AT.WithAvailableTimesCount a)))))))
     -> TS.DayNum
     -> Html msg
 viewCurrentlySelectingTimeSlot model dayNum =
@@ -879,7 +879,7 @@ viewCurrentlySelectingTimeSlot model dayNum =
 
 
 viewUserChangingTimeSlot :
-    TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots (EC.WithEventCreation (PE.WithProposedEvent (TSTime.WithTimeDetails (WithSession a)))))
+    TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots (EC.WithEventCreation (PE.WithProposedEvent (TSTime.WithTimeDetails (WithSession (AT.WithAvailabilityMap (AT.WithAvailableTimesCount a)))))))
     -> TS.TimeSlot
     -> TS.DayNum
     -> Html msg
@@ -888,11 +888,11 @@ viewUserChangingTimeSlot model timeSlotSelection dayNum =
         cardDimensions =
             getCardDimensions timeSlotSelection
 
-        orderedTimeSlotSelection =
+        orderedTimeSlot =
             TS.getOrderedTimeSlot timeSlotSelection
 
         hasSingleSlotHeight =
-            TS.hasSingleSlotHeight orderedTimeSlotSelection
+            TS.hasSingleSlotHeight orderedTimeSlot
 
         dayNumCurrentlySelected =
             timeSlotSelection.dayNum
@@ -916,6 +916,23 @@ viewUserChangingTimeSlot model timeSlotSelection dayNum =
                         ( EC.AvailableTime _, Nothing ) ->
                             True
 
+                        ( EC.UnsetConfirmedEvent { date }, Just { fromDate, toDate } ) ->
+                            let
+                                isInEventBounds =
+                                    Date.isBetween fromDate toDate date
+
+                                isAvailable =
+                                    (model.countSubmitted == model.totalRecipients)
+                                        && (List.all
+                                                (AT.isSlotAvailable model date)
+                                            <|
+                                                List.range
+                                                    orderedTimeSlot.startBound.slotNum
+                                                    orderedTimeSlot.endBound.slotNum
+                                           )
+                            in
+                            not isInEventBounds || not isAvailable || intersectsTimeSlots
+
                         _ ->
                             intersectsTimeSlots
 
@@ -938,7 +955,7 @@ viewUserChangingTimeSlot model timeSlotSelection dayNum =
             , css "border-radius" "8px"
             , css "user-select" "none"
             ]
-            [ viewTimeSlotDuration orderedTimeSlotSelection hasSingleSlotHeight
+            [ viewTimeSlotDuration orderedTimeSlot hasSingleSlotHeight
             ]
 
     else

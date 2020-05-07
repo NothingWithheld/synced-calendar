@@ -1,5 +1,6 @@
 module EventCreation.View exposing (viewDiscardConfirmationModal, viewUserRequest)
 
+import AvailableTime.AvailableTime as AT
 import Date
 import EventCreation.Constants as ECConsts
 import EventCreation.EventCreation as EC
@@ -27,7 +28,7 @@ import Utils exposing (WithMdc, getListItemAt)
 
 
 viewUserRequest :
-    WithMdc msg (EC.WithEventCreation (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots (PE.WithProposedEvent (TSTime.WithTimeDetails (WithSession a))))))
+    WithMdc msg (EC.WithEventCreation (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots (PE.WithProposedEvent (TSTime.WithTimeDetails (WithSession (AT.WithAvailabilityMap (AT.WithAvailableTimesCount a))))))))
     ->
         Calendar
             { b
@@ -85,12 +86,20 @@ viewUserRequest model updates =
 
                 CreateEvent updates_ ->
                     updates_.handleEditingCancel
-    in
-    case model.eventCreation of
-        EC.NotCreating ->
-            text ""
 
-        EC.CurrentlyCreatingEvent eventCreationDetails eventCreationPosition ->
+        maybeTimeSlot =
+            case model.timeSlotSelection of
+                TS.CurrentlySelecting timeSlot ->
+                    Just <| TS.getOrderedTimeSlot timeSlot
+
+                TS.EditingSelection timeSlot _ ->
+                    Just timeSlot
+
+                _ ->
+                    Nothing
+    in
+    case ( model.eventCreation, maybeTimeSlot ) of
+        ( EC.CurrentlyCreatingEvent eventCreationDetails eventCreationPosition, Just timeSlot ) ->
             styled div
                 [ css "position" "absolute"
                 , css "top" "0"
@@ -112,7 +121,7 @@ viewUserRequest model updates =
                     [ css "display" "flex"
                     ]
                     [ styled div [ css "width" <| String.fromFloat eventCreationPosition.x ++ "px", css "height" "0px" ] []
-                    , viewUserRequestForm model updates eventCreationDetails
+                    , viewUserRequestForm model updates timeSlot eventCreationDetails
                     ]
                 , styled div
                     [ css "min-height" "32px"
@@ -121,9 +130,12 @@ viewUserRequest model updates =
                     []
                 ]
 
+        _ ->
+            text ""
+
 
 viewUserRequestForm :
-    WithMdc msg (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots (PE.WithProposedEvent (TSTime.WithTimeDetails (WithSession a)))))
+    WithMdc msg (TS.WithTimeSlotSelection (TS.WithSelectedTimeSlots (PE.WithProposedEvent (TSTime.WithTimeDetails (WithSession (AT.WithAvailabilityMap (AT.WithAvailableTimesCount a)))))))
     ->
         Calendar
             { b
@@ -165,9 +177,10 @@ viewUserRequestForm :
                 , closeUserPromptForEventDetails : msg
                 , saveTimeSlot : msg
             }
+    -> TS.TimeSlot
     -> EC.EventDetails
     -> Html msg
-viewUserRequestForm model updates eventDetails =
+viewUserRequestForm model updates timeSlot eventDetails =
     let
         selectedTimeSlotsThatWeek =
             TSTime.getSelectedTimeSlotsInThatWeek model
@@ -186,19 +199,28 @@ viewUserRequestForm model updates eventDetails =
                 ( EC.AvailableTime _, Nothing ) ->
                     True
 
+                ( EC.UnsetConfirmedEvent { date }, Just { fromDate, toDate } ) ->
+                    let
+                        isInEventBounds =
+                            Date.isBetween fromDate toDate date
+
+                        isAvailable =
+                            (model.countSubmitted == model.totalRecipients)
+                                && (List.all
+                                        (AT.isSlotAvailable model date)
+                                    <|
+                                        List.range
+                                            timeSlot.startBound.slotNum
+                                            timeSlot.endBound.slotNum
+                                   )
+                    in
+                    not isInEventBounds || not isAvailable || intersectsTimeSlots
+
+                ( EC.UnsetConfirmedEvent _, Nothing ) ->
+                    True
+
                 _ ->
                     intersectsTimeSlots
-
-        maybeTimeSlot =
-            case model.timeSlotSelection of
-                TS.CurrentlySelecting ts ->
-                    Just ts
-
-                TS.EditingSelection ts _ ->
-                    Just ts
-
-                _ ->
-                    Nothing
 
         noOp =
             case updates of
@@ -214,52 +236,47 @@ viewUserRequestForm model updates eventDetails =
                 CreateEvent updates_ ->
                     updates_.noOp
     in
-    case maybeTimeSlot of
-        Just timeSlot ->
-            Card.view
-                [ when invalidSelection <| css "border" "2px solid #D64545"
-                , css "width" (String.fromFloat EC.eventDetailsPromptWidth ++ "px")
-                , css "padding" "12px 8px 0px"
-                , css "box-shadow" "0 24px 38px 3px rgba(0,0,0,0.14), 0 9px 46px 8px rgba(0,0,0,0.12), 0 11px 15px -7px rgba(0,0,0,0.2)"
-                , Options.onWithOptions "click"
-                    (Decode.succeed
-                        { message = noOp
-                        , preventDefault = False
-                        , stopPropagation = True
-                        }
-                    )
-                ]
-                (case ( eventDetails, updates ) of
-                    ( EC.UnsetWeeklyFreeTime, WeeklyFreeTimes updates_ ) ->
-                        viewChangeTimeSlotForm model updates_ invalidSelection
+    Card.view
+        [ when invalidSelection <| css "border" "2px solid #D64545"
+        , css "width" (String.fromFloat EC.eventDetailsPromptWidth ++ "px")
+        , css "padding" "12px 8px 0px"
+        , css "box-shadow" "0 24px 38px 3px rgba(0,0,0,0.14), 0 9px 46px 8px rgba(0,0,0,0.12), 0 11px 15px -7px rgba(0,0,0,0.2)"
+        , Options.onWithOptions "click"
+            (Decode.succeed
+                { message = noOp
+                , preventDefault = False
+                , stopPropagation = True
+                }
+            )
+        ]
+        (case ( eventDetails, updates ) of
+            ( EC.UnsetWeeklyFreeTime, WeeklyFreeTimes updates_ ) ->
+                viewChangeTimeSlotForm model updates_ invalidSelection
 
-                    ( EC.SetWeeklyFreeTime _, WeeklyFreeTimes updates_ ) ->
-                        viewChangeTimeSlotForm model updates_ invalidSelection
+            ( EC.SetWeeklyFreeTime _, WeeklyFreeTimes updates_ ) ->
+                viewChangeTimeSlotForm model updates_ invalidSelection
 
-                    ( EC.AvailableTime _, SubmitAvailability udpates_ ) ->
-                        viewChangeTimeSlotForm model udpates_ invalidSelection
+            ( EC.AvailableTime _, SubmitAvailability udpates_ ) ->
+                viewChangeTimeSlotForm model udpates_ invalidSelection
 
-                    ( EC.ConfirmedEvent confirmedEventDetails, SubmitAvailability udpates_ ) ->
-                        viewConfirmedEventForm model udpates_ timeSlot confirmedEventDetails
+            ( EC.ConfirmedEvent confirmedEventDetails, SubmitAvailability udpates_ ) ->
+                viewConfirmedEventForm model udpates_ timeSlot confirmedEventDetails
 
-                    ( EC.UnsetConfirmedEvent confirmedEventDetails, Events udpates_ ) ->
-                        viewConfirmedEventForm model udpates_ timeSlot confirmedEventDetails
+            ( EC.UnsetConfirmedEvent confirmedEventDetails, Events udpates_ ) ->
+                viewConfirmedEventForm model udpates_ timeSlot confirmedEventDetails
 
-                    ( EC.ConfirmedEvent confirmedEventDetails, Events udpates_ ) ->
-                        viewConfirmedEventForm model udpates_ timeSlot confirmedEventDetails
+            ( EC.ConfirmedEvent confirmedEventDetails, Events udpates_ ) ->
+                viewConfirmedEventForm model udpates_ timeSlot confirmedEventDetails
 
-                    ( EC.UnsetConfirmedEvent confirmedEventDetails, CreateEvent udpates_ ) ->
-                        viewUnsetConfirmedEventForm model udpates_ confirmedEventDetails invalidSelection
+            ( EC.UnsetConfirmedEvent confirmedEventDetails, CreateEvent udpates_ ) ->
+                viewUnsetConfirmedEventForm model udpates_ confirmedEventDetails invalidSelection
 
-                    ( EC.ConfirmedEvent confirmedEventDetails, CreateEvent udpates_ ) ->
-                        viewConfirmedEventForm model udpates_ timeSlot confirmedEventDetails
+            ( EC.ConfirmedEvent confirmedEventDetails, CreateEvent udpates_ ) ->
+                viewConfirmedEventForm model udpates_ timeSlot confirmedEventDetails
 
-                    _ ->
-                        []
-                )
-
-        Nothing ->
-            text ""
+            _ ->
+                []
+        )
 
 
 viewChangeTimeSlotForm :
