@@ -109,7 +109,7 @@ update msg model =
                     List.member recipientId model.recipientEmails
 
                 isSelf =
-                    recipientId == Session.getUserId model.session
+                    recipientId == Session.getEmail model.session
             in
             if alreadyIncluded || isSelf || recipientId == "" then
                 ( { model | invalidRecipient = True }, Cmd.none )
