@@ -1,6 +1,7 @@
 module Session exposing
     ( Session
     , WithSession
+    , getEmail
     , getIsDST
     , getKey
     , getOffset
@@ -12,6 +13,7 @@ module Session exposing
     , isDSTLabels
     , labelForTimeZone
     , nonDSTLabels
+    , setEmail
     , setOffset
     , setUserId
     , signOut
@@ -28,7 +30,7 @@ import Utils exposing (findFirst)
 
 
 type Session
-    = Session Nav.Key TimeZoneOffset String
+    = Session Nav.Key TimeZoneOffset String String
 
 
 type alias WithSession a =
@@ -67,7 +69,7 @@ init key offsetFlag =
             in
             -- limit to PST through EST
             if hourOffset >= -8 + daylightSavingsChange && hourOffset <= -5 + daylightSavingsChange then
-                Session key { offset = hourOffset, isDST = isDST } ""
+                Session key { offset = hourOffset, isDST = isDST } "" ""
 
             else
                 Session key
@@ -75,10 +77,11 @@ init key offsetFlag =
                     , isDST = isDST
                     }
                     ""
+                    ""
 
         Err _ ->
             -- default to CST
-            Session key { offset = -6, isDST = False } ""
+            Session key { offset = -6, isDST = False } "" ""
 
 
 nonDSTLabels : List ( String, Int )
@@ -92,7 +95,7 @@ isDSTLabels =
 
 
 labelForTimeZone : Session -> String
-labelForTimeZone (Session _ { offset, isDST } _) =
+labelForTimeZone (Session _ { offset, isDST } _ _) =
     if isDST then
         findFirst ((==) offset << Tuple.second) isDSTLabels
             |> Maybe.map Tuple.first
@@ -105,7 +108,7 @@ labelForTimeZone (Session _ { offset, isDST } _) =
 
 
 getTimeZoneLabels : Session -> List String
-getTimeZoneLabels (Session _ { isDST } _) =
+getTimeZoneLabels (Session _ { isDST } _ _) =
     if isDST then
         List.map Tuple.first isDSTLabels
 
@@ -114,37 +117,37 @@ getTimeZoneLabels (Session _ { isDST } _) =
 
 
 signOut : Session -> Session
-signOut (Session key timeZone _) =
-    Session key timeZone ""
+signOut (Session key timeZone _ _) =
+    Session key timeZone "" ""
 
 
 getUserId : Session -> String
-getUserId (Session _ _ userId) =
+getUserId (Session _ _ userId _) =
     userId
 
 
 setUserId : Session -> String -> Session
-setUserId (Session key offset _) userId =
-    Session key offset userId
+setUserId (Session key offset _ email) userId =
+    Session key offset userId email
 
 
 getKey : Session -> Nav.Key
-getKey (Session key _ _) =
+getKey (Session key _ _ _) =
     key
 
 
 getOffset : Session -> Int
-getOffset (Session _ { offset } _) =
+getOffset (Session _ { offset } _ _) =
     offset
 
 
 getZone : Session -> Zone
-getZone (Session _ { offset } _) =
+getZone (Session _ { offset } _ _) =
     Time.customZone (offset * 60) []
 
 
 setOffset : Session -> String -> Maybe Session
-setOffset (Session key { isDST } userId) toTimeZoneLabel =
+setOffset (Session key { isDST } userId email) toTimeZoneLabel =
     let
         newOffset =
             findFirst
@@ -153,32 +156,26 @@ setOffset (Session key { isDST } userId) toTimeZoneLabel =
                 |> Maybe.map Tuple.second
 
         mapFunc offset =
-            Session key { offset = offset, isDST = isDST } userId
+            Session key { offset = offset, isDST = isDST } userId email
     in
     Maybe.map mapFunc newOffset
 
 
+getEmail : Session -> String
+getEmail (Session _ _ _ email) =
+    email
 
--- setOffset : Session -> Int -> Maybe Session
--- setOffset (Session key { isDST } userId) toOffset =
---     let
---         daylightSavingsChange =
---             if isDST then
---                 1
---             else
---                 0
---     in
---     if toOffset >= -8 + daylightSavingsChange && toOffset <= -5 + daylightSavingsChange then
---         Just <| Session key { offset = toOffset, isDST = isDST } userId
---     else
---         Nothing
+
+setEmail : Session -> String -> Session
+setEmail (Session key offset userId _) email =
+    Session key offset userId email
 
 
 getIsDST : Session -> Bool
-getIsDST (Session _ { isDST } _) =
+getIsDST (Session _ { isDST } _ _) =
     isDST
 
 
 hasUserId : Session -> Bool
-hasUserId (Session _ _ userId) =
+hasUserId (Session _ _ userId _) =
     userId /= ""

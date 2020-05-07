@@ -35,6 +35,7 @@
     make
     cd ..
     ```
+- Install npm packages `npm install`
 
 ## Haskell + Yesod Setup
 
