@@ -760,14 +760,17 @@ setAvailabilityMap model result =
 
 
 startSelectingTimeSlot :
-    TS.WithSelectedTimeSlots (TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a))
+    WithSession (TSTime.WithTimeDetails (TS.WithSelectedTimeSlots (TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a))))
     -> TS.DayNum
     -> TS.SlotNum
-    -> ( TS.WithSelectedTimeSlots (TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a)), Cmd msg )
+    -> ( WithSession (TSTime.WithTimeDetails (TS.WithSelectedTimeSlots (TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a)))), Cmd msg )
 startSelectingTimeSlot model dayNum slotNum =
     let
+        selectedTimeSlotsInThatWeek =
+            TSTime.getSelectedTimeSlotsInThatWeek model
+
         noUpdateIfIntersectsSelectedTS dayNum_ startBound endBound updatedModel =
-            if TS.intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots dayNum_ startBound endBound then
+            if TS.intersectsCurrentlySelectedTimeSlots selectedTimeSlotsInThatWeek dayNum_ startBound endBound then
                 model
 
             else
@@ -801,14 +804,17 @@ handleTimeSlotMouseMove model adjustTSSelection pointerPosition =
 
 
 adjustTimeSlotSelection :
-    TS.WithTimeSlotsElement (TS.WithSelectedTimeSlots (TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a)))
+    WithSession (TSTime.WithTimeDetails (TS.WithTimeSlotsElement (TS.WithSelectedTimeSlots (TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a)))))
     -> TS.PointerPosition
     -> Result Dom.Error Dom.Viewport
-    -> ( TS.WithTimeSlotsElement (TS.WithSelectedTimeSlots (TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a))), Cmd msg )
+    -> ( WithSession (TSTime.WithTimeDetails (TS.WithTimeSlotsElement (TS.WithSelectedTimeSlots (TS.WithTimeSlotPositions (TS.WithTimeSlotSelection a))))), Cmd msg )
 adjustTimeSlotSelection model { pageY } result =
     let
+        selectedTimeSlotsInThatWeek =
+            TSTime.getSelectedTimeSlotsInThatWeek model
+
         noUpdateIfIntersectsSelectedTS dayNum startBound endBound updatedModel =
-            if TS.intersectsCurrentlySelectedTimeSlots model.selectedTimeSlots dayNum startBound endBound then
+            if TS.intersectsCurrentlySelectedTimeSlots selectedTimeSlotsInThatWeek dayNum startBound endBound then
                 model
 
             else
@@ -978,6 +984,9 @@ setOneHourSelection :
     -> ( PE.WithProposedEvent (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TS.WithTimeSlotPositions (TSTime.WithTimeDetails (WithSession a))))), Cmd msg )
 setOneHourSelection model updates promptEventDetails dayNum slotNum =
     let
+        selectedTimeSlotsInThatWeek =
+            TSTime.getSelectedTimeSlotsInThatWeek model
+
         halfHourAdjustedSlotNum =
             2 * (slotNum // 2)
 
@@ -986,7 +995,7 @@ setOneHourSelection model updates promptEventDetails dayNum slotNum =
 
         unselectedTSRange =
             TS.getUnselectedTimeSlotRange
-                model.selectedTimeSlots
+                selectedTimeSlotsInThatWeek
                 dayNum
                 halfHourAdjustedSlotNum
                 endSlotNum
