@@ -1,6 +1,7 @@
 module AvailableTime.AvailableTime exposing
     ( AvailableTimeDetails
     , ServerAvailableTimesCount
+    , WithAlreadySubmittedConfirmedEvent
     , WithAvailabilityMap
     , WithAvailableTimesCount
     , isSlotAvailable
@@ -43,3 +44,9 @@ isSlotAvailable model slotDate slotNum =
             slotDate == date && slotNum >= startSlot && slotNum <= endSlot
     in
     List.any containsSlot model.availabilityMap
+
+
+type alias WithAlreadySubmittedConfirmedEvent a =
+    { a
+        | alreadySubmittedConfirmedEvent : Bool
+    }

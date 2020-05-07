@@ -1287,9 +1287,9 @@ submitConfirmedEvent model ackConfirmedEventSubmission =
 
 
 acknowledgeConfirmedEventSubmission :
-    WithSession (TS.WithTimeSlotSelection (EC.WithEventCreation (TS.WithSelectedTimeSlots a)))
+    AT.WithAlreadySubmittedConfirmedEvent (WithSession (TS.WithTimeSlotSelection (EC.WithEventCreation (TS.WithSelectedTimeSlots a))))
     -> Result Http.Error NoData
-    -> ( WithSession (TS.WithTimeSlotSelection (EC.WithEventCreation (TS.WithSelectedTimeSlots a))), Cmd msg )
+    -> ( AT.WithAlreadySubmittedConfirmedEvent (WithSession (TS.WithTimeSlotSelection (EC.WithEventCreation (TS.WithSelectedTimeSlots a)))), Cmd msg )
 acknowledgeConfirmedEventSubmission model result =
     case ( result, model.timeSlotSelection, model.eventCreation ) of
         ( Ok _, TS.CurrentlySelecting timeSlot, EC.CurrentlyCreatingEvent eventDetails _ ) ->
@@ -1308,6 +1308,7 @@ acknowledgeConfirmedEventSubmission model result =
                         | selectedTimeSlots = selectedTimeSlot :: model.selectedTimeSlots
                         , timeSlotSelection = TS.NotSelecting
                         , eventCreation = EC.NotCreating
+                        , alreadySubmittedConfirmedEvent = True
                       }
                     , Cmd.none
                     )

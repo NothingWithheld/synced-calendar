@@ -479,7 +479,7 @@ viewTimeSlotTimes =
 
 
 viewScrollableTimeSlots :
-    AT.WithAvailabilityMap (AT.WithAvailableTimesCount (PE.WithAlreadySubmittedAvailability (TS.WithLoadingAll (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TSTime.WithTimeDetails (WithSession (EC.WithEventCreation (PE.WithProposedEvent a)))))))))
+    AT.WithAlreadySubmittedConfirmedEvent (AT.WithAvailabilityMap (AT.WithAvailableTimesCount (PE.WithAlreadySubmittedAvailability (TS.WithLoadingAll (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (TSTime.WithTimeDetails (WithSession (EC.WithEventCreation (PE.WithProposedEvent a))))))))))
     ->
         Calendar
             { b
@@ -552,7 +552,7 @@ viewScrollableTimeSlots model updates =
                         Options.onMouseUp handleTimeSlotMouseUp
 
                 CreateEvent { handleTimeSlotMouseUp } ->
-                    when isSelectingTimeSlots <| Options.onMouseUp handleTimeSlotMouseUp
+                    when (isSelectingTimeSlots && not model.alreadySubmittedConfirmedEvent) <| Options.onMouseUp handleTimeSlotMouseUp
             ]
             (viewTimeSlotTimes
                 :: List.map
@@ -599,7 +599,7 @@ viewTimeSlotTime hour =
 
 
 viewSingleDayTimeSlots :
-    AT.WithAvailabilityMap (AT.WithAvailableTimesCount (PE.WithAlreadySubmittedAvailability (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (WithSession (EC.WithEventCreation (PE.WithProposedEvent (TSTime.WithTimeDetails a))))))))
+    AT.WithAlreadySubmittedConfirmedEvent (AT.WithAvailabilityMap (AT.WithAvailableTimesCount (PE.WithAlreadySubmittedAvailability (TS.WithSelectedTimeSlots (TS.WithTimeSlotSelection (WithSession (EC.WithEventCreation (PE.WithProposedEvent (TSTime.WithTimeDetails a)))))))))
     ->
         Calendar
             { b
@@ -681,7 +681,7 @@ viewSingleDayTimeSlots model updates ( dayNum, maybeDate ) =
                     onTimeSlotMouseMove handleTimeSlotMouseMove
 
             CreateEvent { handleTimeSlotMouseMove } ->
-                when isSelectingTimeSlots <|
+                when (isSelectingTimeSlots && not model.alreadySubmittedConfirmedEvent) <|
                     onTimeSlotMouseMove handleTimeSlotMouseMove
         ]
         ([ div
@@ -699,7 +699,7 @@ viewSingleDayTimeSlots model updates ( dayNum, maybeDate ) =
 
 
 viewTimeSlot :
-    WithSession (AT.WithAvailabilityMap (AT.WithAvailableTimesCount (PE.WithAlreadySubmittedAvailability a)))
+    WithSession (AT.WithAvailabilityMap (AT.WithAvailableTimesCount (PE.WithAlreadySubmittedAvailability (AT.WithAlreadySubmittedConfirmedEvent a))))
     ->
         Calendar { b | startSelectingTimeSlot : TS.DayNum -> TS.SlotNum -> msg }
             c
@@ -754,14 +754,15 @@ viewTimeSlot model updates isOutsideEventRange maybeDay dayNum slotNum =
                     Options.onMouseDown (startSelectingTimeSlot dayNum slotNum)
 
             CreateEvent { startSelectingTimeSlot } ->
-                Options.onMouseDown (startSelectingTimeSlot dayNum slotNum)
+                when (not isOutsideEventRange && not model.alreadySubmittedConfirmedEvent) <|
+                    Options.onMouseDown (startSelectingTimeSlot dayNum slotNum)
         , Options.id (TS.getTimeSlotId dayNum slotNum)
         ]
         []
 
 
 viewSelectedTimeSlot :
-    PE.WithAlreadySubmittedAvailability a
+    PE.WithAlreadySubmittedAvailability (AT.WithAlreadySubmittedConfirmedEvent a)
     ->
         Calendar { b | editTimeSlotSelection : TS.SelectedTimeSlotDetails -> msg }
             { c
@@ -816,7 +817,9 @@ viewSelectedTimeSlot model updates selectedTimeSlotDetails =
                         editTimeSlotSelection selectedTimeSlotDetails
 
             CreateEvent { editTimeSlotSelection } ->
-                Options.onClick <| editTimeSlotSelection selectedTimeSlotDetails
+                when (not model.alreadySubmittedConfirmedEvent) <|
+                    Options.onClick <|
+                        editTimeSlotSelection selectedTimeSlotDetails
         ]
         [ viewTimeSlotDuration selectedTimeSlot hasSingleSlotHeight ]
 
