@@ -1,4 +1,4 @@
-module Route exposing (Route(..), fromUrl, replaceUrl, routeToString, viewHomeButton)
+module Route exposing (Route(..), fromUrl, pushUrl, replaceUrl, routeToString, viewHomeButton)
 
 import Browser.Navigation as Nav
 import Html exposing (Html, text)
@@ -64,6 +64,11 @@ fromUrl url =
 replaceUrl : Nav.Key -> Route -> Cmd msg
 replaceUrl key route =
     Nav.replaceUrl key <| routeToString route
+
+
+pushUrl : Nav.Key -> Route -> Cmd msg
+pushUrl key route =
+    Nav.pushUrl key <| routeToString route
 
 
 routeToString : Route -> String

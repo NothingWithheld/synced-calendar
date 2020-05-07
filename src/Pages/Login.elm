@@ -1,7 +1,10 @@
 module Pages.Login exposing (Model, Msg, init, subscriptions, update, view)
 
 import Browser exposing (Document)
+import Constants
 import Html exposing (Html, div, text)
+import Http
+import Json.Decode as Decode exposing (Decoder)
 import Material
 import Material.Button as Button
 import Material.Card as Card
@@ -11,6 +14,8 @@ import Material.TextField as TextField
 import Material.Typography as Typography
 import Route
 import Session exposing (Session)
+import Url.Builder as Builder
+import Utils exposing (NoData)
 
 
 
@@ -47,34 +52,40 @@ init session =
 
 
 type Msg
-    = AdjustUserId String
-    | AdjustLoginEmail String
+    = AdjustLoginEmail String
     | AdjustLoginPassword String
     | SwitchToCreateAccount
     | AdjustCreateAccountEmail String
     | AdjustCreateAccountPassword String
+    | SubmitAccountCreation
+    | HandleAccountCreation (Result Http.Error NoData)
+    | SubmitLogin
+    | HandleLogin (Result Http.Error String)
     | Mdc (Material.Msg Msg)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        AdjustUserId userId ->
-            let
-                updatedSession =
-                    Session.setUserId model.session userId
-            in
-            ( { model | session = updatedSession }, Cmd.none )
-
         AdjustLoginEmail email ->
             let
                 updatedSession =
                     Session.setEmail model.session email
             in
-            ( { model | session = updatedSession }, Cmd.none )
+            ( { model
+                | session = updatedSession
+                , errorMessage = ""
+              }
+            , Cmd.none
+            )
 
         AdjustLoginPassword loginPassword ->
-            ( { model | loginPassword = loginPassword }, Cmd.none )
+            ( { model
+                | loginPassword = loginPassword
+                , errorMessage = ""
+              }
+            , Cmd.none
+            )
 
         SwitchToCreateAccount ->
             ( { model
@@ -86,10 +97,53 @@ update msg model =
             )
 
         AdjustCreateAccountEmail createEmail ->
-            ( { model | createEmail = createEmail }, Cmd.none )
+            ( { model
+                | createEmail = createEmail
+                , errorMessage = ""
+              }
+            , Cmd.none
+            )
 
         AdjustCreateAccountPassword createPassword ->
             ( { model | createPassword = createPassword }, Cmd.none )
+
+        SubmitAccountCreation ->
+            ( model, createAccount model )
+
+        HandleAccountCreation result ->
+            let
+                updatedSession =
+                    Session.setEmail model.session ""
+            in
+            case result of
+                Ok _ ->
+                    ( { model
+                        | session = updatedSession
+                        , loginPassword = ""
+                        , isCreatingAccount = False
+                      }
+                    , Cmd.none
+                    )
+
+                Err _ ->
+                    ( { model | errorMessage = "There's already an account with this email" }, Cmd.none )
+
+        SubmitLogin ->
+            ( model, login model )
+
+        HandleLogin result ->
+            case result of
+                Ok userId ->
+                    let
+                        updatedSession =
+                            Session.setUserId model.session userId
+                    in
+                    ( { model | session = updatedSession }
+                    , Route.pushUrl (Session.getKey model.session) Route.Home
+                    )
+
+                Err _ ->
+                    ( { model | errorMessage = "Invalid credentials" }, Cmd.none )
 
         Mdc msg_ ->
             Material.update Mdc msg_ model
@@ -130,6 +184,16 @@ viewLogin model =
                 ]
                 [ text "Log In" ]
             ]
+        , if String.length model.errorMessage > 0 then
+            styled Html.p
+                [ css "margin-top" "0"
+                , css "padding-left" "16px"
+                , css "color" Constants.invalidColor
+                ]
+                [ text model.errorMessage ]
+
+          else
+            text ""
         , TextField.view Mdc
             "email"
             model.mdc
@@ -159,7 +223,7 @@ viewLogin model =
                     , Button.ripple
                     , Button.unelevated
                     , css "width" "100px"
-                    , Button.link <| Route.routeToString Route.Home
+                    , Options.onClick SubmitLogin
                     ]
                     [ text "Log In" ]
                 ]
@@ -188,6 +252,16 @@ viewCreateAccount model =
                 ]
                 [ text "Create Account" ]
             ]
+        , if String.length model.errorMessage > 0 then
+            styled Html.p
+                [ css "margin-top" "0"
+                , css "padding-left" "16px"
+                , css "color" Constants.invalidColor
+                ]
+                [ text model.errorMessage ]
+
+          else
+            text ""
         , TextField.view Mdc
             "email"
             model.mdc
@@ -216,7 +290,7 @@ viewCreateAccount model =
                     [ Card.actionButton
                     , Button.ripple
                     , Button.unelevated
-                    , Button.link <| Route.routeToString Route.Home
+                    , Options.onClick SubmitAccountCreation
                     ]
                     [ text "Create Account" ]
                 ]
@@ -231,3 +305,44 @@ viewCreateAccount model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Material.subscriptions Mdc model
+
+
+
+-- MESSAGING
+
+
+createAccount : Model -> Cmd Msg
+createAccount model =
+    let
+        queryString =
+            String.dropLeft 1 <|
+                Builder.toQuery
+                    [ Builder.string "email" model.createEmail
+                    , Builder.string "password" model.createPassword
+                    ]
+    in
+    Http.post
+        { url = "http://localhost:3000/api/user/login"
+        , body = Http.stringBody "application/x-www-form-urlencoded" queryString
+        , expect = Http.expectJson HandleAccountCreation Utils.noDataDecoder
+        }
+
+
+login : Model -> Cmd Msg
+login model =
+    let
+        queryString =
+            Builder.toQuery
+                [ Builder.string "email" <| Session.getEmail model.session
+                , Builder.string "password" model.loginPassword
+                ]
+    in
+    Http.get
+        { url = "http://localhost:3000/api/user/login" ++ queryString
+        , expect = Http.expectJson HandleLogin loginDecoder
+        }
+
+
+loginDecoder : Decoder String
+loginDecoder =
+    Decode.map String.fromInt <| Decode.field "userId" Decode.int
