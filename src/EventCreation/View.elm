@@ -63,6 +63,11 @@ viewUserRequest :
                 | noOp : msg
                 , handleEditingCancel : msg
                 , onMdc : Material.Msg msg -> msg
+                , changeSelectionDayNum : String -> msg
+                , changeSelectionStartSlot : String -> msg
+                , changeSelectionEndSlot : String -> msg
+                , closeUserPromptForEventDetails : msg
+                , saveTimeSlot : msg
             }
     -> Html msg
 viewUserRequest model updates =
@@ -154,6 +159,11 @@ viewUserRequestForm :
                 | noOp : msg
                 , handleEditingCancel : msg
                 , onMdc : Material.Msg msg -> msg
+                , changeSelectionDayNum : String -> msg
+                , changeSelectionStartSlot : String -> msg
+                , changeSelectionEndSlot : String -> msg
+                , closeUserPromptForEventDetails : msg
+                , saveTimeSlot : msg
             }
     -> EC.EventDetails
     -> Html msg
@@ -238,6 +248,12 @@ viewUserRequestForm model updates eventDetails =
                     ( EC.ConfirmedEvent confirmedEventDetails, Events udpates_ ) ->
                         viewConfirmedEventForm model udpates_ timeSlot confirmedEventDetails
 
+                    ( EC.UnsetConfirmedEvent confirmedEventDetails, CreateEvent udpates_ ) ->
+                        viewUnsetConfirmedEventForm model udpates_ timeSlot confirmedEventDetails invalidSelection
+
+                    ( EC.ConfirmedEvent confirmedEventDetails, CreateEvent udpates_ ) ->
+                        viewConfirmedEventForm model udpates_ timeSlot confirmedEventDetails
+
                     _ ->
                         []
                 )
@@ -278,6 +294,69 @@ viewChangeTimeSlotForm model updates invalidSelection =
             []
 
 
+viewUnsetConfirmedEventForm :
+    WithMdc msg (TS.WithTimeSlotSelection a)
+    ->
+        { b
+            | onMdc : Material.Msg msg -> msg
+            , changeSelectionDayNum : String -> msg
+            , changeSelectionStartSlot : String -> msg
+            , changeSelectionEndSlot : String -> msg
+            , closeUserPromptForEventDetails : msg
+            , saveTimeSlot : msg
+        }
+    -> TS.TimeSlot
+    -> EC.ConfirmedEventDetails
+    -> Bool
+    -> List (Html msg)
+viewUnsetConfirmedEventForm model updates { startBound, endBound } confirmedEventDetails invalidSelection =
+    let
+        ( startTime, startAmOrPm ) =
+            TS.getTimeForSlotNum startBound.slotNum False
+
+        ( endTime, endAmOrPm ) =
+            TS.getTimeForSlotNum endBound.slotNum True
+
+        startsAndEndsSameHalfOfDay =
+            startAmOrPm == endAmOrPm
+    in
+    [ styled Html.h4
+        [ Typography.headline5
+        , css "margin" "0 0 8px 4px"
+        ]
+        [ text confirmedEventDetails.title
+        ]
+    , styled div
+        [ css "display" "flex"
+        , css "align-items" "center"
+        , css "margin-left" "4px"
+        ]
+        [ styled Html.p
+            [ css "margin" "0" ]
+            [ text <| Date.format "MMMM d, y" confirmedEventDetails.date ]
+        , styled Html.p
+            [ css "margin" "0 0 0 24px" ]
+            [ text <|
+                startTime
+                    ++ (if startsAndEndsSameHalfOfDay then
+                            ""
+
+                        else
+                            startAmOrPm
+                       )
+                    ++ " "
+                    ++ Entity.ndash
+                    ++ " "
+                    ++ endTime
+                    ++ endAmOrPm
+            ]
+        ]
+    , styled Html.p [ css "margin" "4px 0 4px 4px" ] [ text confirmedEventDetails.description ]
+    , viewTimeChangeSelects model updates
+    , viewInitialCreationActionButtons model updates invalidSelection
+    ]
+
+
 viewConfirmedEventForm :
     WithMdc msg a
     ->
@@ -301,13 +380,14 @@ viewConfirmedEventForm model { onMdc, handleEditingCancel } { startBound, endBou
     in
     [ styled Html.h4
         [ Typography.headline5
-        , css "margin" "0 0 4px"
+        , css "margin" "0 0 8px 4px"
         ]
         [ text confirmedEventDetails.title
         ]
     , styled div
         [ css "display" "flex"
         , css "align-items" "center"
+        , css "margin-left" "4px"
         ]
         [ styled Html.p
             [ css "margin" "0" ]
@@ -329,7 +409,7 @@ viewConfirmedEventForm model { onMdc, handleEditingCancel } { startBound, endBou
                     ++ endAmOrPm
             ]
         ]
-    , styled Html.p [ css "margin" "4px 0" ] [ text confirmedEventDetails.description ]
+    , styled Html.p [ css "margin" "4px 0 4px 4px" ] [ text confirmedEventDetails.description ]
     , Card.actions [ css "display" "flex", css "flex-direction" "row-reverse" ]
         [ Card.actionButtons []
             [ Button.view onMdc

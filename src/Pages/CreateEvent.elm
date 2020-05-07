@@ -103,7 +103,6 @@ type Msg
     | SetTimeSlotPositions (Result Dom.Error (List Dom.Element))
     | SetSavedConfirmedEventsBy (Result Http.Error (List TSMessaging.ServerConfirmedEvent))
     | SetSavedConfirmedEventsFor (Result Http.Error (List TSMessaging.ServerConfirmedEvent))
-    | HandleSavedAvailableTimesForUser (Result Http.Error (List AvailableTimeDetails))
     | UpdateTimeZone String
     | SetTimeSlotsElement (Result Dom.Error Dom.Element)
     | SetAvailableTimesCount (Result Http.Error (Maybe AT.ServerAvailableTimesCount))
@@ -163,9 +162,6 @@ update msg model =
             TSUpdate.setSavedConfirmedEventsFor model
                 (CreateEvent {})
                 result
-
-        HandleSavedAvailableTimesForUser result ->
-            TSUpdate.handleSavedAvailableTimesForUser model result
 
         UpdateTimeZone timeZoneLabel ->
             TSUpdate.updateTimeZone model
@@ -280,16 +276,14 @@ view model =
                 }
             ]
         , viewUserRequest model
-            (SubmitAvailability
+            (CreateEvent
                 { changeSelectionDayNum = ChangeSelectionDayNum
                 , changeSelectionStartSlot = ChangeSelectionStartSlot
                 , changeSelectionEndSlot = ChangeSelectionEndSlot
                 , onMdc = Mdc
                 , closeUserPromptForEventDetails = CloseUserPromptForEventDetails
                 , saveTimeSlot = SaveAvailableTimeSlot
-                , deleteTimeSlot = CloseUserPromptForEventDetails
                 , handleEditingCancel = HandleEditingCancel
-                , updateTimeSlot = SaveAvailableTimeSlot
                 , noOp = NoOp
                 }
             )
