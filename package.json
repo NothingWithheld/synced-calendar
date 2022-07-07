@@ -20,7 +20,7 @@
   "homepage": "https://github.com/NothingWithheld/synced-calendar#readme",
   "dependencies": {
     "@babel/runtime": "^7.0.0",
-    "moment": "^2.19.3",
+    "moment": "^2.29.4",
     "react": "^16.13.1",
     "react-dates": "^21.8.0",
     "react-dom": "^16.13.1",
